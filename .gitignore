@@ -1,0 +1,18 @@
+.env*
+!.env.example
+node_modules/
+dist/
+build/
+.venv/
+__pycache__/
+*.pyc
+# keys live in ~/.config/shotmatch, never here
+*.key
+secrets/
+# big data: photos, SfM models, checkpoints
+data/
+spots/*/images/
+spots/*/sfm/
+checkpoints/
+*.safetensors
+module/spacetime_module_bindings/
