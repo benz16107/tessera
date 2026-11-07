@@ -15,4 +15,4 @@ spots/*/images/
 spots/*/sfm/
 checkpoints/
 *.safetensors
-module/spacetime_module_bindings/
+data/
