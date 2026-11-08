@@ -1,0 +1,16 @@
+# torch comes from the CPU wheel index; setup.sh installs it first
+torch==2.15.0
+torchvision==0.29.2
+pycolmap==4.2.1
+hloc @ git+https://github.com/cvg/Hierarchical-Localization@c13273bd0ecc2917a35910fd843712a1c6243193
+lightglue @ git+https://github.com/cvg/LightGlue@5a650c444718caffc2669dc0094cde908f42dd73
+huggingface-hub
+safetensors
+opencv-python-headless==5.0.0.93
+numpy
+scipy
+h5py
+pillow
+pillow-heif
+fastapi
+uvicorn

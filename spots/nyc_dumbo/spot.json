@@ -1,0 +1,10 @@
+{
+ "id": "nyc_dumbo",
+ "name": "Manhattan Bridge from Washington St, DUMBO",
+ "lat": 40.7035215,
+ "lon": -73.9896683,
+ "radius_m": 429,
+ "cameras": 127,
+ "model_version": "20261107-1927",
+ "credit_page": true
+}

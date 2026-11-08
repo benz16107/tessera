@@ -1,0 +1,7 @@
+# per CONTRACTS.md: images, model and test photos stay out of git
+*/images/
+*/model/
+*/test/
+*/sfm/
+*/eval_cache/
+*.log

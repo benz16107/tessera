@@ -1,0 +1,16 @@
+# systemd user unit. Install:
+#   ln -sf ~/Code/hackathons/shotmatch/ops/shotmatch-solver.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now shotmatch-solver
+[Unit]
+Description=ShotMatch solver (FastAPI, 127.0.0.1:8791)
+After=network.target
+
+[Service]
+WorkingDirectory=%h/Code/hackathons/shotmatch/solver
+ExecStart=%h/Code/hackathons/shotmatch/solver/.venv/bin/python server.py
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

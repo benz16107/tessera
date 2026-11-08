@@ -1,0 +1,17 @@
+# ShotMatch crew: Spacetime job worker, agent, photo store and web host on 127.0.0.1:8790.
+# Install: ln -sf ~/Code/hackathons/shotmatch/ops/shotmatch-crew.service ~/.config/systemd/user/
+#          systemctl --user daemon-reload && systemctl --user enable --now shotmatch-crew
+[Unit]
+Description=ShotMatch crew service
+After=network-online.target
+
+[Service]
+WorkingDirectory=%h/Code/hackathons/shotmatch/crew
+ExecStart=%h/.nvm/default-node/bin/node --import tsx src/main.ts
+Environment=NODE_ENV=production
+# LENS_URL / LENS_MODEL go here once the fine-tuned lens model is served.
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target
