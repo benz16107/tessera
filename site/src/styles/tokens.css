@@ -20,6 +20,20 @@
   --amber-ink: #1a1206;
   --amber-tint: rgba(242, 163, 58, 0.14);
   --amber-line: rgba(242, 163, 58, 0.65);
+  /* Roles. Every use on the site goes through these, so a palette change is a change of values here.
+     primary: the one filled button per view. accent: marks for the current place and progress (eyebrows, step
+     numbers, the playhead, the rail, hover outlines). link: Starlight's link colour. warn: stand-in and caution tags. */
+  --primary: var(--amber);
+  --primary-hover: var(--amber-hover);
+  --primary-ink: var(--amber-ink);
+  --accent: var(--amber);
+  --accent-line: var(--amber-line);
+  --link: #f5b65c;
+  --link-strong: #f7c27a;
+  --link-low: #2b1d0a;
+  --focus: var(--amber);
+  --warn: var(--amber);
+  --warn-line: var(--amber-line);
   --teal: #5ec8c2;
   --red: #e8675e;
   --mono: 'Martian Mono', ui-monospace, monospace;

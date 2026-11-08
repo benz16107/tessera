@@ -220,13 +220,13 @@ const demo = `${APP_URL}/p/${DEMO_CODE}`;
   .h-track { position: relative; height: 24px; border-radius: var(--r); background: var(--panel); box-shadow: 0 0 0 1px var(--line); }
   .h-gold { position: absolute; top: 4px; bottom: 4px; border-radius: 3px; background: rgba(214, 170, 100, 0.2); }
   .h-tick { position: absolute; top: 4px; bottom: 4px; width: 1px; background: var(--line-2); }
-  .h-head { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--amber); }
+  .h-head { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--accent); }
   .h-legend { grid-column: 1 / -1; font-size: var(--t-xs); color: var(--text-3); font-family: var(--mono); }
 
   /* Research: a count, three quotes, a link. Filled from src/research.ts. */
   .research { max-width: 1088px; margin: 96px auto 0; }
   .research h2 { margin-top: 12px; max-width: 30ch; }
-  .research h2 .num { color: var(--amber); }
+  .research h2 .num { color: var(--accent); }
   .research-detail { margin: 12px 0 0; color: var(--text-2); font-size: var(--t-sm); }
   .quotes { list-style: none; margin: 40px 0 0; padding: 0; display: grid; gap: 32px; }
   .quotes li { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 32px; align-items: start; padding-top: 32px; border-top: 1px solid var(--line); }
@@ -244,7 +244,7 @@ const demo = `${APP_URL}/p/${DEMO_CODE}`;
   .steps-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; }
   .step-phone { max-width: 280px; margin: 0 auto; }
   .step-title { margin: 16px 0 0; text-align: center; font-size: var(--t-lg); font-weight: 600; letter-spacing: -0.01em; }
-  .step-title .num { display: block; font-size: var(--t-xs); color: var(--amber); margin-bottom: 4px; }
+  .step-title .num { display: block; font-size: var(--t-xs); color: var(--accent); margin-bottom: 4px; }
   .steps-rail { display: none; }
   .proof-line { max-width: 1088px; margin: 32px auto 0; text-align: center; color: var(--text-2); font-size: var(--t-sm); }
   .proof-line .num { color: var(--text); }
@@ -314,7 +314,7 @@ const demo = `${APP_URL}/p/${DEMO_CODE}`;
   html.motion .step-title .num { font-size: var(--t-sm); margin-bottom: 12px; }
   html.motion .steps-rail { display: flex; flex-direction: column; gap: 8px; }
   html.motion .steps-rail span { width: 2px; height: 32px; border-radius: 1px; background: var(--line-2); }
-  html.motion .steps-rail span.on { background: var(--amber); }
+  html.motion .steps-rail span.on { background: var(--accent); }
   @media (max-width: 900px) {
     html.motion .steps { grid-template-columns: 1fr; gap: 0; }
     html.motion .steps-list { height: min(78svh, 680px); }

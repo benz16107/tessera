@@ -12,10 +12,10 @@
   --sl-color-gray-6: var(--raise);
   --sl-color-gray-7: var(--panel);
   --sl-color-black: var(--bg);
-  --sl-color-accent-low: #2b1d0a;
-  --sl-color-accent: var(--amber);
-  --sl-color-accent-high: #f7c27a;
-  --sl-color-text-accent: #f5b65c;
+  --sl-color-accent-low: var(--link-low);
+  --sl-color-accent: var(--accent);
+  --sl-color-accent-high: var(--link-strong);
+  --sl-color-text-accent: var(--link);
   --sl-color-bg: var(--bg);
   --sl-color-bg-nav: var(--bg);
   --sl-color-bg-sidebar: var(--bg);
@@ -69,7 +69,7 @@ site-search button[data-open-modal] { border-radius: var(--r); border-color: var
 .right-sidebar-panel h2 { font: 400 var(--t-xs) / 1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); }
 .right-sidebar-panel a { font-size: var(--t-sm); }
 
-:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 /* Video shot lists: timestamps in mono. */
 .sl-markdown-content td:first-child code { white-space: nowrap; }

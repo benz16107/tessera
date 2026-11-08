@@ -41,13 +41,13 @@ import { APP_URL, DEMO_CODE } from '../../site.ts';
   .tx { max-width: 1088px; margin: 0 auto; padding: 64px 24px 96px; }
   @media (max-width: 420px) { .tx { padding-inline: 16px; } }
   .tx-head { max-width: 760px; }
-  .tx .eyebrow { margin: 0; font: 400 var(--t-xs) / 1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--amber); }
+  .tx .eyebrow { margin: 0; font: 400 var(--t-xs) / 1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
   .tx h1 { margin: 12px 0 0; font-size: var(--t-2xl); line-height: 1.15; font-weight: 600; letter-spacing: -0.02em; text-wrap: balance; }
   .tx-lede { margin: 16px 0 0; color: var(--text-2); font-size: var(--t-lg); line-height: 1.6; text-wrap: pretty; }
   .tx-grid { list-style: none; margin: 48px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
   .tx-card { display: flex; flex-direction: column; height: 100%; border-radius: var(--r-panel); overflow: hidden; background: var(--panel); box-shadow: 0 0 0 1px var(--line); color: var(--text); text-decoration: none; transition: box-shadow 0.2s ease; }
-  @media (hover: hover) and (pointer: fine) { .tx-card:hover { box-shadow: 0 0 0 1px var(--amber-line); } }
-  .tx-card:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
+  @media (hover: hover) and (pointer: fine) { .tx-card:hover { box-shadow: 0 0 0 1px var(--accent-line); } }
+  .tx-card:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
   .tx-img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; object-position: top; background: var(--bg); border-bottom: 1px solid var(--line); }
   .tx-body { padding: 20px 20px 24px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
   .tx-prize { margin: 0; font: 400 var(--t-xs) / 1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }

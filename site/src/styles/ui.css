@@ -8,11 +8,11 @@
   transition-property: background-color, color, scale; transition-duration: 120ms; transition-timing-function: ease-out;
 }
 .btn:active { scale: 0.96; }
-.btn.primary { background: var(--amber); color: var(--amber-ink); font-weight: 600; }
+.btn.primary { background: var(--primary); color: var(--primary-ink); font-weight: 600; }
 .btn.secondary { background: var(--raise); color: var(--text); }
 .btn.ghost { background: transparent; color: var(--text-2); }
 @media (hover: hover) and (pointer: fine) {
-  .btn.primary:hover { background: var(--amber-hover); }
+  .btn.primary:hover { background: var(--primary-hover); }
   .btn.secondary:hover { background: var(--field); }
   .btn.ghost:hover { background: var(--raise); color: var(--text); }
 }

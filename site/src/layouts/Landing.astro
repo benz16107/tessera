@@ -37,9 +37,9 @@ const { title, description = DESCRIPTION, current = 'home' } = Astro.props;
   * { box-sizing: border-box; }
   html { background: var(--bg); }
   body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 1rem; line-height: 1.5; -webkit-font-smoothing: antialiased; }
-  .skip { position: absolute; left: 16px; top: -48px; background: var(--amber); color: var(--amber-ink); padding: 8px 12px; border-radius: var(--r); z-index: 10; }
+  .skip { position: absolute; left: 16px; top: -48px; background: var(--primary); color: var(--primary-ink); padding: 8px 12px; border-radius: var(--r); z-index: 10; }
   .skip:focus { top: 8px; }
   .land-head { position: sticky; top: 0; z-index: 5; height: var(--header-h); padding: 0 8px 0 16px; background: var(--bg); border-bottom: 1px solid var(--line); }
   img { outline: 1px solid rgba(255, 255, 255, 0.1); outline-offset: -1px; }
-  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 </style>
