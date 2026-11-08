@@ -1031,7 +1031,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                   <img className="st-render-img" src={latestRender.imageUrl} alt="AI render of your shot" style={{ left: r.x, top: r.y, width: r.w, height: r.h }} />
                   <span className="st-ai-label" style={{ left: r.x + 12, top: r.y + 12 }}>AI interpretation</span>
                   <div className="st-caption" style={{ left: r.x, top: r.y + r.h + 12, width: r.w }}>
-                    <b>Render {String(latestRender.id)} · {latestRender.kind === 'render' ? 'AI pass on NVIDIA' : 'AI preview'}</b>
+                    <b>Render {String(latestRender.id)} · {latestRender.kind === 'render' ? 'Qwen-Image on Vultr · checked by Nemotron' : 'AI preview'}</b>
                     <span>Made from your photo and your objects only. Map tiles never enter a render.</span>
                   </div>
                 </>
