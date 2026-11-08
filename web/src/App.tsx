@@ -3,6 +3,7 @@ import Credits from './Credits.tsx';
 
 const Planner = lazy(() => import('./Planner.tsx'));
 const Scout = lazy(() => import('./Scout.tsx'));
+const Studio = lazy(() => import('./studio/Studio.tsx'));
 
 /** Shows a reload prompt when a chunk fails to download (flaky networks) instead of a blank page. */
 export class LoadBoundary extends Component<{ children: ReactNode; label: string }, { failed: boolean }> {
@@ -34,6 +35,7 @@ export default function App() {
   }, []);
 
   if (path.startsWith('/credits')) return <Credits />;
+  if (/^\/studio\/[A-Za-z0-9]{4,12}/.test(path)) return <LoadBoundary label="The studio"><Suspense fallback={<div className="boot-skeleton" aria-busy="true" />}><Studio code={path.split('/')[2].toUpperCase()} /></Suspense></LoadBoundary>;
   const m = path.match(/^\/([ps])\/([A-Za-z0-9]{4,12})/);
   const code = m?.[2].toUpperCase();
   return (

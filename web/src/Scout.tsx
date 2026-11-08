@@ -3,27 +3,32 @@ import { useSpacetimeDB, useTable, useReducer } from 'spacetimedb/react';
 import { tables, reducers } from './module_bindings/index.ts';
 import type { Session } from './module_bindings/types.ts';
 import { NAME_KEY } from './config.ts';
+import { useSessionCard } from './spacetime/hooks.ts';
+import { useClaimInvite } from './photon/hooks.ts';
 import { bearing, metersBetween, angleDiff, compassWord, norm360 } from './geo.ts';
 
 const ARRIVED_M = 8; // matches the module's scout_arrived toast
 
 export default function Scout({ code }: { code: string }) {
   const { identity, isActive } = useSpacetimeDB();
-  const [rows, ready] = useTable(tables.session.where(r => r.code.eq(code)));
+  // Session rows are visible only to participants; the session_card(code) view shows the title before joining.
+  const [card, ready] = useSessionCard(code);
+  const [rows] = useTable(tables.session.where(r => r.code.eq(code)));
   const session = rows[0];
-  const [parts, partsReady] = useTable(tables.participant.where(r => r.sessionId.eq(session?.id ?? 0n)), { enabled: !!session });
+  const [parts, partsReady] = useTable(tables.participant.where(r => r.sessionId.eq(card?.id ?? 0n)), { enabled: !!card });
   const join = useReducer(reducers.joinSession);
   const [name, setName] = useState(() => localStorage.getItem(NAME_KEY) ?? '');
   const [err, setErr] = useState('');
   const me = identity && parts.find(p => p.identity.isEqual(identity));
+  useClaimInvite(me ? me.id : undefined); // opened from a Photon invite: link this phone to the invitee's channel
 
-  if (!ready || (session && !partsReady)) return <div className="scout-wait" aria-busy="true"><p className="wordmark">ShotMatch</p><span className="sk sk-line" /></div>;
-  if (!session) return <div className="scout-wait"><p className="wordmark">ShotMatch</p><h1>No shoot with code {code}</h1><p>Check the link or QR code.</p></div>;
+  if (!ready || (card && !partsReady)) return <div className="scout-wait" aria-busy="true"><p className="wordmark">ShotMatch</p><span className="sk sk-line" /></div>;
+  if (!card) return <div className="scout-wait"><p className="wordmark">ShotMatch</p><h1>No shoot with code {code}</h1><p>Check the link or QR code.</p></div>;
   if (!me || me.role !== 'scout') {
     return (
       <main className="scout-wait">
         <p className="wordmark">ShotMatch scout</p>
-        <h1>{session.title}</h1>
+        <h1>{card.title}</h1>
         <p>You will walk to the mark with the camera open. Your position and compass heading are shared with this shoot while the page is open.</p>
         <form className="stack" onSubmit={e => {
           e.preventDefault();
@@ -38,6 +43,7 @@ export default function Scout({ code }: { code: string }) {
       </main>
     );
   }
+  if (!session) return <div className="scout-wait" aria-busy="true"><p className="wordmark">ShotMatch</p><span className="sk sk-line" /></div>;
   return <ScoutLive session={session} />;
 }
 

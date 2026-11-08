@@ -1,0 +1,71 @@
+/* NVIDIA panels. Every colour, radius and font is a variable, defaulting to the studio's Darkroom tokens when they exist. */
+.nv {
+  --nv-bg: var(--st-panel, #111110);
+  --nv-raise: var(--st-raise, #191816);
+  --nv-line: var(--st-line-2, #34312b);
+  --nv-text: var(--st-text, #ece6d8);
+  --nv-muted: var(--st-muted, #8f877a);
+  --nv-dim: var(--st-dim, #5f594f);
+  --nv-accent: var(--st-amber, #e8a33d);
+  --nv-accent-ink: var(--st-amber-ink, #1a1208);
+  --nv-red: var(--st-red, #e0644c);
+  --nv-r: var(--st-r, 6px);
+  --nv-font: var(--font, 'Archivo', system-ui, sans-serif);
+  --nv-mono: var(--mono, 'IBM Plex Mono', ui-monospace, monospace);
+  color: var(--nv-text);
+  font: 13px/1.45 var(--nv-font);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.nv-card { padding: 12px; border-bottom: 1px solid var(--nv-line); }
+.nv header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.nv h3 { margin: 0; font-size: 13px; font-weight: 600; }
+.nv p { margin: 0; }
+.nv-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.nv-row > .nv-input { flex: 1; min-width: 0; }
+.nv-small { font-size: 12px; color: var(--nv-muted); gap: 12px; }
+.nv-small label { display: inline-flex; gap: 4px; align-items: center; }
+.nv-muted { color: var(--nv-muted); }
+.nv-dim { color: var(--nv-dim); font-size: 11px; }
+.nv-num { font-family: var(--nv-mono); font-variant-numeric: tabular-nums; font-size: 11px; }
+.nv-input { background: var(--nv-raise); color: var(--nv-text); border: 1px solid var(--nv-line); border-radius: var(--nv-r); padding: 7px 9px; font: inherit; min-height: 32px; }
+.nv-input:focus-visible, .nv-btn:focus-visible { outline: 2px solid var(--nv-accent); outline-offset: 1px; }
+.nv-btn { background: var(--nv-raise); color: var(--nv-text); border: 1px solid var(--nv-line); border-radius: var(--nv-r); padding: 6px 10px; font: inherit; min-height: 32px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+.nv-btn.primary { background: var(--nv-accent); color: var(--nv-accent-ink); border-color: var(--nv-accent); font-weight: 600; }
+.nv-btn.wide { width: 100%; }
+.nv-btn:disabled { opacity: 0.5; cursor: default; }
+.nv-mic { touch-action: none; user-select: none; }
+.nv-mic.on { border-color: var(--nv-red); color: var(--nv-red); }
+.nv-file { position: relative; overflow: hidden; }
+.nv-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.nv-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 180px; overflow: auto; }
+.nv-steps li { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) auto; gap: 8px; padding: 3px 0; border-top: 1px solid var(--nv-line); font-size: 12px; }
+.nv-step-tool { color: var(--nv-accent); }
+.nv-step-res { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nv-reply { border-left: 2px solid var(--nv-accent); padding-left: 8px; display: flex; flex-direction: column; gap: 2px; }
+.nv-error { color: var(--nv-red); }
+.nv-warn { color: var(--nv-accent); font-size: 12px; }
+.nv-ok { font-size: 12px; }
+.nv-ok a { color: var(--nv-accent); }
+/* Skeleton while a model works; no spinner. */
+.nv-skel { min-height: 18px; border-radius: var(--nv-r); background: linear-gradient(90deg, var(--nv-raise), var(--nv-line), var(--nv-raise)); background-size: 200% 100%; animation: nv-shimmer 1.6s linear infinite; display: flex; align-items: center; padding: 0 8px; color: var(--nv-muted); }
+.nv-skel.tall { min-height: 64px; }
+.nv-steps li.nv-skel { min-height: 14px; border: 0; display: block; }
+@keyframes nv-shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .nv-skel { animation: none; } }
+.nv-render { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.nv-render-img { position: relative; }
+.nv-render-img img, .nv-crit img { width: 100%; display: block; border-radius: var(--nv-r); }
+.nv-badge { position: absolute; left: 6px; bottom: 6px; background: rgba(0, 0, 0, 0.72); color: #fff; font: 600 11px var(--nv-mono); letter-spacing: 0.04em; padding: 3px 6px; border-radius: 3px; }
+.nv-crit { display: flex; flex-direction: column; gap: 8px; }
+.nv-crit ul, .nv-fixes { margin: 0; padding-left: 18px; }
+.nv-fixes li { margin-bottom: 8px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.nv-models { list-style: none; margin: 0; padding: 0; }
+.nv-models li { padding: 6px 0; border-top: 1px solid var(--nv-line); display: flex; flex-direction: column; gap: 2px; }
+.nv-models .nv-row { justify-content: space-between; }
+.nv-sheet table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.nv-sheet th, .nv-sheet td { text-align: left; vertical-align: top; padding: 4px 4px 4px 0; border-top: 1px solid var(--nv-line); }
+.nv-sheet th { color: var(--nv-muted); font-weight: 500; }
+.nv-command { padding: 8px; background: var(--nv-bg); border: 1px solid var(--nv-line); border-radius: var(--nv-r); }
+.nv-gen { gap: 6px; }
+.nv-concept { width: 96px; height: 96px; object-fit: cover; border-radius: var(--nv-r); float: right; margin-left: 8px; }
+.nv-check ul { margin: 2px 0 0; padding-left: 18px; font-size: 12px; }

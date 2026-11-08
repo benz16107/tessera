@@ -2,7 +2,7 @@
 // message and returns the reply. State lives in Spacetime rows, so follow-ups find the session's last photo.
 import { existsSync, readFileSync } from 'node:fs';
 import { conn, step, until } from './stdb.ts';
-import { MODELS, NVIDIA_BASE, secret } from './config.ts';
+import { MODELS, NVIDIA_BASE, PUBLIC_URL, secret } from './config.ts';
 import { dataUrl, ingest, localPath, type Ingested } from './images.ts';
 import { chat, readLens, type ChatMsg } from './models.ts';
 import { similar } from './similar.ts';
@@ -175,6 +175,17 @@ const TOOLS: Record<string, Tool> = {
     parameters: { type: 'object', properties: {} },
     async run(c) { return planShootDay(c.sessionId); },
   },
+  edit_set: {
+    description: 'Change the virtual 3D set of this session from words: place people, props and lights, generate a prop, move or remove objects, change the lens or time, rebuild the set from the photo, or write a call sheet.',
+    parameters: { type: 'object', properties: { command: { type: 'string', description: 'the request in plain words, e.g. "two friends walking toward camera, warm string lights"' } }, required: ['command'] },
+    logsItself: true, // the set agent logs its own route, safety and tool steps
+    async run(c, a) {
+      const { setCommand } = await import('./setagent.ts');
+      const r = await setCommand(c.sessionId, String(a.command ?? c.text), { channel: c.channel });
+      const code = conn.db.session.id.find(c.sessionId)?.code;
+      return { reply: r.reply, model: r.model, edits: r.steps.length, ...(code && { studio: `${PUBLIC_URL}/studio/${code}` }) };
+    },
+  },
   scout_status: {
     description: "Where the scouts in this session are relative to the mark (the solved camera position).",
     parameters: { type: 'object', properties: {} },
@@ -204,7 +215,7 @@ async function callTool(c: Ctx, name: string, args: any) {
 
 const SYSTEM = `You are ShotMatch, texting with someone about a photo of a place. You find where the photographer stood, which way they faced and the lens, then help them plan their own version.
 Use the tools. With a new photo: pick_spot, then solve with that spot (solve also reads the lens and checks safety). If pick_spot finds nothing, ask where the photo was taken and name the mapped spots.
-If they ask to be reminded before good light, call set_reminder. For "show me shots like this" or a described mood, call find_similar_spots. For a plan covering several shots in one outing, call plan_shoot_day.
+If they ask to be reminded before good light, call set_reminder. For "show me shots like this" or a described mood, call find_similar_spots. For a plan covering several shots in one outing, call plan_shoot_day. Requests to build or change the 3D set ("put two friends walking toward camera", "add string lights", "a call sheet") go to edit_set; include its studio link once.
 Follow-ups like "make it 85mm", "add two people" or "what about sunset" mean: call make_preview right away on the session's photo (it works before the photo is solved too). Do not ask where it was taken for these.
 When solve returns an "answer", send that answer text as written, adding at most one short line. Write plainly, no markdown, no emojis. Previews are an AI interpretation; say so.
 If a photo is refused or cannot be placed, say why in one sentence.`;

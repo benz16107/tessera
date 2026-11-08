@@ -17,6 +17,8 @@ HERE = Path(__file__).resolve().parent
 DATA = HERE.parent / "data" / "lens"
 CFG = Path.home() / ".config" / "shotmatch"
 RESULTS = DATA / "results.json"
+# what crew/src/models.ts readLens() sends; kept in sync by hand
+CREW_PROMPT = 'Estimate the 35 mm-equivalent focal length (diagonal) this photo was taken with. Reply with strict JSON only: {"f35": <number>}'
 
 rows = {r["file"]: r for r in map(json.loads, (DATA / "meta.jsonl").read_text().splitlines())}
 splits = json.loads((DATA / "splits.json").read_text())
@@ -141,6 +143,8 @@ if __name__ == "__main__":
     ap.add_argument("--url", default="http://localhost:8000/v1")
     ap.add_argument("--model", default="shotmatch-lens")
     ap.add_argument("--name", default=None, help="row label for the local model")
+    ap.add_argument("--prompt", choices=["train", "zero", "crew"], default="train",
+                    help="local model prompt: the training prompt, the zero-shot JSON prompt, or the one crew/src/models.ts sends")
     a = ap.parse_args()
     for w in a.which:
         if w == "landmark":
@@ -170,5 +174,7 @@ if __name__ == "__main__":
                           dict(max_tokens=200, temperature=0, chat_template_kwargs={"enable_thinking": False}))
             save(f"Base {mid} (zero-shot, hosted)", metrics(p))
         else:
-            p = run_model("local-" + a.model, a.url, "", a.model, PROMPT, dict(max_tokens=60, temperature=0))
+            prompt = {"train": PROMPT, "zero": ZERO_SHOT_PROMPT, "crew": CREW_PROMPT}[a.prompt]
+            tag = "" if a.prompt == "train" else "-" + a.prompt
+            p = run_model("local-" + a.model + tag, a.url, "", a.model, prompt, dict(max_tokens=60, temperature=0))
             save(a.name or f"Fine-tuned {a.model} (LoRA)", metrics(p))

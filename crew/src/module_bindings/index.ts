@@ -34,6 +34,7 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AddChannelLinkReducer from "./add_channel_link_reducer";
 import AddPhotoReducer from "./add_photo_reducer";
 import AddSceneObjectReducer from "./add_scene_object_reducer";
 import CancelReminderReducer from "./cancel_reminder_reducer";
@@ -46,53 +47,106 @@ import DeleteSessionReducer from "./delete_session_reducer";
 import EnqueueSolveReducer from "./enqueue_solve_reducer";
 import FinishJobReducer from "./finish_job_reducer";
 import FinishPreviewReducer from "./finish_preview_reducer";
+import HeartbeatReducer from "./heartbeat_reducer";
 import JoinSessionReducer from "./join_session_reducer";
+import JoinSessionAsCrewReducer from "./join_session_as_crew_reducer";
 import LockSceneObjectReducer from "./lock_scene_object_reducer";
 import LogAgentStepReducer from "./log_agent_step_reducer";
+import MarkChannelVerifiedReducer from "./mark_channel_verified_reducer";
 import MarkOutboxReducer from "./mark_outbox_reducer";
 import MoveCameraReducer from "./move_camera_reducer";
 import PlacePersonReducer from "./place_person_reducer";
 import PostMessageReducer from "./post_message_reducer";
 import PushDevicePoseReducer from "./push_device_pose_reducer";
+import RecordCheckinReducer from "./record_checkin_reducer";
+import RecordShotVersionReducer from "./record_shot_version_reducer";
 import RegisterCrewReducer from "./register_crew_reducer";
+import RemoveChannelLinkReducer from "./remove_channel_link_reducer";
 import RemovePersonReducer from "./remove_person_reducer";
 import RenewPreviewReducer from "./renew_preview_reducer";
 import ReportProgressReducer from "./report_progress_reducer";
 import RequestPreviewReducer from "./request_preview_reducer";
+import RestoreSceneToReducer from "./restore_scene_to_reducer";
+import RestoreToVersionReducer from "./restore_to_version_reducer";
 import ScheduleReminderReducer from "./schedule_reminder_reducer";
+import SendSetEventReducer from "./send_set_event_reducer";
 import SetCrewCodeReducer from "./set_crew_code_reducer";
+import SetLibraryReducer from "./set_library_reducer";
 import SetPersonPoseReducer from "./set_person_pose_reducer";
 import SetPlanTimeReducer from "./set_plan_time_reducer";
 import SetSessionSpotReducer from "./set_session_spot_reducer";
 import SetShotSettingsReducer from "./set_shot_settings_reducer";
+import SetSunClockReducer from "./set_sun_clock_reducer";
+import ShareShotReducer from "./share_shot_reducer";
+import StartRenderReducer from "./start_render_reducer";
+import UndoSceneChangeReducer from "./undo_scene_change_reducer";
 import UpdateSceneObjectReducer from "./update_scene_object_reducer";
+import UpdateShotVersionReducer from "./update_shot_version_reducer";
+import UpgradeReducer from "./upgrade_reducer";
 import UpsertSpotReducer from "./upsert_spot_reducer";
 
 // Import all procedure arg schemas
 
 // Import all table schema definitions
+import ActivityRow from "./activity_table";
 import AgentStepRow from "./agent_step_table";
 import CameraRow from "./camera_table";
+import ChannelLinkRow from "./channel_link_table";
+import CheckinRow from "./checkin_table";
 import DevicePoseRow from "./device_pose_table";
+import LiveSessionsRow from "./live_sessions_table";
 import MessageRow from "./message_table";
+import MySceneLocksRow from "./my_scene_locks_table";
+import MySessionsRow from "./my_sessions_table";
 import OutboxRow from "./outbox_table";
 import ParticipantRow from "./participant_table";
 import PersonRow from "./person_table";
 import PhotoRow from "./photo_table";
+import PresenceRow from "./presence_table";
 import PreviewJobRow from "./preview_job_table";
+import PropLibraryRow from "./prop_library_table";
 import ReminderRow from "./reminder_table";
+import SceneChangeRow from "./scene_change_table";
 import SceneObjectRow from "./scene_object_table";
 import SessionRow from "./session_table";
+import SessionCardRow from "./session_card_table";
+import SessionMemberRow from "./session_member_table";
+import SetEventRow from "./set_event_table";
+import ShotLibraryRow from "./shot_library_table";
 import ShotSettingsRow from "./shot_settings_table";
+import ShotVersionRow from "./shot_version_table";
 import SolveJobRow from "./solve_job_table";
 import SolveResultRow from "./solve_result_table";
 import SpotRow from "./spot_table";
+import SpotLibraryRow from "./spot_library_table";
+import SunClockRow from "./sun_clock_table";
 import ToastRow from "./toast_table";
+
+// Import namespace table schema definitions
+import RateLimit_RateLimitConfigRow from "./rateLimit/rate_limit_config_table";
+import RateLimit_AdminRateLimitBucketsRow from "./rateLimit/admin_rate_limit_buckets_table";
+
+// Import namespace reducer arg schemas
+import RateLimit_AddRateLimitAdminReducer from "./rateLimit/add_rate_limit_admin_reducer";
+import RateLimit_RemoveRateLimitAdminReducer from "./rateLimit/remove_rate_limit_admin_reducer";
+import RateLimit_ResetBucketsReducer from "./rateLimit/reset_buckets_reducer";
+import RateLimit_UpdateConfigReducer from "./rateLimit/update_config_reducer";
+
+// Import namespace procedure arg schemas
+import * as RateLimit_RunSweepProcedure from "./rateLimit/run_sweep_procedure";
 
 /** Type-only namespace exports for generated type groups. */
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
+  activity: __table({
+    name: 'activity',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, ActivityRow),
   agentStep: __table({
     name: 'agent_step',
     indexes: [
@@ -118,6 +172,34 @@ const tablesSchema = __schema({
       { name: 'camera_session_id_key', constraint: 'unique', columns: ['sessionId'] },
     ],
   }, CameraRow),
+  channelLink: __table({
+    name: 'channel_link',
+    indexes: [
+      { accessor: 'id', name: 'channel_link_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'sessionId', name: 'channel_link_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'channel_link_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ChannelLinkRow),
+  checkin: __table({
+    name: 'checkin',
+    indexes: [
+      { accessor: 'id', name: 'checkin_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'sessionId', name: 'checkin_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'checkin_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, CheckinRow),
   devicePose: __table({
     name: 'device_pose',
     indexes: [
@@ -172,9 +254,15 @@ const tablesSchema = __schema({
       { accessor: 'identity', name: 'participant_identity_idx_btree', algorithm: 'btree', columns: [
         'identity',
       ] },
+      { accessor: 'by_online', name: 'participant_online_idx_btree', algorithm: 'btree', columns: [
+        'online',
+      ] },
       { accessor: 'by_session_identity', name: 'participant_session_id_identity_idx_btree', algorithm: 'btree', columns: [
         'sessionId',
         'identity',
+      ] },
+      { accessor: 'sessionId', name: 'participant_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
       ] },
     ],
     constraints: [
@@ -209,6 +297,20 @@ const tablesSchema = __schema({
       { name: 'photo_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, PhotoRow),
+  presence: __table({
+    name: 'presence',
+    indexes: [
+      { accessor: 'participantId', name: 'presence_participant_id_idx_btree', algorithm: 'btree', columns: [
+        'participantId',
+      ] },
+      { accessor: 'sessionId', name: 'presence_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'presence_participant_id_key', constraint: 'unique', columns: ['participantId'] },
+    ],
+  }, PresenceRow),
   previewJob: __table({
     name: 'preview_job',
     indexes: [
@@ -240,6 +342,20 @@ const tablesSchema = __schema({
       { name: 'reminder_scheduled_id_key', constraint: 'unique', columns: ['scheduledId'] },
     ],
   }, ReminderRow),
+  sceneChange: __table({
+    name: 'scene_change',
+    indexes: [
+      { accessor: 'id', name: 'scene_change_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'sessionId', name: 'scene_change_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'scene_change_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, SceneChangeRow),
   sceneObject: __table({
     name: 'scene_object',
     indexes: [
@@ -272,6 +388,31 @@ const tablesSchema = __schema({
       { name: 'session_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, SessionRow),
+  sessionMember: __table({
+    name: 'session_member',
+    indexes: [
+      { accessor: 'id', name: 'session_member_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'identity', name: 'session_member_identity_idx_btree', algorithm: 'btree', columns: [
+        'identity',
+      ] },
+      { accessor: 'sessionId', name: 'session_member_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'session_member_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, SessionMemberRow),
+  setEvent: __table({
+    name: 'set_event',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, SetEventRow),
   shotSettings: __table({
     name: 'shot_settings',
     indexes: [
@@ -283,6 +424,20 @@ const tablesSchema = __schema({
       { name: 'shot_settings_session_id_key', constraint: 'unique', columns: ['sessionId'] },
     ],
   }, ShotSettingsRow),
+  shotVersion: __table({
+    name: 'shot_version',
+    indexes: [
+      { accessor: 'id', name: 'shot_version_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'sessionId', name: 'shot_version_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'shot_version_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ShotVersionRow),
   solveJob: __table({
     name: 'solve_job',
     indexes: [
@@ -328,6 +483,21 @@ const tablesSchema = __schema({
       { name: 'spot_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, SpotRow),
+  sunClock: __table({
+    name: 'sun_clock',
+    indexes: [
+      { accessor: 'scheduledId', name: 'sun_clock_scheduled_id_idx_btree', algorithm: 'btree', columns: [
+        'scheduledId',
+      ] },
+      { accessor: 'sessionId', name: 'sun_clock_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'sun_clock_scheduled_id_key', constraint: 'unique', columns: ['scheduledId'] },
+      { name: 'sun_clock_session_id_key', constraint: 'unique', columns: ['sessionId'] },
+    ],
+  }, SunClockRow),
   toast: __table({
     name: 'toast',
     indexes: [
@@ -336,10 +506,78 @@ const tablesSchema = __schema({
     ],
     event: true,
   }, ToastRow),
+  liveSessions: __table({
+    name: 'live_sessions',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, LiveSessionsRow),
+  mySceneLocks: __table({
+    name: 'my_scene_locks',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MySceneLocksRow),
+  mySessions: __table({
+    name: 'my_sessions',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, MySessionsRow),
+  propLibrary: __table({
+    name: 'prop_library',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, PropLibraryRow),
+  sessionCard: __table({
+    name: 'session_card',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, SessionCardRow),
+  shotLibrary: __table({
+    name: 'shot_library',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, ShotLibraryRow),
+  spotLibrary: __table({
+    name: 'spot_library',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, SpotLibraryRow),
+  "rateLimit.rateLimitConfig": __table({
+    name: 'rate_limit.rate_limit_config',
+    indexes: [
+      { accessor: 'singleton', name: 'rate_limit_config_singleton_idx_btree', algorithm: 'btree', columns: [
+        'singleton',
+      ] },
+    ],
+    constraints: [
+      { name: 'rate_limit_config_singleton_key', constraint: 'unique', columns: ['singleton'] },
+    ],
+  }, RateLimit_RateLimitConfigRow),
+  "rateLimit.adminRateLimitBuckets": __table({
+    name: 'rate_limit.admin_rate_limit_buckets',
+    indexes: [
+    ],
+    constraints: [
+    ],
+  }, RateLimit_AdminRateLimitBucketsRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("add_channel_link", AddChannelLinkReducer),
   __reducerSchema("add_photo", AddPhotoReducer),
   __reducerSchema("add_scene_object", AddSceneObjectReducer),
   __reducerSchema("cancel_reminder", CancelReminderReducer),
@@ -352,31 +590,52 @@ const reducersSchema = __reducers(
   __reducerSchema("enqueue_solve", EnqueueSolveReducer),
   __reducerSchema("finish_job", FinishJobReducer),
   __reducerSchema("finish_preview", FinishPreviewReducer),
+  __reducerSchema("heartbeat", HeartbeatReducer),
   __reducerSchema("join_session", JoinSessionReducer),
+  __reducerSchema("join_session_as_crew", JoinSessionAsCrewReducer),
   __reducerSchema("lock_scene_object", LockSceneObjectReducer),
   __reducerSchema("log_agent_step", LogAgentStepReducer),
+  __reducerSchema("mark_channel_verified", MarkChannelVerifiedReducer),
   __reducerSchema("mark_outbox", MarkOutboxReducer),
   __reducerSchema("move_camera", MoveCameraReducer),
   __reducerSchema("place_person", PlacePersonReducer),
   __reducerSchema("post_message", PostMessageReducer),
   __reducerSchema("push_device_pose", PushDevicePoseReducer),
+  __reducerSchema("record_checkin", RecordCheckinReducer),
+  __reducerSchema("record_shot_version", RecordShotVersionReducer),
   __reducerSchema("register_crew", RegisterCrewReducer),
+  __reducerSchema("remove_channel_link", RemoveChannelLinkReducer),
   __reducerSchema("remove_person", RemovePersonReducer),
   __reducerSchema("renew_preview", RenewPreviewReducer),
   __reducerSchema("report_progress", ReportProgressReducer),
   __reducerSchema("request_preview", RequestPreviewReducer),
+  __reducerSchema("restore_scene_to", RestoreSceneToReducer),
+  __reducerSchema("restore_to_version", RestoreToVersionReducer),
   __reducerSchema("schedule_reminder", ScheduleReminderReducer),
+  __reducerSchema("send_set_event", SendSetEventReducer),
   __reducerSchema("set_crew_code", SetCrewCodeReducer),
+  __reducerSchema("set_library", SetLibraryReducer),
   __reducerSchema("set_person_pose", SetPersonPoseReducer),
   __reducerSchema("set_plan_time", SetPlanTimeReducer),
   __reducerSchema("set_session_spot", SetSessionSpotReducer),
   __reducerSchema("set_shot_settings", SetShotSettingsReducer),
+  __reducerSchema("set_sun_clock", SetSunClockReducer),
+  __reducerSchema("share_shot", ShareShotReducer),
+  __reducerSchema("start_render", StartRenderReducer),
+  __reducerSchema("undo_scene_change", UndoSceneChangeReducer),
   __reducerSchema("update_scene_object", UpdateSceneObjectReducer),
+  __reducerSchema("update_shot_version", UpdateShotVersionReducer),
+  __reducerSchema("upgrade", UpgradeReducer),
   __reducerSchema("upsert_spot", UpsertSpotReducer),
+  __reducerSchema("rate_limit.add_rate_limit_admin", RateLimit_AddRateLimitAdminReducer, "rateLimit.addRateLimitAdmin"),
+  __reducerSchema("rate_limit.remove_rate_limit_admin", RateLimit_RemoveRateLimitAdminReducer, "rateLimit.removeRateLimitAdmin"),
+  __reducerSchema("rate_limit.reset_buckets", RateLimit_ResetBucketsReducer, "rateLimit.resetBuckets"),
+  __reducerSchema("rate_limit.update_config", RateLimit_UpdateConfigReducer, "rateLimit.updateConfig"),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
 const proceduresSchema = __procedures(
+  __procedureSchema("rate_limit.run_sweep", RateLimit_RunSweepProcedure.params, RateLimit_RunSweepProcedure.returnType, "rateLimit.runSweep"),
 );
 
 /** The remote SpacetimeDB module schema, both runtime and type information. */
@@ -385,6 +644,7 @@ const REMOTE_MODULE = {
     cliVersion: "2.14.1" as const,
   },
   tables: tablesSchema.schemaType.tables,
+  viewsWithArgs: ["session_card"],
   reducers: reducersSchema.reducersType.reducers,
   ...proceduresSchema,
 } satisfies __RemoteModule<
@@ -394,13 +654,115 @@ const REMOTE_MODULE = {
 >;
 
 /** The tables available in this remote SpacetimeDB module. Each table reference doubles as a query builder. */
-export const tables: __QueryBuilder<typeof tablesSchema.schemaType> = __makeQueryBuilder(tablesSchema.schemaType);
+const __qb = __makeQueryBuilder(tablesSchema.schemaType);
+export const tables = {
+  activity: __qb.activity,
+  agentStep: __qb.agentStep,
+  camera: __qb.camera,
+  channelLink: __qb.channelLink,
+  checkin: __qb.checkin,
+  devicePose: __qb.devicePose,
+  message: __qb.message,
+  outbox: __qb.outbox,
+  participant: __qb.participant,
+  person: __qb.person,
+  photo: __qb.photo,
+  presence: __qb.presence,
+  previewJob: __qb.previewJob,
+  reminder: __qb.reminder,
+  sceneChange: __qb.sceneChange,
+  sceneObject: __qb.sceneObject,
+  session: __qb.session,
+  sessionMember: __qb.sessionMember,
+  setEvent: __qb.setEvent,
+  shotSettings: __qb.shotSettings,
+  shotVersion: __qb.shotVersion,
+  solveJob: __qb.solveJob,
+  solveResult: __qb.solveResult,
+  spot: __qb.spot,
+  sunClock: __qb.sunClock,
+  toast: __qb.toast,
+  liveSessions: __qb.liveSessions,
+  mySceneLocks: __qb.mySceneLocks,
+  mySessions: __qb.mySessions,
+  propLibrary: __qb.propLibrary,
+  sessionCard: __qb.sessionCard,
+  shotLibrary: __qb.shotLibrary,
+  spotLibrary: __qb.spotLibrary,
+  rateLimit: {
+    rateLimitConfig: __qb["rateLimit.rateLimitConfig"],
+    adminRateLimitBuckets: __qb["rateLimit.adminRateLimitBuckets"],
+  },
+} as const;
 
 /** The reducers available in this remote SpacetimeDB module. */
-export const reducers = __convertToAccessorMap(reducersSchema.reducersType.reducers);
+const __reducerAccessors = __convertToAccessorMap(reducersSchema.reducersType.reducers);
+export const reducers = {
+  addChannelLink: __reducerAccessors.addChannelLink,
+  addPhoto: __reducerAccessors.addPhoto,
+  addSceneObject: __reducerAccessors.addSceneObject,
+  cancelReminder: __reducerAccessors.cancelReminder,
+  claimJob: __reducerAccessors.claimJob,
+  claimPreview: __reducerAccessors.claimPreview,
+  createSession: __reducerAccessors.createSession,
+  deletePhoto: __reducerAccessors.deletePhoto,
+  deleteSceneObject: __reducerAccessors.deleteSceneObject,
+  deleteSession: __reducerAccessors.deleteSession,
+  enqueueSolve: __reducerAccessors.enqueueSolve,
+  finishJob: __reducerAccessors.finishJob,
+  finishPreview: __reducerAccessors.finishPreview,
+  heartbeat: __reducerAccessors.heartbeat,
+  joinSession: __reducerAccessors.joinSession,
+  joinSessionAsCrew: __reducerAccessors.joinSessionAsCrew,
+  lockSceneObject: __reducerAccessors.lockSceneObject,
+  logAgentStep: __reducerAccessors.logAgentStep,
+  markChannelVerified: __reducerAccessors.markChannelVerified,
+  markOutbox: __reducerAccessors.markOutbox,
+  moveCamera: __reducerAccessors.moveCamera,
+  placePerson: __reducerAccessors.placePerson,
+  postMessage: __reducerAccessors.postMessage,
+  pushDevicePose: __reducerAccessors.pushDevicePose,
+  recordCheckin: __reducerAccessors.recordCheckin,
+  recordShotVersion: __reducerAccessors.recordShotVersion,
+  registerCrew: __reducerAccessors.registerCrew,
+  removeChannelLink: __reducerAccessors.removeChannelLink,
+  removePerson: __reducerAccessors.removePerson,
+  renewPreview: __reducerAccessors.renewPreview,
+  reportProgress: __reducerAccessors.reportProgress,
+  requestPreview: __reducerAccessors.requestPreview,
+  restoreSceneTo: __reducerAccessors.restoreSceneTo,
+  restoreToVersion: __reducerAccessors.restoreToVersion,
+  scheduleReminder: __reducerAccessors.scheduleReminder,
+  sendSetEvent: __reducerAccessors.sendSetEvent,
+  setCrewCode: __reducerAccessors.setCrewCode,
+  setLibrary: __reducerAccessors.setLibrary,
+  setPersonPose: __reducerAccessors.setPersonPose,
+  setPlanTime: __reducerAccessors.setPlanTime,
+  setSessionSpot: __reducerAccessors.setSessionSpot,
+  setShotSettings: __reducerAccessors.setShotSettings,
+  setSunClock: __reducerAccessors.setSunClock,
+  shareShot: __reducerAccessors.shareShot,
+  startRender: __reducerAccessors.startRender,
+  undoSceneChange: __reducerAccessors.undoSceneChange,
+  updateSceneObject: __reducerAccessors.updateSceneObject,
+  updateShotVersion: __reducerAccessors.updateShotVersion,
+  upgrade: __reducerAccessors.upgrade,
+  upsertSpot: __reducerAccessors.upsertSpot,
+  rateLimit: {
+    addRateLimitAdmin: __reducerAccessors["rateLimit.addRateLimitAdmin"],
+    removeRateLimitAdmin: __reducerAccessors["rateLimit.removeRateLimitAdmin"],
+    resetBuckets: __reducerAccessors["rateLimit.resetBuckets"],
+    updateConfig: __reducerAccessors["rateLimit.updateConfig"],
+  },
+} as const;
 
 /** The procedures available in this remote SpacetimeDB module. */
-export const procedures = __convertToAccessorMap(proceduresSchema.procedures);
+const __procedureAccessors = __convertToAccessorMap(proceduresSchema.procedures);
+export const procedures = {
+  rateLimit: {
+    runSweep: __procedureAccessors["rateLimit.runSweep"],
+  },
+} as const;
 
 /** The context type returned in callbacks for all possible events. */
 export type EventContext = __EventContextInterface<typeof REMOTE_MODULE>;

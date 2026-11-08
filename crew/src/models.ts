@@ -1,22 +1,43 @@
 // Calls to hosted models. Keys are read at call time, so dropping a key file in turns a feature on without a restart.
-import { execFile } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { promisify } from 'node:util';
 import { MODELS, NVIDIA_BASE, NVIDIA_GENAI_BASE, VULTR_INFERENCE_BASE, secret } from './config.ts';
+import { providerOf, timed } from './ledger.ts';
 
 export type ChatMsg = { role: 'system' | 'user' | 'assistant' | 'tool'; content: any; tool_calls?: any[]; tool_call_id?: string };
 
-export async function chat(base: string, key: string | null, body: Record<string, unknown>, timeoutMs = 90_000) {
-  const r = await fetch(`${base}/chat/completions`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', ...(key ? { authorization: `Bearer ${key}` } : {}) },
-    body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs),
+export async function chat(base: string, key: string | null, body: Record<string, unknown>, timeoutMs = 90_000, role = '') {
+  return timed(String(body.model), providerOf(base), role, async () => {
+    const r = await fetch(`${base}/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(key ? { authorization: `Bearer ${key}` } : {}) },
+      body: JSON.stringify(body), signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!r.ok) throw new Error(`${body.model} HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+    const j: any = await r.json();
+    return j.choices?.[0]?.message ?? {};
   });
-  if (!r.ok) throw new Error(`${body.model} HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
-  const j: any = await r.json();
-  return j.choices?.[0]?.message ?? {};
+}
+
+/** Nemotron 3.5's reasoning switch: on for planning, off for quick reads (chat_template_kwargs.enable_thinking). */
+export const thinking = (on: boolean) => ({ chat_template_kwargs: { enable_thinking: on } });
+
+/** The first JSON object or array in a model reply (models wrap JSON in prose or code fences). */
+export function parseJson<T = any>(s: string): T | null {
+  const t = s.replace(/```(?:json)?/g, '');
+  // Scan from each opening bracket to its balanced close (strings respected); replies sometimes carry an extra "}" at the end.
+  for (let i = 0; i < t.length; i++) {
+    if (t[i] !== '{' && t[i] !== '[') continue;
+    let depth = 0, inStr = false;
+    for (let j = i; j < t.length; j++) {
+      const c = t[j];
+      if (inStr) { if (c === '\\') j++; else if (c === '"') inStr = false; continue; }
+      if (c === '"') inStr = true;
+      else if (c === '{' || c === '[') depth++;
+      else if ((c === '}' || c === ']') && --depth === 0) {
+        try { return JSON.parse(t.slice(i, j + 1)); } catch { break; }
+      }
+    }
+  }
+  return null;
 }
 
 const userImage = (text: string, image: string) =>
@@ -25,33 +46,60 @@ const userImage = (text: string, image: string) =>
 // Nemotron 3.5 VL thinks by default; for one-shot classification that burns the token budget before it answers.
 const NO_THINK = { chat_template_kwargs: { enable_thinking: false } };
 
-let safetyModelMissing = false; // nemotron-3.5-content-safety is listed but 404s on Ben's key (2026-11-07)
+// nemotron-3.5-content-safety is listed on build.nvidia.com but 404s for our key (2026-11-07); Vultr hosts it. The NVIDIA
+// copy is retried every 10 minutes in case it gets deployed.
+let nvidiaSafetyRetryAt = 0;
 
-/** null = no NVIDIA key, so the check was skipped. */
-export async function safetyCheck(image: string, text = ''): Promise<{ safe: boolean; detail: string; model: string } | null> {
-  const key = secret('nvidia_key');
-  if (!key) return null;
-  const ask = 'Should this photo be refused by a service that finds where a photo was taken? Refuse if it is unsafe content, if its subject is ' +
-    'a private home or residence, or if it is aimed at a specific person rather than a public place (people in a public scene are fine).' +
-    (text ? ` User text: ${text}` : '');
-  if (!safetyModelMissing) {
-    try {
-      const m = await chat(NVIDIA_BASE, key, { model: MODELS.safety, messages: [userImage(ask, image)], max_tokens: 200, temperature: 0 });
-      const out = String(m.content ?? '');
-      // The safety model answers with JSON like {"User Safety": "unsafe", "Safety Categories": "..."}.
-      return { safe: !/\bunsafe\b/i.test(out), detail: out.replace(/\s+/g, ' ').slice(0, 200), model: MODELS.safety };
-    } catch (e) {
-      if (!/HTTP 404/.test((e as Error).message)) throw e;
-      safetyModelMissing = true;
-      console.warn(`${MODELS.safety} is not deployed for this key; screening with ${MODELS.agent}`);
-    }
+export type Safety = { safe: boolean; detail: string; model: string };
+const oneLine = (s: string) => s.replace(/\s+/g, ' ').trim().slice(0, 200);
+
+/** Nemotron Content Safety on one user turn (text, optionally with an image): Vultr first, then build.nvidia.com. Null if neither answers. */
+async function contentSafety(content: any, role: string): Promise<Safety | null> {
+  // The model answers "User Safety: safe|unsafe" and, when unsafe, a "Safety Categories" line.
+  const read = (out: string, model: string) => ({ safe: !/\bunsafe\b/i.test(out), detail: oneLine(out), model });
+  const vk = secret('vultr_inference_key');
+  if (vk) {
+    try { return read(String((await chat(VULTR_INFERENCE_BASE, vk, { model: MODELS.vultrSafety, messages: [{ role: 'user', content }], max_tokens: 60, temperature: 0 }, 20_000, role)).content ?? ''), MODELS.vultrSafety); }
+    catch (e) { console.warn(`Vultr safety: ${(e as Error).message}`); }
   }
-  const m = await chat(NVIDIA_BASE, key, {
+  const nk = secret('nvidia_key');
+  if (nk && Date.now() >= nvidiaSafetyRetryAt) {
+    try { return read(String((await chat(NVIDIA_BASE, nk, { model: MODELS.safety, messages: [{ role: 'user', content }], max_tokens: 60, temperature: 0 }, 20_000, role)).content ?? ''), MODELS.safety); }
+    catch (e) { if (/HTTP 404/.test((e as Error).message)) nvidiaSafetyRetryAt = Date.now() + 600_000; else console.warn(`NVIDIA safety: ${(e as Error).message}`); }
+  }
+  return null;
+}
+
+const POLICY = 'Should this photo be refused by a service that finds where a photo was taken? Refuse if it is unsafe content, if its subject is ' +
+  'a private home or residence, or if it is aimed at a specific person rather than a public place (people in a public scene are fine).';
+
+/** Screens an upload: Nemotron Content Safety for general harm, and Super VL for ShotMatch's own rule (no homes, no photos aimed at a person), in parallel. null = no key at all. */
+export async function safetyCheck(image: string, text = ''): Promise<Safety | null> {
+  const key = secret('nvidia_key');
+  if (!key && !secret('vultr_inference_key')) return null;
+  const policy = key ? chat(NVIDIA_BASE, key, {
     model: MODELS.agent, ...NO_THINK, max_tokens: 120, temperature: 0,
-    messages: [userImage(`${ask}\nReply with strict JSON only: {"refuse": true|false, "reason": "<short>"}`, image)],
-  });
-  const out = String(m.content ?? '');
-  return { safe: !/"refuse"\s*:\s*true/.test(out), detail: out.replace(/\s+/g, ' ').slice(0, 200), model: MODELS.agent };
+    messages: [userImage(`${POLICY}${text ? ` User text: ${text}` : ''}\nReply with strict JSON only: {"refuse": true|false, "reason": "<short>"}`, image)],
+  }, 60_000, 'upload policy check').then(m => { const out = String(m.content ?? ''); return { safe: !/"refuse"\s*:\s*true/.test(out), detail: oneLine(out), model: MODELS.agent }; })
+    .catch(e => { console.warn(`policy check: ${e.message}`); return null; }) : Promise.resolve(null);
+  const general = contentSafety([{ type: 'text', text: text || 'Find where this photo was taken.' }, { type: 'image_url', image_url: { url: image } }], 'upload safety');
+  const got = (await Promise.all([general, policy])).filter((x): x is Safety => !!x);
+  if (!got.length) throw new Error('no safety model answered');
+  const refused = got.find(g => !g.safe);
+  return refused ?? { safe: true, detail: got.map(g => `${g.model}: ${g.detail}`).join(' | ').slice(0, 200), model: got.map(g => g.model).join(' + ') };
+}
+
+/** Screens a typed or spoken set command. Fails open only when no safety model answers at all (logged). */
+export async function screenText(text: string): Promise<Safety> {
+  const r = await contentSafety(text, 'command safety');
+  if (r) return r;
+  const key = secret('nvidia_key');
+  if (!key) return { safe: true, detail: 'no safety model reachable', model: 'none' };
+  const m = await chat(NVIDIA_BASE, key, {
+    model: MODELS.fast, ...NO_THINK, max_tokens: 60, temperature: 0,
+    messages: [{ role: 'user', content: `Is this request to a photo-planning app harmful (stalking, harassment, sexual content involving real people, violence)? Reply JSON {"unsafe": true|false}.\n${text}` }],
+  }, 20_000, 'command safety (fallback)');
+  return { safe: !/"unsafe"\s*:\s*true/.test(String(m.content)), detail: oneLine(String(m.content)), model: MODELS.fast };
 }
 
 export const FINE_TUNED = 'fine-tuned lens model';
@@ -81,24 +129,28 @@ export async function readLens(image: string): Promise<{ f35: number; source: st
   return { f35, source };
 }
 
-let physicalMissing = false;
-/** Cosmos Reason verdict on whether placed people look physically plausible; null when the model is not available. */
-export async function physicalCheck(image: string): Promise<{ ok: boolean; verdict: string } | null> {
+// Cosmos Reason2 is listed but 404s for our key (2026-11-07); it is retried every 10 minutes, and Nemotron Nano Omni
+// (vision with reasoning) answers meanwhile.
+let cosmosRetryAt = 0;
+const PHYSICAL = 'Look at this rendered photo of a set. Is it physically plausible: people and objects standing on the ground (not floating or sinking), ' +
+  'nothing inside a wall or another object, realistic scale relative to the street and each other, shadows consistent with one light? ' +
+  'Answer in one line starting with PLAUSIBLE or IMPLAUSIBLE, then the main reason.';
+
+/** Physical plausibility of a render: Cosmos Reason2 when it answers, else Nemotron Nano Omni. null when no key. */
+export async function physicalCheck(image: string): Promise<{ ok: boolean; verdict: string; model: string } | null> {
   const key = secret('nvidia_key');
-  if (!key || physicalMissing) return null;
-  try {
-    const m = await chat(NVIDIA_BASE, key, {
-      model: MODELS.physical, max_tokens: 200, temperature: 0,
-      messages: [userImage('Do the people in this photo look physically plausible: standing on the ground, not floating, not in water, not inside a wall, at a realistic scale? Answer in one line starting with PLAUSIBLE or IMPLAUSIBLE, then the reason.', image)],
-    });
-    const verdict = String(m.content ?? '').trim().split('\n').pop()!.slice(0, 200);
-    return { ok: !/IMPLAUSIBLE/i.test(verdict), verdict };
-  } catch (e) {
-    if (!/HTTP 404/.test((e as Error).message)) throw e;
-    physicalMissing = true;
-    console.log(`${MODELS.physical} is not available on this key (404); physical_check is off`);
-    return null;
+  if (!key) return null;
+  const verdictOf = (m: any, model: string) => {
+    const lines = String(m.content ?? '').trim().split('\n').filter(Boolean);
+    const verdict = (lines.find(l => /PLAUSIBLE/i.test(l)) ?? lines.pop() ?? '').slice(0, 200);
+    return { ok: !/IMPLAUSIBLE/i.test(verdict), verdict, model };
+  };
+  if (Date.now() >= cosmosRetryAt) {
+    try { return verdictOf(await chat(NVIDIA_BASE, key, { model: MODELS.physical, max_tokens: 300, temperature: 0, messages: [userImage(PHYSICAL, image)] }, 60_000, 'physical check'), MODELS.physical); }
+    catch (e) { if (!/HTTP 404/.test((e as Error).message)) console.warn(`cosmos: ${(e as Error).message}`); cosmosRetryAt = Date.now() + 600_000; }
   }
+  // Reasoning off: with it on, Omni sometimes spent the whole budget thinking and answered nothing (2026-11-07); off it answers in about 1 s.
+  return verdictOf(await chat(NVIDIA_BASE, key, { model: MODELS.omni, ...NO_THINK, max_tokens: 300, temperature: 0, messages: [userImage(PHYSICAL, image)] }, 60_000, 'physical check (Cosmos stand-in)'), MODELS.omni);
 }
 
 let nvidiaEditModel: string | null | undefined; // undefined = not probed yet, null = none accepted on this key
@@ -159,25 +211,6 @@ export async function editImage(jpeg: Buffer, prompt: string, size: string): Pro
   return { image: await imagesEdit('https://api.openai.com/v1', oa, MODELS.openaiEdit, jpeg, prompt, size), model: MODELS.openaiEdit };
 }
 
-/** Speech to text on Vultr Serverless Inference; null when the key is not set. ffmpeg turns any format (Telegram's ogg, iMessage's CAF) into mp3. */
-export async function transcribe(audio: Buffer): Promise<string | null> {
-  const key = secret('vultr_inference_key');
-  if (!key) return null;
-  const dir = mkdtempSync(join(tmpdir(), 'voice-'));
-  let mp3: Buffer;
-  try {
-    writeFileSync(join(dir, 'in'), audio);
-    await promisify(execFile)('ffmpeg', ['-loglevel', 'error', '-i', join(dir, 'in'), '-ac', '1', '-ar', '16000', join(dir, 'out.mp3')], { timeout: 60_000 });
-    mp3 = readFileSync(join(dir, 'out.mp3'));
-  } finally { rmSync(dir, { recursive: true, force: true }); }
-  const form = new FormData();
-  form.set('model', MODELS.transcribe);
-  form.set('file', new Blob([mp3], { type: 'audio/mpeg' }), 'voice.mp3');
-  const r = await fetch(`${VULTR_INFERENCE_BASE}/audio/transcriptions`, { method: 'POST', headers: { authorization: `Bearer ${key}` }, body: form, signal: AbortSignal.timeout(120_000) });
-  if (!r.ok) throw new Error(`${MODELS.transcribe} HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
-  return String(((await r.json()) as any).text ?? '').trim();
-}
-
 /** Logs which configured NVIDIA chat model ids the key cannot see. Runs once at start when the key exists. */
 export async function verifyNvidiaModels() {
   const key = secret('nvidia_key');
@@ -185,7 +218,7 @@ export async function verifyNvidiaModels() {
   try {
     const r = await fetch(`${NVIDIA_BASE}/models`, { headers: { authorization: `Bearer ${key}` } });
     const ids = new Set(((await r.json()) as any).data.map((m: any) => m.id));
-    for (const id of new Set([MODELS.safety, MODELS.agent, MODELS.lens]))
+    for (const id of new Set([MODELS.safety, MODELS.agent, MODELS.fast, MODELS.edge, MODELS.omni, MODELS.embedText, MODELS.embed, MODELS.physical]))
       console.log(`NVIDIA model ${id}: ${ids.has(id) ? 'listed' : 'NOT LISTED on this key'}`);
   } catch (e) { console.warn(`NVIDIA model list failed: ${(e as Error).message}`); }
 }

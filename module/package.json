@@ -5,8 +5,18 @@
   "scripts": {
     "build": "spacetime build",
     "publish": "spacetime publish --server maincloud shotmatch -y",
-    "generate": "spacetime generate --lang typescript --out-dir ../web/src/module_bindings --module-path . && spacetime generate --lang typescript --out-dir ../crew/src/module_bindings --module-path ."
+    "publish:env": "scripts/publish.sh",
+    "generate": "spacetime generate --lang typescript --out-dir ../web/src/module_bindings --module-path . && spacetime generate --lang typescript --out-dir ../crew/src/module_bindings --module-path . && spacetime generate --lang typescript --out-dir scripts/module_bindings --module-path . --import-extension ts",
+    "generate:library": "spacetime generate --lang typescript --bindings module --module-path ./library --out-dir src/remote_bindings/library",
+    "proof": "node --no-warnings scripts/proof.ts",
+    "loadtest": "node --no-warnings scripts/loadtest.ts",
+    "check": "node --no-warnings scripts/sha256.check.ts"
   },
-  "dependencies": { "spacetimedb": "2.14.*" },
-  "devDependencies": { "typescript": "~5.6.2" }
+  "dependencies": {
+    "@spacetimedb/rate-limit": "^0.1.0",
+    "spacetimedb": "2.14.*"
+  },
+  "devDependencies": {
+    "typescript": "~5.6.2"
+  }
 }

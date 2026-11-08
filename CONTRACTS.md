@@ -67,10 +67,18 @@ Photos live in `data/photos/`, previews in `data/previews/` at the repo root (gi
 
 ## SpacetimeDB module
 
-Source: `module/src/index.ts`. Generated bindings: `web/src/module_bindings`, `crew/src/module_bindings` (`cd module && npm run generate` after any module change, then `npm run publish`). Tables are public; clients subscribe with `WHERE session_id = <id>` queries.
+Source: `module/src/index.ts`; full write-up with line references in `docs/SPACETIME.md`. Generated bindings: `web/src/module_bindings`, `crew/src/module_bindings`, `module/scripts/module_bindings` (`cd module && npm run generate` after any module change, then `npm run publish`; `npm run publish:env` also sets the database environment from `~/.config/shotmatch`). After any publish that appends a column, regenerate and redeploy the crew at once: older bindings fail to decode the changed table.
+
+Row-level security: every session-scoped table reaches only the session's members and the crew identity (the `session_member` table, maintained by the module). Clients keep subscribing with `WHERE session_id = <id>`; they simply receive nothing for sessions they are not in. A page opened by code reads the `session_card(code)` view (`useSessionCard` in `web/src/spacetime`) to show the title, then calls `joinSession`. Event tables (`toast`, `set_event`, `activity`) carry a `recipient` column: the module writes one row per member.
+
+Render results (nvidia): `preview_job` has `kind` ('preview' default, or 'render') and `requestId`. The crew calls `startRender({ sessionId, photoId, requestId, instruction, f35, people, sunAzimuth, sunAltitude })`, which creates the row already `running` with the crew as worker; it finds the row by `requestId`, renews with `renewPreview`, and ends with `finishPreview`. An expired render fails instead of requeueing. `joinSessionAsCrew({ sessionId, name })` makes the crew a participant of any session.
+
+Photon: `channel_link` (`addChannelLink`, `removeChannelLink`, crew `markChannelVerified`; crew `participantId: 0` = invitee), `shot_version` (crew `recordShotVersion`, `updateShotVersion`; anyone `restoreToVersion`, which forks v3 into v3.1 over scene history), `checkin` (crew `recordCheckin`, with a toast).
+
+Shared set extras: `heartbeat` (presence), `sendSetEvent` (cursor, ping, view, follow, unfollow; rate-limited), `setSunClock` (0 off, 1 live, up to 3600x time-lapse of `session.planTime`), `undoSceneChange`, `restoreSceneTo`, `shareShot`. Views: `my_sessions`, `my_scene_locks`, `session_card(code)`, `live_sessions`, `spot_library`, `shot_library`, `prop_library`. HTTP: `GET /health`, `GET /shot?code=`, `POST /hooks/elevenlabs` at `https://maincloud.spacetimedb.com/v1/database/shotmatch/route`.
 
 The crew becomes the worker identity by calling `registerCrew(code)` with `~/.config/shotmatch/crew_code`. Only the crew may `claimJob`, `reportProgress`, `finishJob`, `claimPreview`, `renewPreview`, `finishPreview`, `logAgentStep`, and post `out` messages or non-web channels. Leases last 60 s (180 s for previews) and are renewed by `reportProgress`. The `sweep` schedule requeues expired jobs every 10 s, giving up after 3 attempts.
 
 Web clients call `createSession`, `joinSession`, `addPhoto` (which also queues a solve when `spotId` is set), `enqueueSolve` (optional `lensHintF35`, which the crew turns into `f35_range` [0.75x, 1.33x]), `deletePhoto` (owner or crew), `moveCamera`, `placePerson`, `removePerson`, `setPlanTime`, `pushDevicePose`, `requestPreview`, `postMessage` (channel `web`).
 
-Event table `toast` (`sessionId`, `kind`, `text`): kinds `solve_done`, `solve_failed`, `job_reclaimed`, `scout_arrived`, `preview_done`, `preview_failed`.
+Event table `toast` (`sessionId`, `kind`, `text`, `recipient`): kinds `solve_done`, `solve_failed`, `job_reclaimed`, `scout_arrived`, `preview_done`, `preview_failed`, `render_done`, `render_failed`, `lock_released`, `titled`, `shot_shared`, `share_failed`, `prop_shared`, `library_failed`, `voice_call`, `version_forked`, `checkin`.

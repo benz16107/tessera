@@ -1,9 +1,17 @@
 // The studio's world frame, shared with the module's scene_object rows: metres east (x), north (y) and up (z) from
-// the session's spot, ground at z = 0. three.js runs Z-up here (Object3D.DEFAULT_UP is set in editor/Viewport.tsx).
+// the session's spot, ground at z = 0. The three.js scene itself stays Y-up (OrbitControls, WebXR and drei assume it):
+// one <group rotation-x={-90 degrees}> (ENU_TO_THREE) holds the tiles and every object, so inside it x = east,
+// y = north, z = up, and in three.js world space east = +X, up = +Y, north = -Z.
 import { Matrix4, Quaternion, Vector3, Euler } from 'three';
 import { WGS84_ELLIPSOID } from '3d-tiles-renderer';
 
 const R = Math.PI / 180;
+
+/** Rotation of the east-north-up group inside the Y-up three.js scene. */
+export const ENU_TO_THREE: [number, number, number] = [-Math.PI / 2, 0, 0];
+/** An east-north-up point in three.js world coordinates, and back. */
+export const enuToThree = (v: { x: number; y: number; z: number }) => new Vector3(v.x, v.z, -v.y);
+export const threeToEnu = (v: Vector3) => new Vector3(v.x, -v.z, v.y);
 
 export interface Origin { lat: number; lon: number; height: number } // degrees, degrees, metres above the WGS84 ellipsoid
 

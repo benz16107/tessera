@@ -10,6 +10,15 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const Activity = __t.object("Activity", {
+  recipient: __t.identity(),
+  sessionId: __t.u64(),
+  reducer: __t.string(),
+  who: __t.string(),
+  detail: __t.string(),
+});
+export type Activity = __Infer<typeof Activity>;
+
 export const AgentStep = __t.object("AgentStep", {
   id: __t.u64(),
   sessionId: __t.u64(),
@@ -30,6 +39,36 @@ export const Camera = __t.object("Camera", {
 });
 export type Camera = __Infer<typeof Camera>;
 
+export const ChannelLink = __t.object("ChannelLink", {
+  id: __t.u64(),
+  sessionId: __t.u64(),
+  participantId: __t.u64(),
+  identity: __t.identity(),
+  channel: __t.string(),
+  address: __t.string(),
+  verified: __t.bool(),
+  createdAt: __t.timestamp(),
+  name: __t.string(),
+});
+export type ChannelLink = __Infer<typeof ChannelLink>;
+
+export const Checkin = __t.object("Checkin", {
+  id: __t.u64(),
+  sessionId: __t.u64(),
+  participantId: __t.u64(),
+  photoId: __t.u64(),
+  distanceM: __t.f64(),
+  headingErrDeg: __t.f64(),
+  verdict: __t.string(),
+  createdAt: __t.timestamp(),
+  x: __t.f64(),
+  y: __t.f64(),
+  heading: __t.f64(),
+  imageUrl: __t.string(),
+  name: __t.string(),
+});
+export type Checkin = __Infer<typeof Checkin>;
+
 export const Config = __t.object("Config", {
   id: __t.u32(),
   owner: __t.identity(),
@@ -49,6 +88,40 @@ export const DevicePose = __t.object("DevicePose", {
 });
 export type DevicePose = __Infer<typeof DevicePose>;
 
+export const LastChange = __t.object("LastChange", {
+  objectId: __t.u64(),
+  changeId: __t.u64(),
+});
+export type LastChange = __Infer<typeof LastChange>;
+
+export const LibraryLink = __t.object("LibraryLink", {
+  id: __t.u32(),
+  db: __t.identity(),
+});
+export type LibraryLink = __Infer<typeof LibraryLink>;
+
+export const LibraryProp = __t.object("LibraryProp", {
+  assetUrl: __t.string(),
+  name: __t.string(),
+  prompt: __t.string(),
+  fromSessionId: __t.u64(),
+  publishedAt: __t.timestamp(),
+});
+export type LibraryProp = __Infer<typeof LibraryProp>;
+
+export const LiveSessionRow = __t.object("LiveSessionRow", {
+  sessionId: __t.u64(),
+  spotId: __t.string(),
+  online: __t.u32(),
+  planners: __t.u32(),
+  scouts: __t.u32(),
+  objects: __t.u32(),
+});
+export type LiveSessionRow = __Infer<typeof LiveSessionRow>;
+
+export const LiveSessions = __t.object("LiveSessions", {});
+export type LiveSessions = __Infer<typeof LiveSessions>;
+
 export const Message = __t.object("Message", {
   id: __t.u64(),
   sessionId: __t.u64(),
@@ -63,6 +136,12 @@ export const Message = __t.object("Message", {
   createdAt: __t.timestamp(),
 });
 export type Message = __Infer<typeof Message>;
+
+export const MySceneLocks = __t.object("MySceneLocks", {});
+export type MySceneLocks = __Infer<typeof MySceneLocks>;
+
+export const MySessions = __t.object("MySessions", {});
+export type MySessions = __Infer<typeof MySessions>;
 
 export const Outbox = __t.object("Outbox", {
   id: __t.u64(),
@@ -123,6 +202,24 @@ export const Pose = __t.object("Pose", {
 });
 export type Pose = __Infer<typeof Pose>;
 
+export const Presence = __t.object("Presence", {
+  participantId: __t.u64(),
+  sessionId: __t.u64(),
+  identity: __t.identity(),
+  name: __t.string(),
+  color: __t.string(),
+  status: __t.string(),
+  focusObjectId: __t.u64(),
+  at: __t.timestamp(),
+});
+export type Presence = __Infer<typeof Presence>;
+
+export const PresenceTimer = __t.object("PresenceTimer", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+});
+export type PresenceTimer = __Infer<typeof PresenceTimer>;
+
 export const PreviewJob = __t.object("PreviewJob", {
   id: __t.u64(),
   sessionId: __t.u64(),
@@ -139,8 +236,56 @@ export const PreviewJob = __t.object("PreviewJob", {
   leaseUntil: __t.option(__t.timestamp()),
   attempts: __t.u32(),
   createdAt: __t.timestamp(),
+  kind: __t.string(),
+  requestId: __t.string(),
 });
 export type PreviewJob = __Infer<typeof PreviewJob>;
+
+export const PropLibrary = __t.object("PropLibrary", {});
+export type PropLibrary = __Infer<typeof PropLibrary>;
+
+export const PublicShot = __t.object("PublicShot", {
+  shareCode: __t.string(),
+  sessionId: __t.u64(),
+  title: __t.string(),
+  spotId: __t.string(),
+  imageUrl: __t.string(),
+  lat: __t.f64(),
+  lon: __t.f64(),
+  heading: __t.f64(),
+  pitch: __t.f64(),
+  f35: __t.f64(),
+  state: __t.string(),
+  error: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type PublicShot = __Infer<typeof PublicShot>;
+
+export const PublishPropOutbox = __t.object("PublishPropOutbox", {
+  msgId: __t.u64(),
+  target: __t.identity(),
+  assetUrl: __t.string(),
+  name: __t.string(),
+  prompt: __t.string(),
+  sessionId: __t.u64(),
+});
+export type PublishPropOutbox = __Infer<typeof PublishPropOutbox>;
+
+export const PublishShotOutbox = __t.object("PublishShotOutbox", {
+  msgId: __t.u64(),
+  target: __t.identity(),
+  shareCode: __t.string(),
+  title: __t.string(),
+  spotId: __t.string(),
+  imageUrl: __t.string(),
+  lat: __t.f64(),
+  lon: __t.f64(),
+  heading: __t.f64(),
+  pitch: __t.f64(),
+  f35: __t.f64(),
+  sessionId: __t.u64(),
+});
+export type PublishShotOutbox = __Infer<typeof PublishShotOutbox>;
 
 export const Reminder = __t.object("Reminder", {
   scheduledId: __t.u64(),
@@ -149,6 +294,19 @@ export const Reminder = __t.object("Reminder", {
   text: __t.string(),
 });
 export type Reminder = __Infer<typeof Reminder>;
+
+export const SceneChange = __t.object("SceneChange", {
+  id: __t.u64(),
+  sessionId: __t.u64(),
+  objectId: __t.u64(),
+  action: __t.string(),
+  before: __t.string(),
+  after: __t.string(),
+  by: __t.identity(),
+  byName: __t.string(),
+  at: __t.timestamp(),
+});
+export type SceneChange = __Infer<typeof SceneChange>;
 
 export const SceneObject = __t.object("SceneObject", {
   id: __t.u64(),
@@ -186,6 +344,50 @@ export const Session = __t.object("Session", {
 });
 export type Session = __Infer<typeof Session>;
 
+export const SessionCard = __t.object("SessionCard", {
+  code: __t.string(),
+});
+export type SessionCard = __Infer<typeof SessionCard>;
+
+export const SessionCardRow = __t.object("SessionCardRow", {
+  id: __t.u64(),
+  code: __t.string(),
+  title: __t.string(),
+  spotId: __t.string(),
+  online: __t.u32(),
+  objects: __t.u32(),
+});
+export type SessionCardRow = __Infer<typeof SessionCardRow>;
+
+export const SessionMember = __t.object("SessionMember", {
+  id: __t.u64(),
+  sessionId: __t.u64(),
+  identity: __t.identity(),
+  role: __t.string(),
+});
+export type SessionMember = __Infer<typeof SessionMember>;
+
+export const SetEvent = __t.object("SetEvent", {
+  recipient: __t.identity(),
+  sessionId: __t.u64(),
+  from: __t.identity(),
+  name: __t.string(),
+  color: __t.string(),
+  kind: __t.string(),
+  x: __t.f64(),
+  y: __t.f64(),
+  z: __t.f64(),
+  tx: __t.f64(),
+  ty: __t.f64(),
+  tz: __t.f64(),
+  objectId: __t.u64(),
+  target: __t.option(__t.identity()),
+});
+export type SetEvent = __Infer<typeof SetEvent>;
+
+export const ShotLibrary = __t.object("ShotLibrary", {});
+export type ShotLibrary = __Infer<typeof ShotLibrary>;
+
 export const ShotSettings = __t.object("ShotSettings", {
   sessionId: __t.u64(),
   bodyId: __t.string(),
@@ -202,6 +404,19 @@ export const ShotSettings = __t.object("ShotSettings", {
   updatedBy: __t.identity(),
 });
 export type ShotSettings = __Infer<typeof ShotSettings>;
+
+export const ShotVersion = __t.object("ShotVersion", {
+  id: __t.u64(),
+  sessionId: __t.u64(),
+  parentVersionId: __t.option(__t.u64()),
+  label: __t.string(),
+  externalMessageId: __t.string(),
+  channel: __t.string(),
+  sceneChangeId: __t.u64(),
+  imageUrl: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type ShotVersion = __Infer<typeof ShotVersion>;
 
 export const SolveJob = __t.object("SolveJob", {
   id: __t.u64(),
@@ -246,16 +461,46 @@ export const Spot = __t.object("Spot", {
 });
 export type Spot = __Infer<typeof Spot>;
 
+export const SpotLibrary = __t.object("SpotLibrary", {});
+export type SpotLibrary = __Infer<typeof SpotLibrary>;
+
+export const SunClock = __t.object("SunClock", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+  sessionId: __t.u64(),
+  rate: __t.f64(),
+  startedBy: __t.string(),
+});
+export type SunClock = __Infer<typeof SunClock>;
+
 export const SweepTimer = __t.object("SweepTimer", {
   scheduledId: __t.u64(),
   scheduledAt: __t.scheduleAt(),
 });
 export type SweepTimer = __Infer<typeof SweepTimer>;
 
+export const TitleJob = __t.object("TitleJob", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+  sessionId: __t.u64(),
+});
+export type TitleJob = __Infer<typeof TitleJob>;
+
 export const Toast = __t.object("Toast", {
   sessionId: __t.u64(),
   kind: __t.string(),
   text: __t.string(),
+  recipient: __t.identity(),
 });
 export type Toast = __Infer<typeof Toast>;
+
+export const VoiceCall = __t.object("VoiceCall", {
+  conversationId: __t.string(),
+  sessionId: __t.u64(),
+  turns: __t.u32(),
+  durationS: __t.f64(),
+  summary: __t.string(),
+  at: __t.timestamp(),
+});
+export type VoiceCall = __Infer<typeof VoiceCall>;
 

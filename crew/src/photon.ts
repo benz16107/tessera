@@ -1,133 +1,205 @@
-// Photon 2.0 beta bridge: iMessage and Telegram in over Socket.IO (with a saved replay cursor), replies out over HTTP.
-// Docs: https://photon.codes/docs/beta/ (websocket, messages, attachments). One Photon space = one ShotMatch session.
+// Photon 2.0 beta bridge, inbound side: every channel's messages arrive over one Socket.IO event stream (saved replay cursor)
+// and land in the session they belong to. One router decides what a message is: a text command (versions, invite, join,
+// call sheet, remind), a reply to a version (fork), a photo (an object becomes a prop; a place at a marked set is a check-in;
+// otherwise the locate agent), or words for the set (the text-to-set command, then a numbered render back into the thread).
 import { io, type Socket } from 'socket.io-client';
-import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { basename } from 'node:path';
-import { conn, until } from './stdb.ts';
-import { PUBLIC_URL, secret } from './config.ts';
-import { ingest } from './images.ts';
-import { transcribe } from './models.ts';
+import { conn, logStep, until } from './stdb.ts';
+import { PUBLIC_URL } from './config.ts';
+import { ingest, type Ingested } from './images.ts';
+import { transcribe } from './speech.ts';
 import { handleInbound } from './agent.ts';
-import { sharedStore, type ThreadInfo } from './store.ts';
-import { attachmentBody, parseInbound, type Inbound } from './photon-event.ts';
+import { setCommand } from './setagent.ts';
+import { setContext } from './set.ts';
+import { sharedStore, normHandle, type ThreadInfo } from './store.ts';
+import { parseCallEnded, parseInbound, type Inbound } from './photon-event.ts';
 import { replyText } from './words.ts';
+import { PHOTON_API, creds, download, editText, photonEnabled, sendMessage, typing } from './channels/api.ts';
+import { channelOf, plan, sheetText, LABEL, type Channel } from './channels/format.ts';
+import { run, type Target } from './channels/deliver.ts';
+import { ensureLink, linkRows, markVerified } from './channels/people.ts';
+import { parseCommand } from './channels/commands.ts';
+import { invite } from './channels/invite.ts';
+import { broadcast, hold, owned, planUrl, startFanout } from './channels/fanout.ts';
+import { finishVersion, forkFrom, noteVersionMessages, recordVersion, renderForThread, versionForMessage, versionsText } from './channels/versions.ts';
+import { checkIn, classifyPhoto, photoToProp } from './channels/photos.ts';
+import { ensureAlert, startAlerts } from './channels/alerts.ts';
+import { sendFraming } from './voice.ts';
+import { sendCallSheet } from './channels/sheet.ts';
 
-const API = 'https://api.photon.codes';
-const creds = () => {
-  const key = secret('photon_api_key'), project = secret('photon_project_id');
-  return key && project ? { key, project } : null;
-};
-export const photonEnabled = () => creds() !== null;
+export { photonEnabled };
 
-async function api(method: string, path: string, body?: object | { raw: Buffer; type: string }, idem = true): Promise<any> {
-  const c = creds();
-  if (!c) throw new Error('Photon credentials not set');
-  const raw = body && 'raw' in body;
-  const headers: Record<string, string> = { authorization: `Bearer ${c.key}`, ...(idem && { 'idempotency-key': randomUUID() }) };
-  if (body) headers['content-type'] = raw ? (body as any).type : 'application/json';
-  for (let attempt = 0; ; attempt++) {
-    const r = await fetch(`${API}/v1/projects/${c.project}${path}`, {
-      method, headers, body: body ? (raw ? (body as any).raw : JSON.stringify(body)) : undefined, signal: AbortSignal.timeout(60_000),
-    });
-    // 409 ATTACHMENT_NOT_READY and 429 come with Retry-After; the same idempotency key makes the retry safe.
-    if ((r.status === 429 || r.status === 409 || r.status >= 500) && attempt < 4) {
-      const wait = Number(r.headers.get('retry-after')) || 2 ** attempt;
-      if (r.status !== 409 || /NOT_READY/.test(await r.clone().text())) { await new Promise(res => setTimeout(res, wait * 1000)); continue; }
-    }
-    if (!r.ok) throw new Error(`Photon ${method} ${path}: HTTP ${r.status} ${(await r.text()).slice(0, 300)}`);
-    const ct = r.headers.get('content-type') ?? '';
-    return ct.includes('json') ? r.json() : Buffer.from(await r.arrayBuffer());
-  }
-}
+const SESSION_CODE = /^[A-Z2-9]{6}$/;
 
-const sendText = (t: ThreadInfo, text: string, parentMessageId?: string) =>
-  api('POST', '/messages', { spaceId: t.chatId, senderId: t.senderId, content: { type: 'text', format: 'plain', text }, ...(parentMessageId && { parentMessageId }) });
-
-async function sendImage(t: ThreadInfo, path: string, parentMessageId?: string) {
-  const { body, contentType } = attachmentBody(readFileSync(path), 'image/jpeg', basename(path));
-  const att = await api('POST', '/attachments', { raw: body, type: contentType });
-  const caption = t.channel === 'telegram' ? { caption: { format: 'plain', text: 'AI interpretation' } } : {};
-  return api('POST', '/messages', { spaceId: t.chatId, senderId: t.senderId, content: { type: 'attachment', attachmentId: att.id, metadata: caption }, ...(parentMessageId && { parentMessageId }) });
-}
-
-/** Mirrors an outbound text into the session's message table. */
-const mirrorOut = (t: ThreadInfo, text: string, imageUrl = '', externalId = '', parent = '') =>
-  conn.reducers.postMessage({ sessionId: BigInt(t.sessionId), channel: t.channel, threadId: t.chatId, externalId, parentExternalId: parent, direction: 'out', author: 'ShotMatch', text: text.slice(0, 4000), imageUrl })
-    .catch(e => console.warn(`mirror out: ${e.message}`));
-
-/** Text (and optionally an image) into a known thread, mirrored as an out message. Used by the voice post-call hook. */
-export async function sendToThread(t: ThreadInfo, text: string, imagePath?: string) {
-  if (!photonEnabled() || !t.senderId) throw new Error('Photon is off or the thread has no agent sender yet');
-  const sent = await sendText(t, text);
-  if (imagePath) await sendImage(t, imagePath);
-  await mirrorOut(t, text, imagePath ? `/preview/${basename(imagePath)}` : '', sent?.id ?? '');
-}
-
-/** The session for a Photon space, created by the crew on the first message. */
-async function sessionFor(m: Inbound): Promise<{ t: ThreadInfo; isNew: boolean }> {
+/** The session for a Photon space: a known thread; a JOIN code; an invite to this address; else a new session. */
+async function sessionFor(m: Inbound, channel: Channel): Promise<{ t: ThreadInfo; isNew: boolean }> {
   const store = sharedStore();
+  const direct = m.spaceKind === 'direct';
   const old = store.thread(m.platform, m.spaceId);
-  if (old) {
-    const t = { ...old, senderId: m.agentUserId || old.senderId, handle: m.spaceKind === 'direct' ? m.handle : old.handle };
+  const cmd = parseCommand(m.text);
+  // "JOIN AB3DKQ" (or Telegram's /start AB3DKQ from a t.me link) moves this thread into that set.
+  let sessionId = cmd?.kind === 'join' && SESSION_CODE.test(cmd.code) ? [...conn.db.session.iter()].find(s => s.code === cmd.code)?.id : undefined;
+  if (old && sessionId === undefined) {
+    const t = { ...old, senderId: m.agentUserId || old.senderId, handle: direct ? m.handle : old.handle };
     if (t.senderId !== old.senderId || t.handle !== old.handle) store.setThread(t);
     return { t, isNew: false };
   }
-  const title = `photon:${m.platform}:${m.spaceId}`.slice(0, 120);
-  const mine = conn.identity!.toHexString();
-  const find = () => [...conn.db.session.iter()].find(s => s.title === title && s.owner.toHexString() === mine);
-  if (!find()) await conn.reducers.createSession({ spotId: '', title, name: 'ShotMatch' });
-  const s = await until(find, 15_000, 'the new session');
-  const t: ThreadInfo = { sessionId: String(s.id), channel: m.platform, chatId: m.spaceId, handle: m.spaceKind === 'direct' ? m.handle : '', senderId: m.agentUserId };
+  // Invited people: a link with this address that someone's invite made.
+  sessionId ??= direct && m.handle ? [...conn.db.channelLink.iter()].filter(l => channelOf(l.channel) === channel && normHandle(l.address) === normHandle(m.handle)).sort((a, b) => Number(b.id - a.id))[0]?.sessionId : undefined;
+  if (sessionId === undefined) {
+    const title = `photon:${m.platform}:${m.spaceId}`.slice(0, 120);
+    const mine = conn.identity!.toHexString();
+    const find = () => [...conn.db.session.iter()].find(s => s.title === title && s.owner.toHexString() === mine);
+    if (!find()) await conn.reducers.createSession({ spotId: '', title, name: 'ShotMatch' });
+    sessionId = (await until(find, 15_000, 'the new session')).id;
+    const t: ThreadInfo = { sessionId: String(sessionId), channel: m.platform, chatId: m.spaceId, handle: direct ? m.handle : '', senderId: m.agentUserId, kind: m.spaceKind };
+    store.setThread(t);
+    return { t, isNew: true };
+  }
+  const t: ThreadInfo = { sessionId: String(sessionId), channel: m.platform, chatId: m.spaceId, handle: direct ? m.handle : '', senderId: m.agentUserId, kind: m.spaceKind };
   store.setThread(t);
-  return { t, isNew: true };
+  return { t, isNew: false };
 }
 
-async function handle(m: Inbound) {
-  const { t, isNew } = await sessionFor(m);
-  const sessionId = BigInt(t.sessionId);
+type Ctx = { m: Inbound; t: ThreadInfo; sessionId: bigint; channel: Channel; target: Target; name: string; participantId: bigint; upload?: Ingested; isNew: boolean };
 
-  // HEIC is fine: ingest converts it. Only the first image of a message is used. A voice note becomes message text
-  // (Vultr speech to text), so a spoken "make it 85mm" works like a typed one.
-  let upload, heard = '';
-  for (const id of m.attachmentIds) {
-    const type = String((await api('GET', `/attachments/${id}`, undefined, false)).contentType ?? '');
-    if (type.startsWith('image/') && !upload) upload = await ingest(await api('GET', `/attachments/${id}/content`, undefined, false));
-    else if (type.startsWith('audio/') && !heard)
-      heard = (await transcribe(await api('GET', `/attachments/${id}/content`, undefined, false)).catch(e => { console.warn(`transcribe: ${e.message}`); return null; })) ?? '';
+/** A reply into the thread, threaded on the person's message, mirrored into the session. */
+const reply = (c: Ctx, text: string) => run(c.target, [{ op: 'text', text, subject: 'Re: ShotMatch' }], { parentMessageId: c.m.messageId, idem: `reply:${c.m.messageId}` });
+
+/** Words for the set, then (when the set changed and there is a photo to render over) a numbered render back into the thread. */
+async function setTurn(c: Ctx, words: string, fork?: { id: bigint; label: string; sessionId: bigint }) {
+  const branch = fork ? await forkFrom(fork, c.channel, c.m.messageId) : undefined;
+  const r = await setCommand(c.sessionId, words, { channel: c.channel });
+  const changed = !!fork || (r.intent === 'edit' && r.steps.some(s => !/error/i.test(s.result)));
+  if (!changed) return void (await reply(c, r.reply));
+  let settle!: (v: { versionId: bigint; label: string; skip?: string } | null) => void;
+  const mine = new Promise<{ versionId: bigint; label: string; skip?: string } | null>(res => (settle = res));
+  void typing(c.target.spaceId, c.target.senderId); // Photon shows it where the platform supports typing (Telegram private chats)
+  const out = await renderForThread(c.sessionId, words, jobId => owned.set(jobId, mine)).catch(e => ({ error: `The render didn't finish: ${(e as Error).message.slice(0, 120)}` }));
+  if ('error' in out) {
+    settle(null);
+    const v = branch ?? await recordVersion(c.sessionId, { externalMessageId: c.m.messageId, channel: c.channel, imageUrl: '' });
+    return void (await reply(c, `${v.label}${fork ? ` (from ${fork.label})` : ''}: ${r.reply}\n${out.error}`));
   }
-  if (heard) m.text = [m.text, heard].filter(Boolean).join('\n');
-  await conn.reducers.postMessage({
-    sessionId, channel: t.channel, threadId: t.chatId, externalId: m.messageId, parentExternalId: m.parentId, direction: 'in',
-    author: m.handle.slice(0, 80), text: m.text.slice(0, 4000), imageUrl: upload?.url ?? '',
-  }).catch(e => console.warn(`mirror in: ${e.message}`));
+  const v = branch ?? await recordVersion(c.sessionId, { externalMessageId: c.m.messageId, channel: c.channel, imageUrl: out.imageUrl });
+  if (branch) await finishVersion(branch.id, c.sessionId, out.imageUrl);
+  settle({ versionId: v.id, label: v.label, skip: c.target.spaceId });
+  const label = `${v.label}${fork ? ` (from ${fork.label})` : ''}`;
+  const ops = plan({ kind: 'render', label, caption: r.reply, image: out.path, imageUrl: `${PUBLIC_URL}${out.imageUrl}`, planUrl: planUrl(c.sessionId), title: 'your set' }, c.channel)
+    .filter(o => o.op !== 'progress');
+  const sent = await run(c.target, ops, { parentMessageId: c.m.messageId, idem: `version:${v.id}` });
+  noteVersionMessages(v.id, sent.ids);
+}
 
+async function route(c: Ctx) {
+  const cmd = c.upload ? null : parseCommand(c.m.text);
+  if (cmd?.kind === 'versions') return void (await reply(c, versionsText(c.sessionId)));
+  if (cmd?.kind === 'join') {
+    const s = conn.db.session.id.find(c.sessionId);
+    return void (await reply(c, `You're in ${s?.title.startsWith('photon:') ? 'the set' : `"${s?.title}"`}. Live set: ${planUrl(c.sessionId)} · Scout page: ${PUBLIC_URL}/s/${s?.code}`));
+  }
+  if (cmd?.kind === 'invite') {
+    const r = await invite(c.sessionId, cmd, c.name);
+    return void (await reply(c, [r.note, r.shareText && !r.delivered ? `Forward this: ${r.shareText}` : ''].filter(Boolean).join('\n')));
+  }
+  if (cmd?.kind === 'callsheet') {
+    const res = await sendCallSheet(c.sessionId, { skip: c.target.spaceId });
+    if ('error' in res) return void (await reply(c, res.error));
+    return void (await reply(c, `${sheetText(res.sheet)}\nDesigned sheet: ${res.url}\nSent to ${res.sent.filter(x => x.ok).map(x => `${x.name} (${LABEL[x.channel]})`).join(', ') || 'nobody else yet'}.`));
+  }
+  if (cmd?.kind === 'remind') {
+    const a = await ensureAlert(c.sessionId, true).catch(() => null);
+    return void (await reply(c, a ? `I'll message everyone in the set ${Math.round((a.start.getTime() - a.at.getTime()) / 60_000)} min before ${a.kind}, with how far each of you is from the mark.` : 'There is no golden hour I can catch in the next 20 hours for this mark, or the set has no mark yet.'));
+  }
+  if (cmd?.kind === 'stop') {
+    for (const l of linkRows(c.sessionId).filter(l => channelOf(l.channel) === c.channel && normHandle(l.address) === normHandle(c.m.handle || c.m.spaceId)))
+      await conn.reducers.removeChannelLink({ id: l.id }).catch(() => {});
+    return void (await reply(c, "You're off this set. Text JOIN and the set code to come back."));
+  }
+
+  // A reply to one of our version messages forks the set from that version.
+  const v = c.m.parentId ? versionForMessage(c.sessionId, c.m.parentId) : undefined;
+  if (v && c.m.text.trim() && !c.upload) return setTurn(c, c.m.text, v);
+
+  const ctx = setContext(c.sessionId);
+  if (c.upload) {
+    const kind = await classifyPhoto(c.upload.path, c.m.text);
+    await logStep(c.sessionId, 'photo_kind', c.upload.url, `${kind.kind}${kind.label ? `: ${kind.label}` : ''}`, 0);
+    if (kind.kind === 'object' && ctx) {
+      await reply(c, `Turning ${kind.label || 'that'} into a 3D prop for the set. It takes a minute or two.`);
+      return void (await run(c.target, [{ op: 'text', text: await photoToProp(c.sessionId, c.upload.path, kind.label), subject: 'Your prop is in the set' }], { parentMessageId: c.m.messageId, idem: `prop:${c.m.messageId}` }));
+    }
+    if (kind.kind === 'place' && ctx && !c.isNew) {
+      const out = await checkIn(c.sessionId, c.upload, { participantId: c.participantId, name: c.name });
+      return void (await reply(c, out.text));
+    }
+    return locate(c);
+  }
+  if (ctx && c.m.text.trim()) return setTurn(c, c.m.text);
+  return locate(c);
+}
+
+/** The original flow: a photo of a place to locate, and follow-ups about it, through the chat agent. */
+async function locate(c: Ctx) {
   // Telegram: one progress message, edited in place while the solve runs.
   let progressMsg: string | undefined, lastShown = '';
-  const progress = upload && t.channel === 'telegram' ? setInterval(async () => {
-    const photo = [...conn.db.photo.sessionId.filter(sessionId)].find(p => p.url === upload!.url);
+  const progress = c.upload && c.channel === 'telegram' ? setInterval(async () => {
+    const photo = [...conn.db.photo.sessionId.filter(c.sessionId)].find(p => p.url === c.upload!.url);
     const job = photo && [...conn.db.solveJob.photoId.filter(photo.id)].sort((a, b) => Number(b.id - a.id))[0];
     const line = job ? `Locating your shot: ${job.progress}` : 'Locating your shot…';
     if (line === lastShown || !progressMsg) return;
     lastShown = line;
-    await api('POST', '/messages', { spaceId: t.chatId, senderId: t.senderId, parentMessageId: progressMsg, content: { type: 'message.update', content: { type: 'text', format: 'plain', text: line } } })
-      .catch(e => console.warn(`telegram edit: ${e.message}`));
+    await editText(c.target.spaceId, c.target.senderId, progressMsg, line).catch(e => console.warn(`telegram edit: ${e.message}`));
   }, 3000) : undefined;
-  if (progress) progressMsg = (await sendText(t, 'Locating your shot…', m.messageId).catch(() => null))?.id;
-
+  if (progress) progressMsg = await sendMessage({ spaceId: c.target.spaceId, senderId: c.target.senderId, parentMessageId: c.m.messageId, content: { type: 'text', format: 'plain', text: 'Locating your shot…' } }).catch(() => undefined);
   try {
-    const reply = await handleInbound({ sessionId, channel: t.channel, threadId: t.chatId, text: m.text, upload });
-    const code = conn.db.session.id.find(sessionId)?.code;
-    const text = replyText(reply.text, { hasPreview: !!reply.imagePath, links: isNew && code ? { plan: `${PUBLIC_URL}/p/${code}`, scout: `${PUBLIC_URL}/s/${code}` } : undefined });
-    const sent = await sendText(t, text, m.messageId);
-    if (reply.imagePath) await sendImage(t, reply.imagePath, m.messageId);
-    await mirrorOut(t, text, reply.imagePath ? `/preview/${basename(reply.imagePath)}` : '', sent?.id ?? '', m.messageId);
+    const r = await handleInbound({ sessionId: c.sessionId, channel: c.channel, threadId: c.t.chatId, text: c.m.text, upload: c.upload });
+    const code = conn.db.session.id.find(c.sessionId)?.code;
+    const text = replyText(r.text, { hasPreview: !!r.imagePath, links: c.isNew && code ? { plan: `${PUBLIC_URL}/p/${code}`, scout: `${PUBLIC_URL}/s/${code}` } : undefined });
+    const sent = await run(c.target, [...(r.imagePath ? [{ op: 'image' as const, path: r.imagePath }] : []), { op: 'text', text, subject: 'Your shot, located' }], { parentMessageId: c.m.messageId, idem: `reply:${c.m.messageId}` });
+    // A preview the agent made is a version too: the fan-out recorded it; point this thread's messages at it.
+    if (r.imagePath) {
+      const file = r.imagePath.split('/').pop();
+      const ver = await until(() => [...conn.db.shotVersion.sessionId.filter(c.sessionId)].find(x => x.imageUrl.endsWith(`/${file}`)), 8000, 'the version').catch(() => undefined);
+      if (ver) noteVersionMessages(ver.id, sent.ids);
+    }
   } finally { if (progress) clearInterval(progress); }
+}
+
+async function handle(m: Inbound) {
+  const channel = channelOf(m.platform);
+  if (!channel) return;
+  if (m.agentUserId) sharedStore().put('agents', m.platform, m.agentUserId);
+  const { t, isNew } = await sessionFor(m, channel);
+  const sessionId = BigInt(t.sessionId), direct = m.spaceKind === 'direct';
+  // Everyone who writes in is on the set's fan-out list; a group chat is one link.
+  const link = await ensureLink(sessionId, channel, direct && m.handle ? m.handle : m.spaceId, m.displayName || (direct ? `${LABEL[channel]} …${m.handle.slice(-4)}` : `${LABEL[channel]} group`));
+  await markVerified(link);
+  const name = link.name || m.displayName || 'Someone';
+
+  // HEIC is fine: ingest converts it. Only the first image of a message is used. A voice note becomes message text
+  // (Parakeet on NVIDIA Riva, with Nemotron Nano Omni and Whisper as fallbacks), so a spoken "make it 85mm" works like a typed one.
+  let upload: Ingested | undefined, heard = '';
+  for (const id of m.attachmentIds) {
+    const a = await download(id);
+    if (a.type.startsWith('image/') && !upload) upload = await ingest(await a.bytes());
+    else if (a.type.startsWith('audio/') && !heard)
+      heard = (await transcribe(await a.bytes()).catch(e => { console.warn(`transcribe: ${e.message}`); return null; }))?.text ?? '';
+  }
+  if (heard) m.text = [m.text, heard].filter(Boolean).join('\n');
+  await conn.reducers.postMessage({
+    sessionId, channel, threadId: t.chatId, externalId: m.messageId, parentExternalId: m.parentId, direction: 'in',
+    author: name.slice(0, 80), text: m.text.slice(0, 4000), imageUrl: upload?.url ?? '',
+  }).catch(e => console.warn(`mirror in: ${e.message}`));
+
+  const target: Target = { id: link.id, sessionId, channel, address: link.address, name, participantId: link.participantId, platform: m.platform, spaceId: m.spaceId, senderId: m.agentUserId || t.senderId || '' };
+  const release = hold(sessionId, m.spaceId);
+  try { await route({ m, t, sessionId, channel, target, name, participantId: link.participantId, upload, isNew }); }
+  finally { release(); }
 }
 
 /** In groups, answer photos, replies to us and messages that name ShotMatch; in direct chats, everything. */
 export const shouldAnswer = (m: Inbound) =>
-  m.spaceKind === 'direct' || m.attachmentIds.length > 0 || !!m.parentId || /shot\s?match/i.test(m.text);
+  m.spaceKind === 'direct' || m.attachmentIds.length > 0 || !!m.parentId || /shot\s?match/i.test(m.text) || !!parseCommand(m.text);
 
 export function startPhoton() {
   const c = creds();
@@ -138,7 +210,7 @@ export function startPhoton() {
   const store = sharedStore();
   const seen: string[] = [];
   let chain = Promise.resolve();
-  const socket: Socket = io(API, {
+  const socket: Socket = io(PHOTON_API(), {
     path: `/v1/projects/${c.project}/events/ws`, addTrailingSlash: false, transports: ['websocket'],
     extraHeaders: { Authorization: `Bearer ${c.key}` }, autoConnect: false,
   });
@@ -151,20 +223,30 @@ export function startPhoton() {
   });
   socket.on('connect_error', e => console.warn(`Photon connect error: ${e.message}`));
   socket.on('delivery_error', e => console.warn(`Photon delivery error: ${e.code} ${e.message}${e.fatal ? ' (fatal)' : ''}`));
+  // Events are read in order, then each thread runs in its own queue: a slow render or a TRELLIS prop in one thread never
+  // holds up anyone else's messages. The cursor moves once a message is queued (a crash mid-reply loses that one reply).
+  const queues = new Map<string, Promise<void>>();
+  const enqueue = (key: string, fn: () => Promise<void>) => {
+    const next = (queues.get(key) ?? Promise.resolve()).then(fn).finally(() => { if (queues.get(key) === next) queues.delete(key); });
+    queues.set(key, next);
+  };
   socket.on('delivery', (ev: any, meta: { seq: number; replyExpected: boolean }) => {
     if (meta.replyExpected) socket.emit('reply', { eventId: ev.id, status: 200 });
-    // Serial, and the cursor only moves after the handler finishes, so a crash replays the message.
     chain = chain.then(async () => {
       if (seen.includes(ev.id)) { store.cursor = String(meta.seq); return; }
-      const m = parseInbound(ev);
-      if (m) {
-        console.log(`Photon ${m.platform} message in ${m.spaceId}: ${m.text.slice(0, 60)}${m.attachmentIds.length ? ' [+image]' : ''}`);
-        try { if (shouldAnswer(m)) await handle(m); }
-        catch (e) {
-          console.error('Photon handler failed:', e);
-          const t = sharedStore().thread(m.platform, m.spaceId);
-          if (t) await sendText(t, 'Something went wrong on my side. Try sending that again.', m.messageId).catch(() => {});
-        }
+      const m = parseInbound(ev), call = parseCallEnded(ev);
+      if (m && shouldAnswer(m)) {
+        console.log(`Photon ${m.platform} message in ${m.spaceId}: ${m.text.slice(0, 60)}${m.attachmentIds.length ? ' [+attachment]' : ''}`);
+        enqueue(m.spaceId, async () => {
+          try { await handle(m); }
+          catch (e) {
+            console.error('Photon handler failed:', e);
+            const t = sharedStore().thread(m.platform, m.spaceId);
+            if (t?.senderId) await sendMessage({ spaceId: t.chatId, senderId: t.senderId, parentMessageId: m.messageId, content: { type: 'text', format: 'plain', text: 'Something went wrong on my side. Try sending that again.' } }).catch(() => {});
+          }
+        });
+      } else if (call) {
+        enqueue(`call:${call.caller}`, async () => { console.log(`Photon call ended from …${call.caller.slice(-4)}: ${await sendFraming(call.caller, `call:${call.callId}`).catch(e => (e as Error).message)}`); });
       }
       seen.push(ev.id); if (seen.length > 500) seen.shift();
       store.cursor = String(meta.seq);
@@ -173,25 +255,10 @@ export function startPhoton() {
   socket.connect();
 }
 
-/** Delivers reminder rows the module's schedule wrote to the outbox into the session's text thread. */
+/** Outbound side: fan-out of set events, and golden-hour alerts from the module's reminder outbox. */
 export function startOutbox() {
-  const busy = new Set<bigint>();
-  const deliver = async () => {
-    for (const o of [...conn.db.outbox.iter()].filter(o => o.state === 'pending' && !busy.has(o.id))) {
-      busy.add(o.id);
-      const t = sharedStore().bySession(String(o.sessionId));
-      let state: 'sent' | 'failed' = 'failed';
-      if (!photonEnabled()) console.log(`reminder ${o.id}: Photon is off, marking failed`);
-      else if (!t?.senderId) console.log(`reminder ${o.id}: session ${o.sessionId} has no text thread, marking failed`);
-      else {
-        try { await sendToThread(t, o.text); state = 'sent'; console.log(`reminder ${o.id} sent to ${t.channel} ${t.chatId}`); }
-        catch (e) { console.warn(`reminder ${o.id}: ${(e as Error).message}`); }
-      }
-      await conn.reducers.markOutbox({ id: o.id, state }).catch(e => console.warn(`markOutbox: ${e.message}`));
-      busy.delete(o.id);
-    }
-  };
-  conn.db.outbox.onInsert(() => void deliver());
-  setInterval(() => void deliver(), 30_000);
-  void deliver();
+  startFanout();
+  startAlerts();
 }
+
+export { broadcast };

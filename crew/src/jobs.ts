@@ -10,6 +10,7 @@ import { safetyCheck, readLens, editImage, solverRange, physicalCheck, FINE_TUNE
 import { sunWindows, windowWords } from './sun.ts';
 import { cropForF35, lightWords, placementWords } from './geo.ts';
 import type { SolveJob, PreviewJob } from './module_bindings/types.ts';
+import { afterSolve } from './vision.ts';
 
 const warn = (what: string) => (e: unknown) => console.warn(`${what}: ${(e as Error).message ?? e}`);
 const ZERO_POSE = { lat: 0, lon: 0, alt: 0, heading: 0, pitch: 0, roll: 0, f35: 0 };
@@ -149,6 +150,8 @@ async function runSolve(j: SolveJob, spotLoaded: boolean) {
           .filter(Boolean).join('; '), Date.now() - t1);
     }
     await finish(true, '', r, lens?.f35);
+    // Nemotron reads the photo (objects with boxes, light) and rebuilds an empty set from it; in the background.
+    if (r.confidence !== 'none') void afterSolve(sid, j.photoId);
   } catch (e) {
     if (e instanceof SolverDown) {
       // Stop renewing so the module's sweep hands the job to the next healthy worker.

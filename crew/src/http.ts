@@ -1,11 +1,27 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
-import { DB_NAME, MAX_UPLOAD, PORT, PUBLIC_URL, SPACETIME_HOST, SPOTS_DIR, WEB_DIST, secret } from './config.ts';
+import { DB_NAME, MAX_UPLOAD, PORT, PUBLIC_URL, REPO, SPACETIME_HOST, SPOTS_DIR, WEB_DIST, secret } from './config.ts';
 import { IMAGE_TYPES, ensureLocal, ingest } from './images.ts';
 import { VOICE_TOOLS, toolAuthorized, voiceEnded } from './voice.ts';
 import { similar } from './similar.ts';
 import { planShootDay } from './shootday.ts';
+import { conn, logStep } from './stdb.ts';
+import { setCommand } from './setagent.ts';
+import { SET_TOOLS, runTool, type StepLog } from './settools.ts';
+import { callSheet, critique, readPhoto, sessionLight } from './vision.ts';
+import { shadowParams, sunFromRead } from './composite.ts';
+import { searchAll, searchAssets } from './search.ts';
+import { localAsset } from './props3d.ts';
+import { generateProp } from './gen.ts';
+import { render } from './render.ts';
+import { magpie, transcribe } from './speech.ts';
+import { physicalCheck, screenText } from './models.ts';
+import { usage } from './ledger.ts';
+import { NVIDIA_CATALOG } from './catalog.ts';
+import { dataUrl } from './images.ts';
+import { setContext } from './set.ts';
+import { photonRoute } from './channels/http.ts';
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
@@ -33,6 +49,195 @@ async function readBody(req: IncomingMessage, max: number): Promise<Buffer | nul
     chunks.push(c);
   }
   return Buffer.concat(chunks);
+}
+
+/** A JSON body, or null when it is missing, too big or not JSON. */
+async function readJson(req: IncomingMessage, max = 200_000): Promise<any | null> {
+  const b = await readBody(req, max);
+  if (!b?.length) return null;
+  try { return JSON.parse(b.toString('utf8')); } catch { return null; }
+}
+
+/** The session a request names, when it exists. */
+const sessionOf = (v: unknown) => {
+  const s = String(v ?? '');
+  return /^\d{1,19}$/.test(s) && conn.db.session.id.find(BigInt(s)) ? BigInt(s) : null;
+};
+
+/** A stored image this server holds (/photo/ or /preview/), as a data URL for a vision model. */
+const imageOf = async (url: unknown) => {
+  const f = typeof url === 'string' ? await ensureLocal(url) : null;
+  return f ? dataUrl(f, 1024) : null;
+};
+
+const SAFE_TOOLS = Object.keys(SET_TOOLS).filter(n => n !== 'plan_shoot_day');
+
+/** The NVIDIA set, prop, render, search and voice endpoints. Returns false when the path is not one of them. */
+async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> {
+  const post = req.method === 'POST';
+  const fail = (code: number, e: unknown) => json(res, code, { error: (e as Error)?.message ?? String(e) });
+
+  if (p === '/api/nvidia/models' && req.method === 'GET') { json(res, 200, { models: NVIDIA_CATALOG, usage: usage() }); return true; }
+
+  if (p === '/api/set/command' && post) {
+    const b = await readJson(req), sid = sessionOf(b?.sessionId);
+    if (!sid || typeof b.text !== 'string') { json(res, 400, { error: 'give {sessionId, text}' }); return true; }
+    try { json(res, 200, await setCommand(sid, b.text, { offline: b.offline === true, channel: 'studio' })); } catch (e) { fail(502, e); }
+    return true;
+  }
+
+  if (p === '/api/set/apply' && post) {
+    const b = await readJson(req), sid = sessionOf(b?.sessionId);
+    if (!sid || !Array.isArray(b.steps)) { json(res, 400, { error: 'give {sessionId, steps: [{tool, args}]}' }); return true; }
+    const steps: StepLog[] = [], results = [];
+    for (const st of b.steps.slice(0, 12)) {
+      if (!SAFE_TOOLS.includes(st?.tool)) { results.push({ error: `tool ${st?.tool} is not allowed here` }); continue; }
+      results.push(await runTool(sid, st.tool, st.args ?? {}, steps));
+    }
+    json(res, 200, { results, steps });
+    return true;
+  }
+
+  if ((p === '/api/set/rebuild' || p === '/api/set/read') && post) {
+    const b = await readJson(req), sid = sessionOf(b?.sessionId);
+    if (!sid) { json(res, 400, { error: 'give {sessionId}' }); return true; }
+    try {
+      if (p === '/api/set/rebuild') json(res, 200, await runTool(sid, 'rebuild_from_photo', { replace: b.replace === true }));
+      else {
+        const photoId = b.photoId ? BigInt(b.photoId) : setContext(sid)?.photo?.id;
+        if (!photoId) { json(res, 404, { error: 'no photo in this session' }); return true; }
+        json(res, 200, await readPhoto(sid, photoId, b.force === true));
+      }
+    } catch (e) { fail(502, e); }
+    return true;
+  }
+
+  // The light Nemotron read from the session's photo, and the 3D sun that reproduces it (for the studio's sun).
+  if (p === '/api/set/light' && req.method === 'GET') {
+    const sid = sessionOf(url.searchParams.get('session'));
+    if (!sid) { json(res, 400, { error: 'give ?session=<id>' }); return true; }
+    const ctx = setContext(sid), light = sessionLight(sid);
+    json(res, 200, { light: light ?? null, sun: ctx ? sunFromRead(light, ctx.cam.heading) : null, shadow: light ? shadowParams(light.hardness, 1000) : null, model: light ? 'nvidia/nemotron-3.5-super-vl-120b-a12b' : null });
+    return true;
+  }
+
+  if (p === '/api/set/critique' && post) {
+    const b = await readJson(req), sid = sessionOf(b?.sessionId), img = await imageOf(b?.imageUrl);
+    if (!sid || !img) { json(res, 400, { error: 'give {sessionId, imageUrl: /preview/<file>}' }); return true; }
+    const t0 = Date.now();
+    try {
+      const c = await critique(sid, img);
+      await logStep(sid, 'art_director', b.imageUrl, `${c.summary} Fixes: ${c.fixes.map(f => f.title).join('; ')}`, Date.now() - t0);
+      json(res, 200, c);
+    } catch (e) { fail(502, e); }
+    return true;
+  }
+
+  if (p === '/api/set/check' && post) {
+    const b = await readJson(req), sid = sessionOf(b?.sessionId), img = await imageOf(b?.imageUrl);
+    if (!sid || !img) { json(res, 400, { error: 'give {sessionId, imageUrl}' }); return true; }
+    try { json(res, 200, await physicalCheck(img)); } catch (e) { fail(502, e); }
+    return true;
+  }
+
+  if (p === '/api/set/callsheet' && post) {
+    const b = await readJson(req), sid = sessionOf(b?.sessionId);
+    if (!sid) { json(res, 400, { error: 'give {sessionId}' }); return true; }
+    try { json(res, 200, await callSheet(sid)); } catch (e) { fail(502, e); }
+    return true;
+  }
+
+  if ((p === '/api/search' || p === '/api/assets/search') && req.method === 'GET') {
+    const q = (url.searchParams.get('q') ?? '').slice(0, 300), sid = sessionOf(url.searchParams.get('session')) ?? undefined;
+    if (!q.trim()) { json(res, 400, { error: 'give ?q=<words>' }); return true; }
+    try { json(res, 200, p === '/api/search' ? await searchAll(q, sid) : await searchAssets(q, sid, 8)); } catch (e) { fail(503, e); }
+    return true;
+  }
+
+  // Generation into the set (contract in docs/NVIDIA.md): words, a generated image or a photo become a scene object at real size.
+  if (p === '/api/props/generate' && post) {
+    const b = await readJson(req, 16_000_000), sid = b?.sessionId !== undefined && b?.sessionId !== null ? sessionOf(b.sessionId) : undefined;
+    if (!b || sid === null) { json(res, 400, { error: 'give {prompt} or {image | imageUrl}, optional sessionId, mode, mount, frame_x, distance_m' }); return true; }
+    const mode = ['auto', 'text3d', 'image3d', 'photo3d', 'flat'].includes(b.mode) ? b.mode : 'auto';
+    const mount = ['ground', 'wall', 'stand', 'screen'].includes(b.mount) ? b.mount : undefined;
+    if (typeof b.prompt !== 'string' && typeof b.image !== 'string' && typeof b.imageUrl !== 'string') { json(res, 400, { error: 'give a prompt, an image data URL or an imageUrl' }); return true; }
+    try {
+      const words = [b.prompt, b.label].filter(x => typeof x === 'string').join(' ');
+      if (words.trim()) { const s = await screenText(words); if (!s.safe) { json(res, 422, { error: 'that request was refused by the safety check' }); return true; } }
+      json(res, 200, await generateProp({
+        sessionId: sid ?? undefined, mode, prompt: typeof b.prompt === 'string' ? b.prompt : undefined, image: typeof b.image === 'string' ? b.image : undefined,
+        imageUrl: typeof b.imageUrl === 'string' ? b.imageUrl : undefined, label: typeof (b.label ?? b.name) === 'string' ? String(b.label ?? b.name).slice(0, 60) : undefined, place: b.place !== false,
+        frame_x: Number.isFinite(Number(b.frame_x)) ? Number(b.frame_x) : undefined, distance_m: Number(b.distance_m) || undefined, facing: b.facing, mount,
+        height_m: Number(b.height_m) || undefined, width_m: Number(b.width_m) || undefined,
+      }));
+    } catch (e) { fail(502, e); }
+    return true;
+  }
+
+  if (p === '/api/render' && post) {
+    const ct = String(req.headers['content-type'] ?? '');
+    if (!ct.startsWith('multipart/form-data')) { json(res, 415, { error: 'send multipart/form-data with beauty, sessionId, photoId' }); return true; }
+    const body = await readBody(req, 60 * 1024 * 1024);
+    if (!body) { json(res, 413, { error: 'layers larger than 60 MB' }); return true; }
+    let form: FormData;
+    try { form = await new Request('http://x/', { method: 'POST', headers: { 'content-type': ct }, body }).formData(); } catch { json(res, 400, { error: 'bad multipart body' }); return true; }
+    const sid = sessionOf(form.get('sessionId')), beauty = form.get('beauty'), shadow = form.get('shadow'), photoId = String(form.get('photoId') ?? '');
+    if (!sid || !(beauty instanceof Blob) || !/^\d+$/.test(photoId)) { json(res, 400, { error: 'need sessionId, photoId and a beauty PNG' }); return true; }
+    // Fields come flat, or inside the studio's `settings` JSON (shot settings plus f35 and the timeline's sun).
+    let settings: Record<string, unknown> = {};
+    try { settings = JSON.parse(String(form.get('settings') ?? '{}')) ?? {}; } catch { /* flat fields only */ }
+    const raw = (k: string) => form.get(k) ?? settings[k];
+    const num = (k: string) => { const v = Number(raw(k)); return Number.isFinite(v) && v > 0 ? v : undefined; };
+    const az = Number(raw('sunAzimuth')), alt = Number(raw('sunAltitude'));
+    const sun = Number.isFinite(az) && Number.isFinite(alt) && raw('sunAzimuth') !== undefined ? { az, alt } : undefined;
+    const text = String(form.get('text') ?? settings.text ?? '').slice(0, 500);
+    if (text) { const s = await screenText(text); if (!s.safe) { json(res, 422, { error: 'that instruction was refused by the safety check' }); return true; } }
+    try {
+      json(res, 200, await render({ sessionId: sid, photoId: BigInt(photoId), beauty: Buffer.from(await beauty.arrayBuffer()), shadow: shadow instanceof Blob ? Buffer.from(await shadow.arrayBuffer()) : undefined,
+        text, f35: num('f35'), aperture: num('aperture'), focusM: num('focusM'), iso: num('iso'), strength: num('strength'), sun, mode: raw('mode') === 'canny' ? 'canny' : raw('mode') === 'composite' ? 'composite' : 'depth' }));
+    } catch (e) { fail(502, e); }
+    return true;
+  }
+
+  if (p === '/api/voice/transcribe' && post) {
+    const body = await readBody(req, 15 * 1024 * 1024);
+    if (!body?.length) { json(res, 400, { error: 'POST the recorded audio as the body' }); return true; }
+    try {
+      const heard = await transcribe(body);
+      if (!heard) { json(res, 503, { error: 'no speech model configured' }); return true; }
+      const sid = sessionOf(url.searchParams.get('session'));
+      if (!sid || url.searchParams.get('run') !== '1' || !heard.text) { json(res, 200, heard); return true; }
+      const r = await setCommand(sid, heard.text, { channel: 'voice' });
+      const speak = url.searchParams.get('speak') === '1' ? (await magpie(r.reply).catch(() => null))?.toString('base64') : undefined;
+      json(res, 200, { ...heard, heard: heard.text, ...r, ...(speak && { audio: `data:audio/wav;base64,${speak}` }) });
+    } catch (e) { fail(502, e); }
+    return true;
+  }
+
+  if (p === '/api/voice/speak' && post) {
+    const b = await readJson(req);
+    if (typeof b?.text !== 'string' || !b.text.trim()) { json(res, 400, { error: 'give {text}' }); return true; }
+    try { const wav = await magpie(b.text.slice(0, 600)); res.writeHead(200, { 'content-type': 'audio/wav', 'content-length': wav.length, 'cache-control': 'no-store' }); res.end(wav); }
+    catch (e) { fail(502, e); }
+    return true;
+  }
+
+  // Gaussian splats of each spot (the gpu worker trains them): /splat/<spot>.<ext> -> data/splats/<spot>/<spot>.<ext>.
+  const splat = /^\/splat\/([a-z0-9_]+)\.(ply|compressed\.ply|splat|spz)$/.exec(p);
+  if (splat && (req.method === 'GET' || req.method === 'HEAD')) {
+    const f = join(REPO, 'data/splats', splat[1], `${splat[1]}.${splat[2]}`);
+    if (!existsSync(f)) json(res, 404, { error: 'not found' });
+    else { res.writeHead(200, { 'content-type': 'application/octet-stream', 'content-length': statSync(f).size, 'cache-control': 'public, max-age=300' }); if (req.method === 'HEAD') res.end(); else createReadStream(f).pipe(res); }
+    return true;
+  }
+
+  const asset = /^\/asset\/([a-f0-9]{16})\.glb$/.exec(p);
+  if (asset && (req.method === 'GET' || req.method === 'HEAD')) {
+    const f = await localAsset(asset[1]);
+    if (!f) json(res, 404, { error: 'not found' }); else sendFile(res, f, 'public, max-age=31536000, immutable');
+    return true;
+  }
+  return false;
 }
 
 const NOT_BUILT = '<!doctype html><meta charset="utf-8"><title>ShotMatch</title><p style="font:16px system-ui;margin:3rem">The web app is not built yet. Run <code>npm run build</code> in <code>web/</code>.</p>';
@@ -81,7 +286,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     const body = await readBody(req, 64_000);
     let args: any = {};
     try { args = body?.length ? JSON.parse(body.toString('utf8')) : {}; } catch { return json(res, 400, { error: 'bad JSON' }); }
-    const out = fn(args);
+    const out = await fn(args);
     console.log(`voice tool ${tool[1]} -> ${JSON.stringify(out).slice(0, 160)}`);
     return json(res, 200, out);
   }
@@ -93,6 +298,8 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     return json(res, await voiceEnded(body.toString('utf8'), typeof sig === 'string' ? sig : undefined), {});
   }
 
+  if (await photonRoute(p, req, res, url)) return;
+  if (await nvidiaRoute(p, req, res, url)) return;
   if (p.startsWith('/api/')) return json(res, 404, { error: 'no such endpoint' });
 
   if (p.startsWith('/photo/') || p.startsWith('/preview/')) {

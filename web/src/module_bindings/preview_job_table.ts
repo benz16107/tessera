@@ -26,4 +26,6 @@ export default __t.row({
   leaseUntil: __t.option(__t.timestamp()).name("lease_until"),
   attempts: __t.u32(),
   createdAt: __t.timestamp().name("created_at"),
+  kind: __t.string(),
+  requestId: __t.string().name("request_id"),
 });

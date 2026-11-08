@@ -4,6 +4,7 @@ import { startJobLoops } from './jobs.ts';
 import { verifyNvidiaModels } from './models.ts';
 import { startPhoton, startOutbox } from './photon.ts';
 import { buildAll } from './similar.ts';
+import { warmAssets } from './search.ts';
 
 startHttp();
 void verifyNvidiaModels();
@@ -13,6 +14,7 @@ startJobLoops();
 startPhoton();
 startOutbox();
 void buildAll(); // embeds new spot photos once; cached in data/embeddings
+void warmAssets(); // the studio asset library for semantic search
 setInterval(() => void syncSpots(), 60_000); // picks up spot.json files the solver writes after start
 
 const stop = () => { conn.disconnect(); process.exit(0); };

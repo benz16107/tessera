@@ -14,4 +14,5 @@ export default __t.row({
   sessionId: __t.u64().name("session_id"),
   kind: __t.string(),
   text: __t.string(),
+  recipient: __t.identity(),
 });

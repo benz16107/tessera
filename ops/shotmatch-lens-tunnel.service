@@ -1,0 +1,18 @@
+# ShotMatch lens tunnel: the Vultr VM's 127.0.0.1:18000 -> vLLM (shotmatch-lens) on the Brev GPU box's 127.0.0.1:8000.
+# The VM opens it because the VM's firewall refuses ssh from the GPU box. The key ~/.ssh/shotmatch_gpu_tunnel is
+# accepted on the GPU box only from this VM's IP and only for this one port forward (restrict,permitopen).
+# Install on the VM: ln -sf ~/Code/hackathons/shotmatch/ops/shotmatch-lens-tunnel.service ~/.config/systemd/user/
+#                    systemctl --user daemon-reload && systemctl --user enable --now shotmatch-lens-tunnel
+# A new Brev instance has a new IP and host key: update GPU_HOST below and ~/.ssh/known_hosts, then re-add the key.
+[Unit]
+Description=ShotMatch lens tunnel to the Brev GPU box
+After=network-online.target
+
+[Service]
+Environment=GPU_HOST=shadeform@62.169.159.71
+ExecStart=/usr/bin/ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o BatchMode=yes -i %h/.ssh/shotmatch_gpu_tunnel -L 127.0.0.1:18000:127.0.0.1:8000 ${GPU_HOST}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

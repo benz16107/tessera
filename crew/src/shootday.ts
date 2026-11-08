@@ -2,6 +2,7 @@
 import SunCalc from 'suncalc';
 import { conn, logStep } from './stdb.ts';
 import { secret } from './config.ts';
+import { record } from './ledger.ts';
 import { localPath } from './images.ts';
 import { similar, spotPhoto, type Hit } from './similar.ts';
 import { sunWindows } from './sun.ts';
@@ -55,6 +56,7 @@ export async function planShootDay(sessionId: bigint, shots?: string[]) {
       body: JSON.stringify(cuoptPayload(stops, t0)), signal: AbortSignal.timeout(60_000),
     }).catch(e => { throw new Error(`cuOpt unreachable: ${e.message}`); });
     const resp: any = await res.json().catch(() => ({}));
+    record('nvidia/cuopt', 'NVIDIA API Catalog', 'shoot-day route', Date.now() - started, res.ok);
     const args = `${stops.length} viewpoints, ${period}, 10 min per shot, walking 1.3 m/s`;
     if (!res.ok) {
       await logStep(sessionId, 'cuopt_route', args, `error: HTTP ${res.status}`, Date.now() - started);

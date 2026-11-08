@@ -1,0 +1,230 @@
+{
+ "spot": "nyc_dumbo",
+ "frame": "metres east (x), north (y), up (z) from spot.json lat/lon; ground near z = 0",
+ "origin": {
+  "lat": 40.7035215,
+  "lon": -73.9896683
+ },
+ "source": "COLMAP model 20261107-1927: 15601 points (8939 with error < 2 px and track >= 3), georegistered by EXIF GPS (median residual 7.5 m)",
+ "street": {
+  "heading_deg": 359.8,
+  "centre": [
+   3.786,
+   -30.661,
+   -0.362
+  ],
+  "width_m": 20.6
+ },
+ "ground": {
+  "plane": {
+   "normal": [
+    -0.00037,
+    0.09035,
+    0.99591
+   ],
+   "d": -3.132
+  },
+  "polygon": [
+   [
+    -6.743,
+    -80.195,
+    4.128
+   ],
+   [
+    1.503,
+    40.584,
+    -6.826
+   ],
+   [
+    21.287,
+    40.666,
+    -6.826
+   ],
+   [
+    14.408,
+    -80.107,
+    4.128
+   ]
+  ],
+  "source": "camera feet line (too few ground points)",
+  "inliers": 33,
+  "street_camera_height_rms_m": 0.38,
+  "rms_m": 0.59,
+  "slope_deg": 5.18
+ },
+ "facades": [
+  {
+   "name": "west side of the street",
+   "plane": {
+    "normal": [
+     0.99768,
+     -0.06811,
+     0.0
+    ],
+    "d": -1.264
+   },
+   "height_m": 30.8,
+   "inliers": 704,
+   "rms_m": 0.3,
+   "quads": [
+    [
+     [
+      -6.914,
+      -82.706,
+      4.356
+     ],
+     [
+      1.281,
+      37.329,
+      -6.531
+     ],
+     [
+      1.281,
+      37.329,
+      30.47
+     ],
+     [
+      -6.914,
+      -82.706,
+      30.47
+     ]
+    ]
+   ]
+  },
+  {
+   "name": "east side of the street",
+   "plane": {
+    "normal": [
+     -0.99838,
+     0.05686,
+     -0.0
+    ],
+    "d": -18.94
+   },
+   "height_m": 27.2,
+   "inliers": 1200,
+   "rms_m": 0.33,
+   "quads": [
+    [
+     [
+      14.265,
+      -82.618,
+      4.356
+     ],
+     [
+      20.874,
+      33.41,
+      -6.168
+     ],
+     [
+      20.874,
+      33.41,
+      26.876
+     ],
+     [
+      14.265,
+      -82.618,
+      26.876
+     ]
+    ]
+   ]
+  }
+ ],
+ "mesh": {
+  "vertices": [
+   [
+    -6.743,
+    -80.195,
+    4.128
+   ],
+   [
+    1.503,
+    40.584,
+    -6.826
+   ],
+   [
+    21.287,
+    40.666,
+    -6.826
+   ],
+   [
+    14.408,
+    -80.107,
+    4.128
+   ],
+   [
+    -6.914,
+    -82.706,
+    4.356
+   ],
+   [
+    1.281,
+    37.329,
+    -6.531
+   ],
+   [
+    1.281,
+    37.329,
+    30.47
+   ],
+   [
+    -6.914,
+    -82.706,
+    30.47
+   ],
+   [
+    14.265,
+    -82.618,
+    4.356
+   ],
+   [
+    20.874,
+    33.41,
+    -6.168
+   ],
+   [
+    20.874,
+    33.41,
+    26.876
+   ],
+   [
+    14.265,
+    -82.618,
+    26.876
+   ]
+  ],
+  "triangles": [
+   [
+    0,
+    1,
+    2
+   ],
+   [
+    0,
+    2,
+    3
+   ],
+   [
+    4,
+    5,
+    6
+   ],
+   [
+    4,
+    6,
+    7
+   ],
+   [
+    8,
+    9,
+    10
+   ],
+   [
+    8,
+    10,
+    11
+   ]
+  ]
+ },
+ "notes": "Planes are n . x = d with unit normal n facing the street. Quads run ground, ground, top, top. Built from sparse SfM points, so expect about 1 m of error; good enough for shadow catching and occlusion, not for measurement."
+}

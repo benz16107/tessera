@@ -1,11 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSpacetimeDB, useTable, useReducer } from 'spacetimedb/react';
-import { Identity, Timestamp } from 'spacetimedb';
+import { Timestamp } from 'spacetimedb';
 import { tables, reducers } from './module_bindings/index.ts';
 import type { Pose, Session } from './module_bindings/types.ts';
 import { useConfig, NAME_KEY } from './config.ts';
 import { navigate, LoadBoundary } from './App.tsx';
 import type { PlaceMode, Frame } from './SceneView.tsx';
+import { useSessionCard } from './spacetime/hooks.ts';
 import { SimilarShots, RoutePanel, parseCredit, shotKey, type SpotShot, type ShotPose, type Stop } from './extras.tsx';
 
 // Cesium is ~4 MB, so the 3D view loads in its own chunk after the planner shell paints.
@@ -22,9 +23,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function Home() {
-  const { identity, isActive } = useSpacetimeDB();
+  const { isActive } = useSpacetimeDB();
   const [spots, spotsReady] = useTable(tables.spot);
-  const [mine] = useTable(tables.session.where(r => r.owner.eq(identity ?? Identity.zero())), { enabled: !!identity });
+  // my_sessions is a per-user view: the sessions this identity is a participant of.
+  const [mine] = useTable(tables.mySessions);
   const createSession = useReducer(reducers.createSession);
   const [name, setName] = useState(() => localStorage.getItem(NAME_KEY) ?? '');
   const [title, setTitle] = useState('');
@@ -104,9 +106,11 @@ function Home() {
 
 function SessionGate({ code }: { code: string }) {
   const { identity, isActive } = useSpacetimeDB();
-  const [rows, ready] = useTable(tables.session.where(r => r.code.eq(code)));
+  // Session rows are visible only to participants, so the public session_card(code) view answers "is there a shoot?".
+  const [card, ready] = useSessionCard(code);
+  const [rows] = useTable(tables.session.where(r => r.code.eq(code)));
   const session = rows[0];
-  const [parts, partsReady] = useTable(tables.participant.where(r => r.sessionId.eq(session?.id ?? 0n)), { enabled: !!session });
+  const [parts, partsReady] = useTable(tables.participant.where(r => r.sessionId.eq(card?.id ?? 0n)), { enabled: !!card });
   const joinSession = useReducer(reducers.joinSession);
   const [name, setName] = useState(() => localStorage.getItem(NAME_KEY) ?? '');
   const [err, setErr] = useState('');
@@ -118,13 +122,15 @@ function SessionGate({ code }: { code: string }) {
     joinSession({ code, name: n, role: 'planner' }).catch(x => setErr(String(x?.message ?? x)));
   }, [code, joinSession]);
 
-  // Returning planners with a saved name rejoin without a prompt.
+  // Returning planners with a saved name rejoin without a prompt. Only the name saved before this page loaded counts,
+  // so typing a new name doesn't join on the first keystroke.
+  const saved = useRef(name);
   useEffect(() => {
-    if (session && partsReady && isActive && !me && name && !tried.current) { tried.current = true; join(name); }
-  }, [session, partsReady, isActive, me, name, join]);
+    if (card && partsReady && isActive && !me && saved.current && !tried.current) { tried.current = true; join(saved.current); }
+  }, [card, partsReady, isActive, me, join]);
 
   if (!ready) return <SessionSkeleton />;
-  if (!session) {
+  if (!card) {
     return (
       <div className="home"><main className="center-note">
         <p className="wordmark">ShotMatch</p>
@@ -139,7 +145,7 @@ function SessionGate({ code }: { code: string }) {
     return (
       <div className="home"><main className="center-note">
         <p className="wordmark">ShotMatch</p>
-        <h1>Join "{session.title}"</h1>
+        <h1>Join "{card.title}"</h1>
         <form className="stack sheet narrow" onSubmit={e => { e.preventDefault(); if (name.trim()) join(name.trim()); }}>
           <Field label="Your name"><input value={name} onChange={e => setName(e.target.value)} maxLength={40} required autoFocus /></Field>
           {err && <p className="error" role="alert">{err}</p>}
@@ -148,6 +154,7 @@ function SessionGate({ code }: { code: string }) {
       </main></div>
     );
   }
+  if (!session) return <SessionSkeleton />;
   return <SessionView session={session} myName={me.name} />;
 }
 

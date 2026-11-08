@@ -60,12 +60,12 @@ test('photon events: a photo with text in a group, and things we ignore', () => 
     space: { id: 'pho_spc_1', kind: 'direct' },
     content: { type: 'group', parts: [{ type: 'attachment', attachmentId: 'pho_att_1' }, { type: 'text', format: 'plain', text: 'where is this?' }] } } } };
   assert.deepEqual(parseInbound(ev), { eventId: 'pho_evt_1', platform: 'imessage', spaceId: 'pho_spc_1', spaceKind: 'direct', messageId: 'pho_msg_1',
-    parentId: '', handle: '+14695550101', agentUserId: 'pho_usr_agent', text: 'where is this?', attachmentIds: ['pho_att_1'] });
+    parentId: '', handle: '+14695550101', displayName: '', agentUserId: 'pho_usr_agent', text: 'where is this?', attachmentIds: ['pho_att_1'] });
   const o = ev.data.object;
   assert.equal(parseInbound({ ...ev, type: 'message.delivered' }), null);
   assert.equal(parseInbound({ ...ev, data: { object: { ...o, sentBy: { ...o.sentBy, kind: 'agent' } } } }), null);
   assert.equal(parseInbound({ ...ev, data: { object: { ...o, content: { type: 'space.typing.update', typing: true } } } }), null);
-  assert.equal(parseInbound({ ...ev, data: { object: { ...o, platform: 'email' } } }), null);
+  assert.equal(parseInbound({ ...ev, data: { object: { ...o, platform: 'voice' } } }), null);
   assert.equal(parseInbound({ ...ev, data: { object: { ...o, platform: 'telegram', parentMessageId: 'pho_msg_0', content: { type: 'text', text: 'make it 85mm' } } } })?.parentId, 'pho_msg_0');
 });
 

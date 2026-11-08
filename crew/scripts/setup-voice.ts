@@ -31,20 +31,25 @@ if (!st.secretId) {
 }
 
 const caller = { type: 'string', dynamic_variable: 'system__caller_id' };
-const TOOLS = {
-  get_plan: { description: "Get the caller's shot plan: where the mark is, which way to face and how far to zoom. Call it at the start of the call.", props: {} },
-  scout_status: { description: "Where the caller's scout phone is relative to the mark, with walking directions. Use it while guiding them.", props: {} },
-  distance_to_mark: { description: 'Distance and direction from the caller to the mark, from their scout page GPS.', props: {} },
-} as const;
+const TOOLS: Record<string, { description: string; props: Record<string, object>; timeout?: number }> = {
+  get_plan: { description: "Get the caller's set: where the mark is, which way to face and the lens. Call it at the start of the call.", props: {} },
+  guide_me: { description: "One turn-by-turn instruction from the caller's live phone position and compass to the mark (for example 'Turn left 26 degrees, then walk 12 m north'). Call it every time they say they moved or ask where now.", props: {} },
+  edit_set: {
+    description: "Change the virtual set by voice: move, add or remove people and props, change the light or time of day, the lens. Pass the caller's words. Planners see the change live.",
+    props: { instruction: { type: 'string', description: "What to change, in the caller's words, for example 'move the bike to the left' or 'make it sunset'" } }, timeout: 25,
+  },
+  scout_status: { description: 'Same as guide_me: walking directions from the scout phone to the mark.', props: {} },
+  distance_to_mark: { description: 'Same as guide_me: distance and direction to the mark.', props: {} },
+};
 
 st.tools ??= {};
 for (const [name, t] of Object.entries(TOOLS)) {
   const tool_config = {
-    type: 'webhook', name, description: t.description, response_timeout_secs: 10,
+    type: 'webhook', name, description: t.description, response_timeout_secs: t.timeout ?? 10,
     api_schema: {
       url: `${base}/api/tools/${name}`, method: 'POST',
       request_headers: { 'x-shotmatch-tool-secret': { secret_id: st.secretId } },
-      request_body_schema: { type: 'object', description: 'Caller info', properties: { caller, ...t.props }, required: ['caller'] },
+      request_body_schema: { type: 'object', description: 'Caller info', properties: { caller, ...t.props }, required: ['caller', ...Object.keys(t.props)] },
     },
   };
   if (st.tools[name]) await el('PATCH', `/v1/convai/tools/${st.tools[name]}`, { tool_config });
@@ -58,15 +63,16 @@ if (!st.webhookId) {
   console.log(`post-call webhook ${w.webhook_id}${w.webhook_secret ? ', secret saved to elevenlabs_webhook_secret' : ', NO secret returned'}`);
 }
 
-const prompt = `You are the ShotMatch guide on a phone call. The caller texted ShotMatch a photo of a place and wants to stand where the photographer stood.
-Start by calling get_plan and tell them the plan in one or two short sentences. Then guide them to the mark: call scout_status or distance_to_mark whenever they ask "where now" or say they moved, and give one instruction at a time ("walk about 20 metres north", "turn left a little").
-When they reach the mark, tell them which way to face and how far to zoom on their phone. Keep every answer under 25 words. Never read out coordinates. If a tool says there is no plan, ask them to text the photo first.
-Say you will text them the final framing after the call.`;
+const prompt = `You are the ShotMatch set on a phone call. The caller is part of a photo shoot planned in a shared virtual set, and they may be walking to the spot right now.
+Start by calling get_plan and say the plan in one short sentence. To guide them, call guide_me and read its one instruction; call it again every time they say they moved or ask "where now", until it says they are on the mark.
+When they ask to change the shot ("move the bike to the left", "make it sunset", "add two friends"), call edit_set with their words and tell them it is done; everyone planning sees it live.
+Keep every answer under 25 words. Never read out coordinates. If a tool says there is no set, ask them to text ShotMatch a photo first or to say the six-letter set code.
+Before hanging up, say you will text them the final framing.`;
 
 const agentBody = {
   name: 'ShotMatch guide',
   conversation_config: {
-    agent: { first_message: 'Hi, this is ShotMatch. I can walk you to the spot for your shot. One second while I pull up your plan.', language: 'en', prompt: { prompt, tool_ids: Object.values(st.tools) } },
+    agent: { first_message: 'Hi, this is ShotMatch. I can walk you to your mark or change the shot by voice. One second while I pull up your set.', language: 'en', prompt: { prompt, tool_ids: Object.values(st.tools) } },
   },
   platform_settings: { workspace_overrides: { webhooks: { post_call_webhook_id: st.webhookId, events: ['transcript'] } } },
 };
