@@ -116,7 +116,7 @@ const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['
     <section id="video" class="tk-sec">
       <h2>Video</h2>
       {youtube ? <iframe class="video-embed" src={youtube} title={t.video.title} loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-        : mp4 ? <video class="video-embed" src={t.video.url} controls preload="metadata" playsinline></video>
+        : mp4 ? <video class="video-embed" src={t.video.url} poster={t.video.url.replace(/^\/videos\/(.+)\.mp4$/, '/videos/thumbs/poster-$1.jpg')} controls preload="metadata" playsinline></video>
         : t.video.url ? <a class="video-slot has-url" href={t.video.url}>Watch "{t.video.title}" ({t.video.length})</a>
         : <p class="video-row"><strong>{t.video.title}</strong><span class="num">{t.video.length}</span><span>A screen recording of the live app, made after the build. It follows this shot list.</span></p>}
       {(youtube || mp4) && <p class="video-meta"><strong>{t.video.title}</strong> <span class="num">{t.video.length}</span>{t.video.url && <> · <a href={t.video.url}>Open the video</a></>}{t.video.also && <> · <a href={t.video.also.url}>{t.video.also.label}</a></>}</p>}
