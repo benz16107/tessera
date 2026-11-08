@@ -3,7 +3,7 @@
 // scene_object row is drawn and editable live; objects stand on the street geometry, cast soft sun shadows onto it and
 // take image light from the photo. The shot camera looks through a real lens over the user's photo, and the render layers
 // hold only the user's objects. Panels from web/src/nvidia and web/src/spacetime mount through slots.tsx.
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, GizmoHelper, GizmoViewport, Grid, Html, Line, OrbitControls, OrthographicCamera, Sky, TransformControls, useTexture } from '@react-three/drei';
 import { XR } from '@react-three/xr';
@@ -308,6 +308,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
 
   /** Where new things go: where the user last pointed, else on the ground in front of the shot camera at the focus distance. */
   const orbitTarget = useRef(new Vector3());
+  const orbitCamPos = useRef(new Vector3()); // three-world eye of the World view's orbit camera
   const placePoint = (): Vector3 => {
     if (lastPoint.current) { const p = lastPoint.current.clone(); lastPoint.current = null; return p.setZ(gz(p.x, p.y)); }
     if (shotPose && view !== 'top') {
@@ -742,7 +743,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
         {photoBack && photo && <img className="st-backplate" src={photo.url || photo.thumb} alt="" style={{ left: fit.rect.x, top: fit.rect.y, width: fit.rect.w, height: fit.rect.h }} />}
         {view !== 'shot' && photo && shotRow && <img className="st-backplate" src={photo.thumb} alt="" style={{ left: pip.x, top: pip.y, width: pip.w, height: pip.h, borderRadius: 4 }} />}
         <div className="st-canvas">
-          <Canvas shadows="percentage" gl={{ antialias: true, alpha: true }} camera={{ fov: 50, near: 0.1, far: 20000, position: enuToThree(startCam.pos).toArray() }}
+          <Canvas shadows="percentage" gl={{ antialias: true, alpha: true }} frameloop={view === 'map' ? 'demand' : 'always'} camera={{ fov: 50, near: 0.1, far: 20000, position: enuToThree(startCam.pos).toArray() }}
             onPointerMissed={e => {
               if (e.type !== 'click' || gizmoBusy.current || tool === 'measure' || document.pointerLockElement) return;
               if (view === 'walk') walkInput.current.lock?.(); else setSelected(null);
@@ -791,7 +792,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                   solids={except => scene.rows.filter(r => r.id !== except && r.visible && (r.kind === 'person' || r.kind === 'model' || r.kind === 'prop_generated')).map(r => groups.current.get(r.id)).filter((g): g is Group => !!g)} />
               )}
               <ShotCameraSync camera={shotCam} group={shotRow ? groups.current.get(shotRow.id) ?? null : null} />
-              {view === 'persp' && <EditorControls start={startCam} cmd={cmd} target={orbitTarget} onHeight={setCamHeight} gz={gz} />}
+              {view === 'persp' && <EditorControls start={startCam} cmd={cmd} target={orbitTarget} eye={orbitCamPos} onHeight={setCamHeight} gz={gz} />}
               {view === 'top' && <TopView center={shotPose?.pos ?? new Vector3()} target={orbitTarget} />}
               {view === 'walk' && <WalkControls gz={walkGround} eye={walkEye} fly={walkFly} input={walkInput.current} obstacles={explore ? NO_WALLS : walkObstacles} editing={selected !== null}
                 pickables={() => [...groups.current.entries()]} onPick={id => setSelected(id)} onFly={() => setWalkFly(true)} />}
@@ -891,7 +892,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
             {!explore && earth && shotRow && solved && (view === 'persp' || view === 'walk') && camNear && (
               <button className="st-btn small st-float st-sharper" onClick={() => setWorld('clayPhoto')} title="Switch to Clay + photo, sharp at street level near the shot">Sharper here</button>
             )}
-            {!focus && (
+            {!focus && view !== 'map' && (
               <div className="st-rail st-float" role="toolbar" aria-label="Tools">
                 {([['select', 'cursor', 'Select (W)'], ['translate', 'move', 'Move (G)'], ['rotate', 'rotate', 'Rotate (R)'], ['scale', 'scale', 'Scale (S)']] as const).map(([t, i, l]) => (
                   <button key={t} aria-pressed={tool === t} onClick={() => setTool(t)} title={l} aria-label={l}><Ico n={i} s={18} /></button>
@@ -940,13 +941,13 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                 <button className="st-btn small" onClick={() => setFocus(false)}>Exit focus <span className="st-meta">Tab</span></button>
               </div>
             )}
-            {shotRow && !explore && (
+            {shotRow && !explore && view !== 'map' && (
               <>
                 <button className="st-pip" style={{ left: pip.x, top: pip.y, width: pip.w, height: pip.h }} onClick={() => setView('shot')} aria-label={`Look through ${shotName}`} title={`Look through ${shotName} (0)`} />
                 <span className="st-pip-label" style={{ left: pip.x + 6, top: pip.y + pip.h - 22 }}>{shotName} · {Math.round(o.f35)} mm</span>
               </>
             )}
-            {view !== 'walk' && scene.rows.filter(r => r.kind !== 'camera').length === 0 && scene.ready && !addOpen && (
+            {view !== 'walk' && view !== 'map' && scene.rows.filter(r => r.kind !== 'camera').length === 0 && scene.ready && !addOpen && (
               <div className="st-hint st-float" role="note">
                 <span>Press <kbd>+</kbd> to add people, props and lights, or describe a change.</span>
                 <button className="st-btn small" onClick={() => setAddOpen(true)}>Add</button>
@@ -1163,8 +1164,10 @@ function PipRenderer({ shotCam, o, rect, inset = true, overPhoto = true }: { sho
   return null;
 }
 
-function EditorControls({ start, cmd, target, onHeight, gz }: {
-  start: { pos: Vector3; target: Vector3 }; cmd: ViewCmd | null; target: React.MutableRefObject<Vector3>; onHeight: (m: number) => void; gz: (x: number, y: number) => number;
+let appliedCmd = 0; // a view command applies once, even when the controls remount (switching views) or arrive late
+function EditorControls({ start, cmd, target, eye, onHeight, gz }: {
+  start: { pos: Vector3; target: Vector3 }; cmd: ViewCmd | null; target: React.MutableRefObject<Vector3>; eye: React.MutableRefObject<Vector3>;
+  onHeight: (m: number) => void; gz: (x: number, y: number) => number;
 }) {
   const { camera, controls } = useThree();
   const t0 = useMemo(() => enuToThree(start.target), [start]);
@@ -1174,21 +1177,28 @@ function EditorControls({ start, cmd, target, onHeight, gz }: {
     if (c) { c.target.copy(t0); c.update(); } else camera.lookAt(t0);
   }, [start, controls]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!cmd) return;
+    if (!cmd || cmd.n === appliedCmd) return;
     const c = controls as unknown as { target: Vector3; update(): void } | null;
     if (!c) return;
+    appliedCmd = cmd.n;
+    if (cmd.kind === 'place') {
+      c.target.copy(enuToThree(cmd.point)); camera.position.copy(enuToThree(cmd.pos)); c.update();
+      target.current.copy(cmd.point);
+      return;
+    }
     const tgt = cmd.kind === 'focus' ? cmd.point : c.target.clone();
     const dist = cmd.kind === 'focus' ? cmd.radius * 2.5 : camera.position.distanceTo(c.target);
     const dir = cmd.kind === 'front' ? new Vector3(0, 0.25, 1) : cmd.kind === 'right' ? new Vector3(1, 0.25, 0) : camera.position.clone().sub(c.target);
     if (cmd.kind === 'home') { c.target.copy(t0); camera.position.copy(enuToThree(start.pos)); }
     else { c.target.copy(tgt); camera.position.copy(tgt.clone().add(dir.normalize().multiplyScalar(dist))); }
     c.update();
-  }, [cmd]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cmd, controls]); // eslint-disable-line react-hooks/exhaustive-deps
   const last = useRef(0);
   useFrame(() => {
     const now = performance.now();
     if (now - last.current < 300) return;
     last.current = now;
+    eye.current.copy(camera.position);
     const p = threeToEnu(camera.position);
     onHeight(p.z - gz(p.x, p.y));
   });

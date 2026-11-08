@@ -21,7 +21,7 @@ import { parseCommand } from './channels/commands.ts';
 import { invite } from './channels/invite.ts';
 import { broadcast, hold, owned, planUrl, startFanout } from './channels/fanout.ts';
 import { finishVersion, forkFrom, noteVersionMessages, recordVersion, renderForThread, versionForMessage, versionsText } from './channels/versions.ts';
-import { checkIn, classifyPhoto, photoToProp } from './channels/photos.ts';
+import { checkIn, classifyPhoto, photoToProp, retry3d } from './channels/photos.ts';
 import { ensureAlert, startAlerts } from './channels/alerts.ts';
 import { sendFraming } from './voice.ts';
 import { sendCallSheet } from './channels/sheet.ts';
@@ -110,6 +110,12 @@ async function route(c: Ctx) {
     const a = await ensureAlert(c.sessionId, true).catch(() => null);
     return void (await reply(c, a ? `I'll message everyone in the set ${Math.round((a.start.getTime() - a.at.getTime()) / 60_000)} min before ${a.kind}, with how far each of you is from the mark.` : 'There is no golden hour I can catch in the next 20 hours for this mark, or the set has no mark yet.'));
   }
+  if (cmd?.kind === 'retry3d') {
+    const r = sharedStore().get<{ sessionId: string; path: string; label: string; objectId: string }>('sent', `retry3d:${c.target.spaceId}`);
+    if (!r || r.sessionId !== String(c.sessionId)) return void (await reply(c, 'There is no flat cut-out from this chat to turn into 3D. Send a photo of an object first.'));
+    await reply(c, 'Trying the 3D model again. It takes a minute or two.');
+    return void (await run(c.target, [{ op: 'text', text: await retry3d(c.sessionId, r.path, r.label, r.objectId), subject: 'Your prop' }], { parentMessageId: c.m.messageId, idem: `retry3d:${c.m.messageId}` }));
+  }
   if (cmd?.kind === 'stop') {
     for (const l of linkRows(c.sessionId).filter(l => channelOf(l.channel) === c.channel && normHandle(l.address) === normHandle(c.m.handle || c.m.spaceId)))
       await conn.reducers.removeChannelLink({ id: l.id }).catch(() => {});
@@ -126,7 +132,10 @@ async function route(c: Ctx) {
     await logStep(c.sessionId, 'photo_kind', c.upload.url, `${kind.kind}${kind.label ? `: ${kind.label}` : ''}`, 0);
     if (kind.kind === 'object' && ctx) {
       await reply(c, `Turning ${kind.label || 'that'} into a 3D prop for the set. It takes a minute or two.`);
-      return void (await run(c.target, [{ op: 'text', text: await photoToProp(c.sessionId, c.upload.path, kind.label), subject: 'Your prop is in the set' }], { parentMessageId: c.m.messageId, idem: `prop:${c.m.messageId}` }));
+      const out = await photoToProp(c.sessionId, c.upload.path, kind.label);
+      // A flat cut-out can be upgraded later: remember the photo and the object for "try 3D again" in this thread.
+      if (out.flat && out.objectId) sharedStore().put('sent', `retry3d:${c.target.spaceId}`, { sessionId: String(c.sessionId), path: c.upload.path, label: kind.label, objectId: out.objectId });
+      return void (await run(c.target, [{ op: 'text', text: out.text, subject: 'Your prop is in the set' }], { parentMessageId: c.m.messageId, idem: `prop:${c.m.messageId}` }));
     }
     if (kind.kind === 'place' && ctx && !c.isNew) {
       const out = await checkIn(c.sessionId, c.upload, { participantId: c.participantId, name: c.name });

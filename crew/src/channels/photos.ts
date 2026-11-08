@@ -6,9 +6,10 @@ import { MODELS, NVIDIA_BASE, PORT, secret } from '../config.ts';
 import { dataUrl, type Ingested } from '../images.ts';
 import { chat, parseJson, thinking } from '../models.ts';
 import { callSolver } from '../jobs.ts';
-import { setContext, sessionObjects } from '../set.ts';
+import { fmtParams, parseParams, setContext, sessionObjects, updateObject } from '../set.ts';
 import { enuOf, frameOf } from '../setgeo.ts';
 import { correction, type Correction } from './marks.ts';
+import { propReply } from './format.ts';
 
 export type PhotoKind = { kind: 'object' | 'place'; label: string };
 
@@ -36,18 +37,38 @@ async function classify(path: string): Promise<PhotoKind> {
 const side = (fx: number) => (fx < -0.5 ? 'at the left edge of the frame' : fx < -0.15 ? 'on the left' : fx <= 0.15 ? 'in the centre' : fx <= 0.5 ? 'on the right' : 'at the right edge of the frame');
 
 /** Photo to 3D through the nvidia endpoint, placed in the set; returns the reply line. */
-export async function photoToProp(sessionId: bigint, path: string, label: string): Promise<string> {
-  const t0 = Date.now();
+const generate = async (sessionId: bigint, path: string, label: string, extra: object) => {
   const r = await fetch(`http://127.0.0.1:${PORT}/api/props/generate`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(420_000),
-    body: JSON.stringify({ sessionId: String(sessionId), image: await dataUrl(path, 1024), name: label.replace(/^(a|an|the|your)\s+/i, '').slice(0, 60) || 'Prop from photo', frame_x: -0.4, distance_m: 5 }),
+    body: JSON.stringify({ sessionId: String(sessionId), image: await dataUrl(path, 1024), name: label.replace(/^(a|an|the|your)\s+/i, '').slice(0, 60) || 'Prop from photo', ...extra }),
   });
-  const j: any = await r.json().catch(() => ({}));
-  await logStep(sessionId, 'photo_to_prop', label, r.ok ? `${j.model ?? 'TRELLIS'}: ${j.url}${j.object ? `, object ${j.object.id}` : ''}` : `error: ${j.error ?? r.status}`, Date.now() - t0);
-  if (!r.ok) return `I couldn't turn that photo into a 3D prop: ${String(j.error ?? `HTTP ${r.status}`).slice(0, 140)}`;
+  return { ok: r.ok, status: r.status, j: await r.json().catch(() => ({})) as any };
+};
+const flatOf = (j: any) => j.mode === 'flat' && !!j.fallback; // the endpoint fell back to a cut-out because TRELLIS failed
+
+export type PropOut = { text: string; objectId?: string; flat: boolean };
+
+/** Photo to 3D through the nvidia endpoint, placed in the set; says so plainly when it had to fall back to a flat cut-out. */
+export async function photoToProp(sessionId: bigint, path: string, label: string): Promise<PropOut> {
+  const t0 = Date.now(), { ok, status, j } = await generate(sessionId, path, label, { frame_x: -0.4, distance_m: 5 });
+  await logStep(sessionId, 'photo_to_prop', label, ok ? `${j.mode}: ${j.asset?.url}${j.object ? `, object ${j.object.id}` : ''}${j.fallback ? `; ${j.fallback}` : ''}` : `error: ${j.error ?? status}`, Date.now() - t0);
+  if (!ok) return { text: `I couldn't turn that photo into a 3D prop: ${String(j.error ?? `HTTP ${status}`).slice(0, 140)}`, flat: false };
   const ctx = setContext(sessionId), o = j.object ? sessionObjects(sessionId).find(x => String(x.id) === String(j.object.id)) : undefined;
   const where = ctx && o ? (() => { const f = frameOf(ctx.cam, o); return f.inFrame ? `${side(f.frameX)}, ${Math.round(f.dist)} m from the camera` : 'just out of frame'; })() : 'in the set';
-  return `Added ${label || 'your object'} to the set ${where}. Reply "move it left", "bigger" or "remove it".`;
+  return { text: propReply(label, where, flatOf(j)), objectId: j.object?.id, flat: flatOf(j) };
+}
+
+/** "try 3D again": regenerate the model and swap it onto the same object, wherever it has been moved since. */
+export async function retry3d(sessionId: bigint, path: string, label: string, objectId: string): Promise<string> {
+  const o = sessionObjects(sessionId).find(x => String(x.id) === objectId);
+  if (!o) return 'That cut-out is no longer in the set, so there is nothing to upgrade.';
+  const t0 = Date.now(), { ok, status, j } = await generate(sessionId, path, label, { mode: 'photo3d', place: false });
+  const flat = !ok || flatOf(j) || !j.asset?.url;
+  await logStep(sessionId, 'retry_3d', `${label}, object ${objectId}`, flat ? `still no 3D model: ${j.fallback ?? j.error ?? status}` : `${j.mode}: ${j.asset.url}`, Date.now() - t0);
+  if (flat) return "The 3D model generator still didn't answer, so the flat cut-out stays. Reply 'try 3D again' in a few minutes.";
+  const p = parseParams(o.params);
+  await updateObject(o, { assetId: j.asset.url, params: fmtParams({ ...p, gen: j.mode, h: j.dims?.height_m ?? p.h, len: j.dims?.length_m ?? p.len }) });
+  return `${label.replace(/^(a|an)\s+/i, 'Your ').replace(/^your/i, 'Your')} is now a 3D model, in the same place in the set.`;
 }
 
 export type CheckinOut = { text: string; correction?: Correction; at?: { x: number; y: number; heading: number } };

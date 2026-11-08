@@ -8,7 +8,8 @@ export type Command =
   | { kind: 'join'; code: string }
   | { kind: 'callsheet' }
   | { kind: 'remind' }
-  | { kind: 'stop' };
+  | { kind: 'stop' }
+  | { kind: 'retry3d' };
 
 const CH: [RegExp, Channel][] = [
   [/\b(i\s?message|imsg|blue bubble)\b/i, 'imessage'], [/\btele(gram)?\b|\btg\b/i, 'telegram'], [/\bwhats\s?app\b|\bwa\b/i, 'whatsapp'],
@@ -33,6 +34,7 @@ export function parseCommand(text: string): Command | null {
   const t = text.trim();
   if (/^(versions?|history|tree)\??$/i.test(t) || /^(show|list)( me)? (the )?versions\??$/i.test(t)) return { kind: 'versions' };
   if (/^(stop|unsubscribe|leave)$/i.test(t)) return { kind: 'stop' };
+  if (/^(please\s+)?(try|retry|redo)\s+(the\s+)?(3d|three\s*d)(\s+(again|model))?[.!]?$/i.test(t)) return { kind: 'retry3d' };
   const join = /^(?:join|start)\s+([A-Z2-9]{6})$/i.exec(t) ?? /^\/start\s+([A-Z2-9]{6})$/i.exec(t);
   if (join) return { kind: 'join', code: join[1].toUpperCase() };
   if (/\bcall ?sheet\b/i.test(t) && t.length < 80) return { kind: 'callsheet' };

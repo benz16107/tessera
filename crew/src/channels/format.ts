@@ -82,3 +82,11 @@ export function lensOptions(baseF35: number): number[] {
   for (const f of [50, 85]) if (f > baseF35 * 1.15) out.push(f);
   return out;
 }
+
+/** The reply after a photo becomes a prop: honest about a flat cut-out when the 3D generator didn't answer. */
+export function propReply(label: string, where: string, flat: boolean): string {
+  const it = label.trim() ? `your ${label.trim().replace(/^(a|an|the|your)\s+/i, '')}` : 'your object';
+  return flat
+    ? `Added ${it} to the set as a flat cut-out ${where} (the 3D model generator didn't answer; reply 'try 3D again' to retry).`
+    : `Added ${it} to the set ${where}. Reply "move it left", "bigger" or "remove it".`;
+}

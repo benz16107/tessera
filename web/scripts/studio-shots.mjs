@@ -63,6 +63,17 @@ for (const step of stepsArg.split(',')) {
     await page.waitForTimeout(5000); await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
     await page.waitForTimeout(3000); await S('-goto-cam');
   }
+  if (step === 'map') { await page.locator('.st-viewswitch [role="group"] button', { hasText: /^Map$/ }).click(); await page.waitForTimeout(9000); await S('-map'); }
+  if (step === 'map3d') { // zoom the map in past street level: it hands over to the 3D set
+    await page.mouse.move(732, 480);
+    for (let i = 0; i < 14; i++) { await page.mouse.wheel(0, -400); await page.waitForTimeout(250); }
+    await page.waitForTimeout(12000); await S('-map3d');
+  }
+  if (step === '3dmap') { // pull the World camera out past 2 km: it hands back to the map
+    await page.keyboard.press('5'); await page.waitForTimeout(3000); await page.mouse.move(732, 480);
+    for (let i = 0; i < 40; i++) { await page.mouse.wheel(0, 600); await page.waitForTimeout(120); }
+    await page.waitForTimeout(8000); await S('-3dmap');
+  }
   if (step === 'world') { await page.keyboard.press('5'); await page.waitForTimeout(3000); await S('-world'); }
   if (step.startsWith('style:')) { // style:<World style label>, from the World view's default camera
     const label = step.slice(6);
