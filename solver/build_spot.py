@@ -83,6 +83,7 @@ def georef(rec, meta, enu):
     gps_idx = [i for i, im in enumerate(regs) if meta[im.name]['lat'] is not None]
     gps_en = [enu.en(meta[regs[i].name]['lat'], meta[regs[i].name]['lon']) for i in gps_idx]
     s, M, T, inl, res = georegister(C, Rs, gps_idx, gps_en)
+    hpr = np.array([hpr_from_R(R @ M.T) for R in Rs])
     heading = {}
     for im, R in zip(regs, Rs):
         h = true_heading(meta[im.name])
@@ -92,7 +93,8 @@ def georef(rec, meta, enu):
                 n_gps_inliers=int(inl.sum()), resid_median_m=float(np.median(res[inl])),
                 resid_p90_m=float(np.percentile(res[inl], 90)),
                 gps_resid_m={regs[i].name: round(float(r), 1) for i, r in zip(gps_idx, res)},
-                heading_diff_deg=heading)
+                heading_diff_deg=heading, median_pitch_deg=float(np.median(hpr[:, 1])),
+                median_roll_deg=float(np.median(hpr[:, 2])))
 
 
 def main(spot_id):
@@ -157,6 +159,10 @@ def main(spot_id):
         dropped.update({n: round(d, 1) for n, d in mirrors.items()})
         use = [n for n in use if n not in mirrors]
 
+    # the ENU frame must be level: handheld photos have near-zero median roll and a modest median pitch
+    log(f"median camera pitch {geo['median_pitch_deg']:.1f} deg, roll {geo['median_roll_deg']:.1f} deg")
+    assert abs(geo['median_roll_deg']) < 5 and -20 < geo['median_pitch_deg'] < 30, 'georegistered frame is not level'
+
     model = spot_dir / 'model'
     shutil.rmtree(model, ignore_errors=True)
     model.mkdir()
@@ -175,6 +181,7 @@ def main(spot_id):
     stats = dict(images_in=len(names), images_gps=len(gps), registered=rec.num_reg_images(),
                  points3D=rec.num_points3D(), mean_reproj_px=round(rec.compute_mean_reprojection_error(), 3),
                  mean_track_len=round(rec.compute_mean_track_length(), 2), pairs=len(pairs_all),
+                 median_pitch_deg=round(geo['median_pitch_deg'], 1), median_roll_deg=round(geo['median_roll_deg'], 1),
                  georef={k: geo[k] for k in ('n_gps', 'n_gps_inliers', 'resid_median_m', 'resid_p90_m', 'gps_resid_m')},
                  heading_check=dict(n=len(hd), median_abs_diff_deg=round(float(np.median(hd)), 1) if len(hd) else None,
                                     over_90=int((hd > MIRROR_DEG).sum())),
