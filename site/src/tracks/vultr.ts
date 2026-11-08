@@ -13,7 +13,7 @@ export default {
   oneLine: 'Tessera runs in production on Vultr: one VM in Dallas serves the app and this site, Vultr Object Storage keeps the photos and props, and Vultr Serverless Inference runs four models in the pipeline.',
   hero: {
     img: hero,
-    alt: 'Tessera Studio on the production URL: the Clay + photo world of Washington St with the user\'s photo projected onto clay buildings, two placed figures, a bicycle, the Cam A frustum, and the camera inspector on the right.',
+    alt: 'Tessera Studio on the production URL in World view: the Google Photorealistic 3D Tiles of DUMBO from above, Cam A and its frustum on Washington St under the Manhattan Bridge, the photo in the corner, and the camera inspector on the right.',
     caption: 'Studio on the production URL, served by Caddy and the crew on the Vultr VM in Dallas.',
     frame: 'browser',
     url: 'app.tesseraphoto.com/studio/A9TVAN',

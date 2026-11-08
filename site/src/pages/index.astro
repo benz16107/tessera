@@ -72,7 +72,7 @@ const demo = `${APP_URL}/p/${DEMO_CODE}`;
     <figure class="hero-stage">
       <Browser url={`app.tesseraphoto.com/studio/${DEMO_CODE}`} class="hero-window">
         {frames.map((f, i) => (
-          <Image class="h-frame" data-min={f.minutes} src={f.img} alt={i === STILL ? 'Studio looking through Cam A over the Google Photorealistic 3D Tiles of Washington St, DUMBO, with two placed figures, the camera inspector and the time of day on the timeline' : ''} aria-hidden={i === STILL ? undefined : 'true'} widths={[800, 1200, 1600]} sizes="(max-width: 900px) 190vw, 1100px" loading={i === STILL ? 'eager' : 'lazy'} fetchpriority={i === STILL ? 'high' : undefined} style={i === STILL ? undefined : 'opacity:0'} />
+          <Image class="h-frame" data-min={f.minutes} src={f.img} alt={i === STILL ? 'Studio in World view over the Google Photorealistic 3D Tiles of DUMBO: Cam A and its frustum on Washington St under the Manhattan Bridge, the photo in the corner, the camera inspector and the time of day on the timeline' : ''} aria-hidden={i === STILL ? undefined : 'true'} widths={[800, 1200, 1600]} sizes="(max-width: 900px) 190vw, 1100px" loading={i === STILL ? 'eager' : 'lazy'} fetchpriority={i === STILL ? 'high' : undefined} style={i === STILL ? undefined : 'opacity:0'} />
         ))}
       </Browser>
       <div class="h-time" aria-hidden="true">

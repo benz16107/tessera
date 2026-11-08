@@ -25,8 +25,8 @@ export default {
   note: 'The Figma images on this page are design mockups and are labelled as such. Every other image is a screenshot of the live app.',
   hero: {
     img: hero,
-    alt: 'Tessera Studio looking through Cam A on the demo shoot, with the Google Photorealistic 3D Tiles of Washington St as the backplate: two placed figures, a thirds grid, the focus label on a person, the horizon label in the right margin, and the camera inspector with a Tamron 28-75mm lens at 42 mm, f/2.8.',
-    caption: 'Studio, built from the Darkroom direction: looking through the shot camera with a real lens, focus on a person, and every label kept clear of the picture.',
+    alt: 'Tessera Studio in World view on the demo shoot: the Google Photorealistic 3D Tiles of DUMBO from above, Cam A and its frustum on Washington St under the Manhattan Bridge, the photo in the corner, and the camera inspector with a Tamron 28-75mm lens at 42 mm, f/2.8.',
+    caption: 'Studio, built from the Darkroom direction: the World view over Google\'s 3D city, with the shot camera on the street and the photo in the corner.',
     frame: 'browser',
     url: 'app.tesseraphoto.com/studio/A9TVAN',
   },
