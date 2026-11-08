@@ -19,7 +19,7 @@ import { APP_URL, DEMO_CODE } from '../../site.ts';
             <Image class="tx-img" src={t.hero.img} alt="" widths={[480, 800]} sizes="(max-width: 760px) 100vw, 520px" />
             <div class="tx-body">
               <p class="tx-prize">{t.prize}</p>
-              <h2>{t.sponsor}</h2>
+              <h2>{t.slug === 'design' ? t.prize : t.sponsor}</h2>
               <p class="tx-line">{t.oneLine}</p>
               {t.headline[0] && <p class="tx-num"><span class="num">{t.headline[0].value}</span> {t.headline[0].label}</p>}
             </div>
@@ -48,7 +48,7 @@ import { APP_URL, DEMO_CODE } from '../../site.ts';
   .tx-card { display: flex; flex-direction: column; height: 100%; border-radius: 14px; overflow: hidden; background: var(--panel); box-shadow: 0 0 0 1px var(--line); color: var(--text); text-decoration: none; transition: box-shadow 0.2s ease; }
   @media (hover: hover) and (pointer: fine) { .tx-card:hover { box-shadow: 0 0 0 1px var(--amber-line); } }
   .tx-card:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
-  .tx-img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; object-position: top; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .tx-img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; object-position: top; background: var(--bg); border-bottom: 1px solid var(--line); }
   .tx-body { padding: 20px 20px 24px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
   .tx-prize { margin: 0; font: 400 0.6875rem/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
   .tx-card h2 { margin: 0; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; }

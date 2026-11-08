@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { loadSpots, SPOTS_DIR } from '../config.ts';
 import { tzFor } from '../sun.ts';
 import { setContext } from '../set.ts';
+import { worldPhotos } from './photographers.ts';
 import { buildLayers, LAYER_IDS, type LayerId, type LayersResponse } from './build.ts';
 import type { Conditions } from './conditions.ts';
 import type { Place } from './types.ts';
@@ -77,6 +78,7 @@ function queryOf(url: URL): Query | string {
 
 /** Mounted from crew/src/http.ts. Returns false when the path is not ours. */
 export async function layersRoute(p: string, req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> {
+  if (p === '/api/layers/world' && req.method === 'GET') { json(res, 200, worldPhotos(), 'public, max-age=3600'); return true; }
   if (p !== '/api/layers' && p !== '/api/layers/conditions') return false;
   if (req.method !== 'GET') { json(res, 405, { error: 'GET only' }); return true; }
   const q = queryOf(url);

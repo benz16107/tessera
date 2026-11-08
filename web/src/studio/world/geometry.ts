@@ -32,18 +32,30 @@ const quadGeometry = (quads: [number, number, number][][]) => {
   return g;
 };
 
-/** The ground polygon, extended 60 m past its ends along the street so shadows never run off the edge. */
-export function groundGeometry(g: StreetGeometry) {
+/** The street's ground polygon, extended 60 m past its ends along the street and 4 m past the curbs: the catcher's outline. */
+export function streetQuad(g: StreetGeometry): [number, number, number][] {
   const p = g.ground.polygon.map(v => new Vector3(...v));
   const along = p[1].clone().sub(p[0]).normalize().multiplyScalar(60);
+  const side = p[3].clone().sub(p[0]).normalize().multiplyScalar(4);
   const ext = (v: Vector3, s: number, w: Vector3) => {
     const o = v.clone().addScaledVector(along, s).add(w);
     o.z = groundZ(g, o.x, o.y);
     return o.toArray() as [number, number, number];
   };
-  const side = p[3].clone().sub(p[0]).normalize().multiplyScalar(4); // a little wider than the curbs
-  return quadGeometry([[ext(p[0], -1, side.clone().negate()), ext(p[1], 1, side.clone().negate()), ext(p[2], 1, side), ext(p[3], -1, side)]]);
+  return [ext(p[0], -1, side.clone().negate()), ext(p[1], 1, side.clone().negate()), ext(p[2], 1, side), ext(p[3], -1, side)];
 }
+
+/** Is (x, y) on our measured street (inside streetQuad)? */
+export function onStreet(g: StreetGeometry | null, x: number, y: number) {
+  if (!g) return false;
+  const q = streetQuad(g);
+  let c = false;
+  for (let i = 0, j = q.length - 1; i < q.length; j = i++) if ((q[i][1] > y) !== (q[j][1] > y) && x < ((q[j][0] - q[i][0]) * (y - q[i][1])) / (q[j][1] - q[i][1]) + q[i][0]) c = !c;
+  return c;
+}
+
+/** The ground catcher: the street quad as a mesh, so shadows never run off the edge. */
+export const groundGeometry = (g: StreetGeometry) => quadGeometry([streetQuad(g)]);
 
 export const facadeGeometry = (g: StreetGeometry) => quadGeometry(g.facades.flatMap(f => f.quads));
 

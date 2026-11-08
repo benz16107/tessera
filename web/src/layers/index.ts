@@ -1,3 +1,4 @@
+import { lazy } from 'react';
 // Live geodata layers for the studio (docs/GEODATA.md). Mount points (GeoScene takes overlays={view !== "shot"}: nothing of ours over the photo):
 //   const geo = useGeoLayers(session.id, session.spotId, planTime)
 //   <GeoScene geo={geo} origin={origin} groundAt={gz} labels={view !== 'shot'} />   inside the ENU group
@@ -10,3 +11,8 @@ export { default as GeoPanel, GeoButton } from './Panel.tsx';
 export { default as GeoBands } from './Bands.tsx';
 export { default as GeoOverview } from './Overview.tsx';
 export type { CameraCone } from './Map2D.tsx';
+// The full-screen Map view, lazy so MapLibre loads only when the map opens:
+//   <Suspense><GeoMapView geo={geo} sessionId={sid} origin={origin} at={planTime} zone={zone} camera={mapCam}
+//     onCamera={setMapCam} onEnter3D={(c, heading, pitch) => ...} onOpenShot={(t, mode) => ...} /></Suspense>
+export const GeoMapView = lazy(() => import('./MapView.tsx'));
+export type { MapCamera, ShotTarget } from './MapView.tsx';

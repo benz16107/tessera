@@ -51,4 +51,7 @@ export interface Track {
   video: { title: string; length: string; summary: string; shots: Shot[]; notes: string; url?: string };
   docs: { label: string; href: string }[];
   note?: string; // one honest status line shown near the top, e.g. stand-in proof
+  whyTitle?: string; // heading overrides for tracks without a product sponsor (Best Design)
+  theirsTitle?: string;
+  splitTitle?: string;
 }

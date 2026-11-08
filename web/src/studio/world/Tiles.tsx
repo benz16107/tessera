@@ -1,7 +1,8 @@
 // Google Photorealistic 3D Tiles inside the east-north-up group, for display and editing only.
 // Policy (Map Tiles API terms, BUILD.md): tile pixels and geometry never reach a render, an export, an AI step or an object
-// placement. Objects snap to our own ground plane (z = 0) and our own objects. The one read of tile geometry is
-// `alignGround` below, which only moves the tiles so their street surface sits on z = 0 for display; nothing is stored.
+// placement. Objects snap to our own ground plane (z = 0) and our own objects. Two reads of tile geometry, both for display
+// and navigation only, nothing stored: the alignment below, which moves the tiles so their street sits on z = 0, and
+// `tileGroundAt`, which keeps a walking eye above the ground.
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { CompressedTexture, LinearMipmapLinearFilter, Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, Raycaster, Vector3, type Camera } from 'three';
@@ -23,6 +24,19 @@ interface Props {
 }
 
 export const tilesRef: { current: TilesRenderer | null } = { current: null };
+
+const groundRay = new Raycaster();
+/** Navigation only (Walk's eye height): the first tile surface below (x, y) from `fromZ`, in the east-north-up frame.
+ *  Never stored, never used for placement, export, render or AI (Map Tiles API terms). */
+export function tileGroundAt(x: number, y: number, fromZ: number): number | null {
+  const t = tilesRef.current, enu = t?.group.parent;
+  if (!t || !enu || !t.group.visible || t.visibleTiles.size === 0) return null;
+  const from = new Vector3(x, y, fromZ).applyMatrix4(enu.matrixWorld);
+  groundRay.set(from, new Vector3(0, 0, -1).transformDirection(enu.matrixWorld));
+  groundRay.far = 600;
+  const hit = groundRay.intersectObject(t.group, true)[0];
+  return hit ? hit.point.applyMatrix4(enu.matrixWorld.clone().invert()).z : null;
+}
 
 export default function Tiles({ apiKey, origin, probes, visible, extraCamera, onAttribution, onGround, groundAt, contextOnly }: Props) {
   const { camera, gl } = useThree();
@@ -108,6 +122,9 @@ export default function Tiles({ apiKey, origin, probes, visible, extraCamera, on
     } else tiles.group.visible = visible;
     if (!tiles.group.visible) return;
     const cam = gl.xr.isPresenting ? gl.xr.getCamera() : camera;
+    // Finer tiles as the camera comes down: 2 px of error at street level, 4 px over the block, 8 px from high up.
+    const h = cam.position.y; // the frame's z = 0 is the street, and three's y is up
+    tiles.errorTarget = h < 80 ? 2 : h < 400 ? 4 : 8;
     tiles.setCamera(cam);
     tiles.setResolutionFromRenderer(cam, gl);
     if (extraCamera && extraCamera !== cam) { tiles.setCamera(extraCamera); tiles.setResolutionFromRenderer(extraCamera, gl); }

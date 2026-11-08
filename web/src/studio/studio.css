@@ -436,3 +436,13 @@
   .st-walk-help { top: 112px; bottom: auto; }
   .st-walk-joy { bottom: 136px; }
 }
+/* Place search: the input and up to five results in a menu, Nominatim's attribution underneath. */
+.st-search { width: min(380px, calc(100vw - 48px)); gap: 2px; }
+.st-search form { padding: 4px; }
+.st-search .st-input { width: 100%; height: 32px; padding: 0 10px; border-radius: var(--r-sm); background: var(--field); border: 0; color: var(--text); font-size: 13px; }
+.st-search > button { white-space: normal; line-height: 1.4; padding: 6px 8px !important; }
+.st-search .st-note { padding: 4px 8px; margin: 0; }
+.st-search-credit { margin: 4px 8px 2px; font-size: 11px; color: var(--text-3); }
+.st-search-credit a { color: var(--text-2); }
+.st-explore { position: absolute; left: 50%; top: 60px; translate: -50% 0; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 14px; z-index: 22; max-width: calc(100% - 24px); font-size: 13px; color: var(--text); }
+.st-explore > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }

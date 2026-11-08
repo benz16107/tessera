@@ -15,7 +15,7 @@ export function getStaticPaths() {
 interface Props { t: Track; prev?: Track; next?: Track }
 const { t, prev, next } = Astro.props;
 const STATUS: Record<Status, string> = { live: 'Live', built: 'Built', 'stand-in': 'Stand-in proof', blocked: 'Blocked' };
-const sections = [['why', `Why ${t.sponsor}`], ...(t.threads ? [['threads', 'The threads']] : []), ['where', "Where it's used"], ['proof', 'Proof'], ['split', 'Ours vs theirs'], ['limits', 'Limits'], ['video', 'Video']];
+const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['threads', 'The threads']] : []), ['where', "Where it's used"], ['proof', 'Proof'], ['split', 'Ours vs theirs'], ['limits', 'Limits'], ['video', 'Video']];
 ---
 <Landing title={`${t.sponsor} track: ShotMatch`} description={t.oneLine} current="tracks">
   <article class="tk">
@@ -23,7 +23,7 @@ const sections = [['why', `Why ${t.sponsor}`], ...(t.threads ? [['threads', 'The
       <nav class="crumbs" aria-label="Breadcrumb"><a href="/tracks/">Tracks</a><span aria-hidden="true">/</span>{t.sponsor}</nav>
       <p class="eyebrow">{t.prize}</p>
       <h1>{t.oneLine}</h1>
-      {t.note && <p class="tk-note"><span class="tag stand-in">Stand-in proof</span>{t.note}</p>}
+      {t.note && <p class="tk-note">{/^Stand-in proof: /.test(t.note) ? <><span class="tag stand-in">Stand-in proof</span>{t.note.replace(/^Stand-in proof: /, '')}</> : t.note}</p>}
     </header>
 
     <figure class="tk-hero">
@@ -45,7 +45,7 @@ const sections = [['why', `Why ${t.sponsor}`], ...(t.threads ? [['threads', 'The
     <nav class="tk-toc" aria-label="On this page">{sections.map(([id, label]) => <a href={`#${id}`}>{label}</a>)}</nav>
 
     <section id="why" class="tk-sec">
-      <h2>Why {t.sponsor}</h2>
+      <h2>{t.whyTitle ?? `Why ${t.sponsor}`}</h2>
       <div class="why-grid">
         {t.why.map((w, i) => (
           <div class="why"><span class="num why-n">0{i + 1}</span><h3>{w.title}</h3><p>{w.body}</p></div>
@@ -94,10 +94,10 @@ const sections = [['why', `Why ${t.sponsor}`], ...(t.threads ? [['threads', 'The
     </section>
 
     <section id="split" class="tk-sec">
-      <h2>What's ours, what's {t.sponsor}'s</h2>
+      <h2>{t.splitTitle ?? `What's ours, what's ${t.sponsor}'s`}</h2>
       <div class="split">
         <div><h3>ShotMatch built</h3><ul>{t.ours.map((x) => <li>{x}</li>)}</ul></div>
-        <div><h3>{t.sponsor} provides</h3><ul>{t.theirs.map((x) => <li>{x}</li>)}</ul></div>
+        <div><h3>{t.theirsTitle ?? `${t.sponsor} provides`}</h3><ul>{t.theirs.map((x) => <li>{x}</li>)}</ul></div>
       </div>
     </section>
 
@@ -184,7 +184,7 @@ const sections = [['why', `Why ${t.sponsor}`], ...(t.threads ? [['threads', 'The
   .video-row strong { color: var(--text); }
   .video-row .num { color: var(--text); }
   .use { display: flex; flex-direction: column; background: var(--panel); border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 1px var(--line); }
-  .use-img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: contain; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .use-img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: contain; background: var(--bg); border-bottom: 1px solid var(--line); }
     .use-body { padding: 16px 16px 18px; }
   .use-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
   .use h3 { font-size: 1.0625rem; line-height: 1.3; }

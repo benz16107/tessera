@@ -72,3 +72,25 @@ export async function photographersLayer(p: Place): Promise<LayerOut<Photographe
     sources: [{ layer: 'photographers', name: 'Geotagged Wikimedia Commons photos (spot model and lens dataset)', url: '/credits', license: 'Each photo under its own CC license, listed on the credits page', fetchedAt: null }],
   };
 }
+
+/** Shots around the world for the map's zoomed-out view: every geotagged photo in the lens dataset (37 landmarks),
+ *  trimmed to what a pin and its card need. Built from data/lens/meta.jsonl where it exists, else the saved extract. */
+export function worldPhotos() {
+  const lens = join(REPO, 'data/lens/meta.jsonl'), extract = join(LAYERS_DIR, 'world-photos.json');
+  if (!existsSync(lens)) return existsSync(extract) ? JSON.parse(readFileSync(extract, 'utf8')) : fc([]);
+  const num = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+  const feats: Feature[] = [];
+  for (const line of readFileSync(lens, 'utf8').split('\n')) {
+    if (!line.trim()) continue;
+    const x = JSON.parse(line), lat = num(x.lat), lon = num(x.lon);
+    if (lat === null || lon === null) continue;
+    const h = num(x.heading_deg), f = num(x.f35);
+    feats.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [Math.round(lon * 1e5) / 1e5, Math.round(lat * 1e5) / 1e5] }, properties: {
+      layer: 'world', kind: 'commons_photo', label: String(x.title ?? '').replace(/^File:/, ''), group: x.group ?? '',
+      heading: h === null ? undefined : Math.round(h), f35: f === null ? undefined : Math.round(f), author: x.author ?? '', license: x.license ?? '' } });
+  }
+  const out = fc(feats);
+  mkdirSync(LAYERS_DIR, { recursive: true });
+  writeFileSync(extract, JSON.stringify(out));
+  return out;
+}

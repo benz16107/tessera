@@ -134,6 +134,8 @@ test('photon events: every messaging platform, voice notes, email quotes, call.e
   assert.equal(email?.displayName, 'Jun');
   assert.equal(parseInbound(ev({ platform: 'whatsapp_business', content: { type: 'voice', attachmentId: 'pho_att_v' } }))?.attachmentIds[0], 'pho_att_v');
   assert.equal(parseInbound(ev({ platform: 'voice', content: { type: 'text', format: 'plain', text: 'x' } })), null);
+  const tg = parseInbound(ev({ platform: 'telegram', content: { type: 'attachment', attachmentId: 'pho_att_p', metadata: { caption: { format: 'plain', text: 'Manhattan Bridge from DUMBO' } } } }));
+  assert.deepEqual([tg?.text, tg?.attachmentIds], ['Manhattan Bridge from DUMBO', ['pho_att_p']], 'Telegram captions arrive on the attachment');
   assert.deepEqual(parseCallEnded({ id: 'e', type: 'call.ended', data: { object: { id: 'c1', direction: 'inbound', caller: { handle: '+14695550101' } } } }), { callId: 'c1', caller: '+14695550101' });
   assert.equal(parseCallEnded({ type: 'call.ended', data: { object: { direction: 'outbound', caller: { handle: 'x' } } } }), null);
   assert.equal(stripQuoted('ok\n-- Original Message\nold'), 'ok');

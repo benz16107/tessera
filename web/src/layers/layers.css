@@ -52,3 +52,20 @@
 .geo-tide[data-type='H']::before { border-bottom: 5px solid #8fb3e8; border-top-width: 0; }
 .geo-tide[data-type='L']::before { border-top: 5px solid #8fb3e8; border-bottom-width: 0; }
 @media (prefers-reduced-motion: reduce) { .geo-overview { transition: none; } }
+/* Full-screen Map view */
+.geo-mapview { position: absolute; inset: 0; z-index: 6; background: var(--bg, #0b0b0a); }
+.geo-mapview .geo-map { height: 100% !important; border-radius: 0; }
+.geo-maplayers { position: absolute; left: 16px; top: 64px; width: 248px; max-height: calc(100% - 140px); overflow: auto; padding: 10px 8px 8px; border-radius: var(--r); background: var(--glass); }
+.geo-maplayers h2 { margin: 0 8px 6px; font: 500 12px var(--sans); color: var(--text); }
+.geo-maplayers h2 small { font-weight: 400; color: var(--text-3); }
+.geo-toggles.one { grid-template-columns: 1fr; margin: 0; }
+.geo-shotcard { position: absolute; z-index: 8; width: 260px; translate: -50% calc(-100% - 14px); overflow: hidden; border-radius: var(--r); background: var(--panel); box-shadow: var(--shadow); font: 12px/1.4 var(--sans); color: var(--text); }
+.geo-shotcard > img { display: block; width: 100%; height: 140px; object-fit: cover; background: var(--field); }
+.geo-shotcard header { display: flex; align-items: center; gap: 8px; padding: 8px 6px 2px 12px; }
+.geo-shotcard header b { flex: 1; font-weight: 500; font-size: 13px; }
+.geo-shotcard ul { list-style: none; margin: 0; padding: 0 12px 8px; color: var(--text-2); display: flex; flex-direction: column; gap: 2px; }
+.geo-shotcard footer { display: flex; gap: 6px; padding: 0 12px 12px; }
+.geo-versions { display: flex; gap: 4px; padding: 0 12px 8px; }
+.geo-versions img { width: 52px; height: 52px; object-fit: cover; border-radius: 4px; }
+.geo-mapview-hint { position: absolute; left: 50%; bottom: 16px; translate: -50% 0; margin: 0; padding: 4px 10px; border-radius: 999px; background: var(--glass); font: 11px var(--sans); color: var(--text-2); pointer-events: none; white-space: nowrap; }
+.geo-mapview[data-theme='light'] .geo-mapview-hint { background: rgba(255, 255, 255, 0.9); color: #44413b; }

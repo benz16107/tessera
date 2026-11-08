@@ -12,7 +12,10 @@ const PLATFORMS = new Set(['imessage', 'telegram', 'sms', 'email', 'whatsapp', '
 function flatten(c: any, texts: string[], atts: string[]) {
   if (!c) return;
   if (c.type === 'text' && c.text) texts.push(String(c.text));
-  else if ((c.type === 'attachment' || c.type === 'voice') && c.attachmentId) atts.push(String(c.attachmentId));
+  else if ((c.type === 'attachment' || c.type === 'voice') && c.attachmentId) {
+    atts.push(String(c.attachmentId));
+    if (c.metadata?.caption?.text) texts.push(String(c.metadata.caption.text)); // a Telegram photo's caption rides on the attachment
+  }
   else if (c.type === 'group' && Array.isArray(c.parts)) for (const p of c.parts) flatten(p, texts, atts);
 }
 
