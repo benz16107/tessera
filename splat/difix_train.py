@@ -7,7 +7,8 @@ use only; its model nvidia/difix_ref builds on Stability AI's SD-Turbo) with fou
      the held-out photos, STEP metres per fix (their 0.5 is in a normalized scene; ours is in metres);
   2. the train/val split follows gsplat's convention (every 8th photo held out), not their sparse-view one;
   3. the reference photo is centre-cropped and resized to the render's size (Commons photos differ in size);
-  4. GPU memory the fixer used is released after each fix, since vLLM shares the GPU.
+  4. GPU memory the fixer used is released after each fix, since vLLM shares the GPU;
+  5. each fixed image keeps its render's per-channel mean and spread (DIFIX_MATCH=0 turns it off; see match_stats).
 
   DIFIX_TARGETS=.../difix_targets.json [DIFIX_STEP=1.5] python splat/difix_train.py --data-dir ... --ckpt ...
 Takes the same flags as their script (tyro); see splat/difix.sh for the run.
@@ -45,8 +46,17 @@ def ds_init(self, parser, split='train', *a, **k):
 colmap.Dataset.__init__ = ds_init
 
 
+def match_stats(out, like):
+    """Per-channel mean and spread of `out` set to those of `like`: Difix keeps adding detail, but the scene's
+    brightness and colour balance stay where the splat had them. Without it the first run drifted toward a dusk
+    reference photo, round after round (one view's brightness went 131 -> 50 over 10 fixes)."""
+    o, l = np.asarray(out, np.float32), np.asarray(like, np.float32)
+    o = (o - o.mean((0, 1))) / (o.std((0, 1)) + 1e-3) * l.std((0, 1)) + l.mean((0, 1))
+    return Image.fromarray(np.clip(o, 0, 255).astype(np.uint8))
+
+
 class FitRef:
-    """Difix wants the reference the same size as the render."""
+    """Difix wants the reference the same size as the render; its output is held to the render's colour stats."""
 
     def __init__(self, pipe):
         self.pipe = pipe
@@ -54,7 +64,10 @@ class FitRef:
     def __call__(self, *a, image, ref_image=None, **k):
         if ref_image is not None and ref_image.size != image.size:
             ref_image = ImageOps.fit(ref_image, image.size, Image.LANCZOS)
-        return self.pipe(*a, image=image, ref_image=ref_image, **k)
+        res = self.pipe(*a, image=image, ref_image=ref_image, **k)
+        if os.environ.get('DIFIX_MATCH', '1') == '1':
+            res.images[0] = match_stats(res.images[0], image)
+        return res
 
 
 _runner_init, _fix = T.Runner.__init__, T.Runner.fix

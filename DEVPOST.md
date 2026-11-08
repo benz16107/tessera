@@ -23,14 +23,14 @@ under "Video": https://site.104-238-146-229.sslip.io/tracks/
 
 ## Image gallery (upload in this order)
 
-All in `site/public/devpost/` and served at https://site.104-238-146-229.sslip.io/devpost/. The first is the thumbnail.
+All in `site/public/devpost/` and served at https://site.104-238-146-229.sslip.io/devpost/. The first is the thumbnail. Images 1, 3, 5 and 6 were retaken from production on Nov 8 at about 1:45 AM ET, after the horizon-label and geo-dots fixes; regenerate with `node site/scripts/devpost-images.mjs`.
 
-1. `1-studio-camera.jpg`. Caption: "Studio, looking through the shot camera: your photo as the backplate, your people and lens in the shared set".
+1. `1-studio-camera.jpg`. Caption: "Studio, looking through Cam A: your photo as the backplate, two placed people, focus on a person, the horizon marked in the margin".
 2. `2-simple-found.jpg`. Caption: "Simple: where to stand, which way to face, and the lens as 2.2x on your iPhone".
-3. `3-render.jpg`. Caption: "A render puts your objects into your own photo, labelled AI interpretation".
+3. `3-render.jpg`. Caption: "Through Cam A beside the AI render: your people placed in your own photo, labelled AI interpretation".
 4. `4-phones.jpg`. Caption: "The four steps on a phone: drop, found it, make it yours, take me there".
-5. `5-live-data.jpg`. Caption: "Live data: every edit is a SpacetimeDB row every screen shares".
-6. `6-conditions.jpg`. Caption: "Conditions: real building shadows, permits and scaffolding near the mark".
+5. `5-live-data.jpg`. Caption: "Two people on one set: the People panel and the live SpacetimeDB feed of every edit".
+6. `6-conditions.jpg`. Caption: "Conditions: sunset colour, tide, street shadow, scaffolding and where photographers stood, on one map".
 
 ## Try it out (links)
 

@@ -14,6 +14,6 @@ ln -sfn "$D/input/images" "$D/difix_data/images"; ln -sfn "$D/input/sparse" "$D/
 fixes=$(seq 30000 2000 $((STEPS - 2000)))
 cd /ephemeral/Difix3D/examples/gsplat
 DIFIX_TARGETS=$D/difix_targets.json HF_HOME=${HF_HOME:-/ephemeral/hf} /ephemeral/venv-difix/bin/python "$here/difix_train.py" \
-  --data-dir "$D/difix_data" --data-factor 1 --result-dir "$D/difix_run" --no-normalize-world-space --test-every 8 \
+  --data-dir "$D/difix_data" --data-factor 1 --result-dir "$D/${RUN:-difix_run}" --no-normalize-world-space --test-every 8 \
   --ckpt "$D/run/ckpts/crop_29999.pt" --max-steps "$STEPS" --fix-steps $fixes --eval-steps "$STEPS" --save-steps "$STEPS" \
   --disable-viewer

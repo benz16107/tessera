@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import Credits from './Credits.tsx';
-import { storedView, viewPath, type ViewName } from './simple/view.ts';
+import { rememberView, storedView, viewPath, type ViewName } from './simple/view.ts';
 
 const Home = lazy(() => import('./simple/Drop.tsx')); // the drop page stays light: no 3D libraries
 const Simple = lazy(() => import('./simple/Simple.tsx'));
@@ -8,16 +8,26 @@ const Legal = lazy(() => import('./simple/Legal.tsx'));
 const Scout = lazy(() => import('./Scout.tsx'));
 const Studio = lazy(() => import('./studio/Studio.tsx'));
 
-/** Shows a reload prompt when a chunk fails to download (flaky networks) instead of a blank page. */
-export class LoadBoundary extends Component<{ children: ReactNode; label: string }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() { return { failed: true }; }
+/** Keep a failed view recoverable and show the error needed to diagnose it. */
+export class LoadBoundary extends Component<{ children: ReactNode; label: string }, { failed: boolean; error: string }> {
+  state = { failed: false, error: '' };
+  static getDerivedStateFromError(error: unknown) {
+    return { failed: true, error: error instanceof Error ? error.message : String(error) };
+  }
+  componentDidCatch(error: Error) {
+    console.error(`${this.props.label} failed to load`, error);
+  }
   render() {
     if (!this.state.failed) return this.props.children;
     return (
       <div className="load-failed" role="alert">
-        <p>{this.props.label} did not load. The connection may have dropped.</p>
+        <p>{this.props.label} did not load.</p>
+        <p>{/webgl|webglrenderer|graphics context/i.test(this.state.error)
+          ? 'The browser could not start the 3D graphics view. Check that hardware acceleration is enabled, then reload.'
+          : 'Reload to try again. If it still fails, share the error below.'}</p>
+        <details><summary>Error details</summary><pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxWidth: '60ch' }}>{this.state.error}</pre></details>
         <button className="btn" onClick={() => location.reload()}>Reload</button>
+        {location.pathname.startsWith('/studio/') && <a href={location.pathname.replace('/studio/', '/p/') + location.search} onClick={() => rememberView('simple')}>Open Simple view</a>}
       </div>
     );
   }
