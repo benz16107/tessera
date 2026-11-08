@@ -90,7 +90,7 @@ Google's Map Tiles policy bans image analysis of their tiles and content derived
 
 ## Known limits
 
-- Only mapped spots. A photo from anywhere else gets "Couldn't place" or "we haven't mapped this spot".
+- The solve runs only at mapped spots. A photo from anywhere else still opens a shoot at its place (from its GPS, or from Nemotron reading its signs), but without a solved standing spot, heading or lens.
 - Outdoor places with enough photos. Commons is thin for Dallas landmarks, which is why DUMBO came first.
 - Night photos against a daytime model have not been tested. Not measured.
 - The original capture time cannot be recovered: reading the time from the lighting missed by 52 to 123 degrees in our tests. Light is forward planning only.

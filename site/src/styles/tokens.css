@@ -1,7 +1,10 @@
-/* Tessera "Darkroom" tokens, from the studio (web/src/studio/studio.css, Figma QrpLuCwKGGFFBSDRMd7VqS round 3).
-   Near-black ground, one amber accent for the primary action and the current place, Archivo for words, Martian Mono
-   for numbers. The site is dark only, like the studio: the photos and renders are the brightest things on screen.
-   Sizes snap to a 12/14/16/18/20/24/30/36/48/60 scale; spacing to 4/8/12/16/24/32/40/48/64/80/96. */
+/* Tessera "Darkroom" tokens, the same values as the app: colours from web/src/studio/studio.css, shapes and the type
+   scale from web/src/ui/tokens.css. Near-black ground, one amber accent for the primary action and the current place,
+   Archivo for words, Martian Mono for numbers. The site is dark only, like Studio: the photos and renders are the
+   brightest things on screen.
+   Radius: 6 px for controls (buttons, inputs, chips, tags, segmented buttons), 10 px for panels (cards, code blocks,
+   frames, photos). A panel holding 6 px controls on 4 px padding stays concentric.
+   Type: the app's 11 / 13 / 16 / 20 / 28, plus 40 and 56 for page and hero headings. Spacing: a 4 px grid. */
 :root {
   --bg: #0b0b0a;
   --panel: #111110;
@@ -11,8 +14,9 @@
   --line-2: #33312c;
   --text: #f2efe8;
   --text-2: #a39f96;
-  --text-3: #8a857c; /* lighter than the studio's #75716a so small text passes AA on --bg (5.3:1) */
+  --text-3: #8a857c; /* lighter than Studio's #75716a so small text passes AA on --bg (5.3:1) */
   --amber: #f2a33a;
+  --amber-hover: #f5b65c;
   --amber-ink: #1a1206;
   --amber-tint: rgba(242, 163, 58, 0.14);
   --amber-line: rgba(242, 163, 58, 0.65);
@@ -20,8 +24,23 @@
   --red: #e8675e;
   --mono: 'Martian Mono', ui-monospace, monospace;
   --sans: 'Archivo Variable', 'Archivo', system-ui, sans-serif;
-  --r: 8px;
+
+  --r: 6px;
   --r-sm: 6px;
+  --r-panel: 10px;
+  --control-h: 36px;
+  --control-h-dense: 28px;
+  --control-h-touch: 44px;
+
+  --t-xs: 0.6875rem; /* 11: labels, metadata */
+  --t-sm: 0.8125rem; /* 13: buttons, captions, table text */
+  --t-md: 1rem; /* 16: body */
+  --t-lg: 1.25rem; /* 20: lead paragraphs, card titles */
+  --t-xl: 1.75rem; /* 28: section headings */
+  --t-2xl: 2.5rem; /* 40: page headings */
+  --t-3xl: 3.5rem; /* 56: the landing hero */
+
+  --header-h: 48px;
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   color-scheme: dark;

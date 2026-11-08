@@ -1,38 +1,28 @@
 ---
-// The bar shared by the landing page and the docs. On docs pages Starlight's search sits in the middle slot.
+// The bar shared by every page, built like Studio's top bar: the ring wordmark, page tabs, one amber button.
+// On docs pages Starlight's search sits in the middle slot.
 import { APP_URL } from '../site.ts';
-import mark from '../assets/mark.svg?raw';
 interface Props { current?: 'home' | 'tracks' | 'docs' }
 const { current } = Astro.props;
 const path = Astro.url.pathname;
 const here = current ?? (path.startsWith('/tracks') ? 'tracks' : path.startsWith('/docs') ? 'docs' : 'home');
 ---
 <div class="sm-bar">
-  <a class="sm-brand" href="/" aria-label="Tessera home"><span class="sm-mark" set:html={mark} />Tessera</a>
+  <a class="wordmark" href="/" aria-label="Tessera home">TESSERA</a>
   <slot name="middle" />
   <nav class="sm-nav" aria-label="Site">
     <a href="/tracks/" aria-current={here === 'tracks' ? 'page' : undefined}>Tracks</a>
     <a href="/docs/get-started/" aria-current={here === 'docs' ? 'page' : undefined}>Docs</a>
-    <a class="sm-cta" href={APP_URL}>Open the app</a>
   </nav>
+  <a class="btn primary sm-cta" href={APP_URL}>Open the app</a>
 </div>
 
 <style is:global>
   .sm-bar { display: flex; align-items: center; gap: 16px; height: 100%; width: 100%; }
-  .sm-brand { display: inline-flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none; font-family: var(--sans); font-weight: 600; font-size: 1rem; letter-spacing: -0.01em; white-space: nowrap; }
-  .sm-mark { display: inline-flex; width: 20px; height: 20px; }
-  .sm-mark svg { width: 100%; height: 100%; }
-  .sm-nav { display: flex; align-items: center; gap: 4px; margin-left: auto; font-family: var(--sans); font-size: 0.875rem; font-weight: 600; }
-  .sm-nav a { color: var(--text-2); text-decoration: none; padding: 8px 12px; border-radius: var(--r-sm); transition: color 0.2s var(--ease), background-color 0.2s var(--ease); white-space: nowrap; }
-  .sm-nav a:hover { color: var(--text); background: var(--raise); }
-  .sm-nav a[aria-current='page'] { color: var(--text); box-shadow: inset 0 -2px 0 var(--amber); border-radius: 0; }
-  .sm-nav .sm-cta { color: var(--amber-ink); background: var(--amber); margin-left: 8px; }
-  .sm-nav .sm-cta:hover { color: var(--amber-ink); background: #f5b65c; }
-  .sm-nav .sm-cta:active { transform: translateY(1px); }
-  @media (prefers-reduced-motion: reduce) { .sm-nav a { transition: none; } .sm-nav .sm-cta:active { transform: none; } }
-  @media (max-width: 420px) {
-    .sm-bar { gap: 8px; }
-    .sm-nav a { padding: 8px; }
-    .sm-nav .sm-cta { margin-left: 4px; padding: 8px 12px; }
-  }
+  .sm-nav { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+  .sm-nav a { display: inline-flex; align-items: center; height: var(--control-h-dense); padding: 0 12px; border-radius: var(--r); font: 500 var(--t-sm) / 1 var(--sans); color: var(--text-2); text-decoration: none; white-space: nowrap; transition-property: background-color, color; transition-duration: 120ms; transition-timing-function: ease-out; }
+  .sm-nav a[aria-current='page'] { background: var(--raise); color: var(--text); }
+  @media (hover: hover) and (pointer: fine) { .sm-nav a:hover { color: var(--text); } }
+  .sm-cta { flex: none; }
+  @media (max-width: 420px) { .sm-bar { gap: 8px; } .sm-nav a { padding: 0 8px; } }
 </style>

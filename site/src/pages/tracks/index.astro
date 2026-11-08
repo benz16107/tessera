@@ -31,7 +31,7 @@ import { APP_URL, DEMO_CODE } from '../../site.ts';
       <p>The overall prizes are judged on the whole project. Try it on the demo shoot, or read how it works.</p>
       <div class="tx-links">
         <a class="btn primary" href={`${APP_URL}/p/${DEMO_CODE}`}>Open the demo shoot</a>
-        <a class="btn quiet" href="/docs/get-started/">Read the docs</a>
+        <a class="btn secondary" href="/docs/get-started/">Read the docs</a>
       </div>
     </section>
   </div>
@@ -41,25 +41,22 @@ import { APP_URL, DEMO_CODE } from '../../site.ts';
   .tx { max-width: 1088px; margin: 0 auto; padding: 64px 24px 96px; }
   @media (max-width: 420px) { .tx { padding-inline: 16px; } }
   .tx-head { max-width: 760px; }
-  .tx .eyebrow { margin: 0; font: 400 0.75rem/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--amber); }
-  .tx h1 { margin: 12px 0 0; font-size: 2.25rem; line-height: 1.15; font-weight: 600; letter-spacing: -0.02em; text-wrap: balance; }
-  .tx-lede { margin: 16px 0 0; color: var(--text-2); font-size: 1.125rem; line-height: 1.6; text-wrap: pretty; }
+  .tx .eyebrow { margin: 0; font: 400 var(--t-xs) / 1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--amber); }
+  .tx h1 { margin: 12px 0 0; font-size: var(--t-2xl); line-height: 1.15; font-weight: 600; letter-spacing: -0.02em; text-wrap: balance; }
+  .tx-lede { margin: 16px 0 0; color: var(--text-2); font-size: var(--t-lg); line-height: 1.6; text-wrap: pretty; }
   .tx-grid { list-style: none; margin: 48px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
-  .tx-card { display: flex; flex-direction: column; height: 100%; border-radius: 14px; overflow: hidden; background: var(--panel); box-shadow: 0 0 0 1px var(--line); color: var(--text); text-decoration: none; transition: box-shadow 0.2s ease; }
+  .tx-card { display: flex; flex-direction: column; height: 100%; border-radius: var(--r-panel); overflow: hidden; background: var(--panel); box-shadow: 0 0 0 1px var(--line); color: var(--text); text-decoration: none; transition: box-shadow 0.2s ease; }
   @media (hover: hover) and (pointer: fine) { .tx-card:hover { box-shadow: 0 0 0 1px var(--amber-line); } }
   .tx-card:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; }
   .tx-img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; object-position: top; background: var(--bg); border-bottom: 1px solid var(--line); }
   .tx-body { padding: 20px 20px 24px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-  .tx-prize { margin: 0; font: 400 0.6875rem/1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
-  .tx-card h2 { margin: 0; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; }
+  .tx-prize { margin: 0; font: 400 var(--t-xs) / 1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
+  .tx-card h2 { margin: 0; font-size: var(--t-xl); font-weight: 600; letter-spacing: -0.02em; }
   .tx-line { margin: 0; color: var(--text-2); line-height: 1.55; text-wrap: pretty; }
-  .tx-num { margin: auto 0 0; padding-top: 12px; color: var(--text-2); font-size: 0.875rem; border-top: 1px solid var(--line); }
-  .tx-num .num { font-family: var(--mono); color: var(--text); font-size: 1rem; }
+  .tx-num { margin: auto 0 0; padding-top: 12px; color: var(--text-2); font-size: var(--t-sm); border-top: 1px solid var(--line); }
+  .tx-num .num { font-family: var(--mono); color: var(--text); font-size: var(--t-md); }
   .tx-foot { margin-top: 72px; padding-top: 32px; border-top: 1px solid var(--line); }
   .tx-foot p { margin: 0; color: var(--text-2); }
   .tx-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
-  .tx .btn { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px; border-radius: var(--r); font-weight: 600; text-decoration: none; transition: background-color 0.2s ease; }
-  .tx .btn.primary { background: var(--amber); color: var(--amber-ink); }
-  .tx .btn.quiet { background: var(--raise); color: var(--text); }
-  @media (max-width: 760px) { .tx { padding-top: 40px; } .tx h1 { font-size: 1.75rem; } .tx-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 760px) { .tx { padding-top: 40px; } .tx h1 { font-size: var(--t-xl); } .tx-grid { grid-template-columns: 1fr; } }
 </style>

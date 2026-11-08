@@ -1,30 +1,29 @@
 ---
 import { APP_URL, REPO } from '../site.ts';
-import mark from '../assets/mark.svg?raw';
 ---
 <footer class="sm-footer">
   <div class="sm-footer-in">
     <div class="sm-footer-brand">
-      <a class="sm-brand" href="/"><span class="sm-mark" set:html={mark} />Tessera</a>
+      <a class="wordmark" href="/">TESSERA</a>
       <p>Built at HackUTD 2026 in Dallas, November 7 and 8.</p>
       <p>Map imagery in the app comes from Google Photorealistic 3D Tiles and is shown for planning only. It never enters a render, an export or an AI step.</p>
     </div>
     <nav aria-label="Product">
-      <h2>Product</h2>
+      <h2 class="label">Product</h2>
       <a href={APP_URL}>Open the app</a>
       <a href="/docs/get-started/">Get started</a>
       <a href="/docs/how-it-works/overview/">How it works</a>
       <a href="/tracks/">Tracks</a>
     </nav>
     <nav aria-label="Reference">
-      <h2>Reference</h2>
+      <h2 class="label">Reference</h2>
       <a href="/docs/reference/http-api/">HTTP API</a>
       <a href="/docs/reference/spacetimedb/">SpacetimeDB module</a>
       <a href="/docs/reference/lens-catalog/">Lens catalog</a>
       <a href="/llms.txt">llms.txt</a>
     </nav>
     <nav aria-label="Legal">
-      <h2>Legal</h2>
+      <h2 class="label">Legal</h2>
       <a href="/credits/">Credits and licenses</a>
       <a href="/privacy/">Privacy</a>
       <a href="/terms/">Terms</a>
@@ -34,12 +33,14 @@ import mark from '../assets/mark.svg?raw';
 </footer>
 
 <style is:global>
-  .sm-footer { border-top: 1px solid var(--line); background: var(--bg); color: var(--text-2); font-family: var(--sans); font-size: 0.875rem; line-height: 1.43; }
-  .sm-footer-in { max-width: 1200px; margin: 0 auto; padding: 48px 24px; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 32px; }
-  .sm-footer-brand p { margin: 12px 0 0; max-width: 40ch; }
+  .sm-footer { border-top: 1px solid var(--line); background: var(--bg); color: var(--text-2); font-family: var(--sans); font-size: var(--t-sm); line-height: 1.5; }
+  .sm-footer-in { max-width: 1200px; margin: 0 auto; padding: 48px 24px 64px; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 32px; }
+  .sm-footer-brand p { margin: 12px 0 0; max-width: 44ch; color: var(--text-3); text-wrap: pretty; }
+  .sm-footer-brand p:first-of-type { margin-top: 16px; color: var(--text-2); }
   .sm-footer nav { display: flex; flex-direction: column; gap: 8px; }
-  .sm-footer h2 { margin: 0 0 4px; font-size: 0.75rem; font-family: var(--mono); font-weight: 400; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; }
-  .sm-footer nav a { color: var(--text-2); text-decoration: none; width: fit-content; }
-  .sm-footer nav a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 0.18em; }
+  .sm-footer nav .label { margin-bottom: 4px; }
+  .sm-footer nav a { color: var(--text-2); text-decoration: none; width: fit-content; transition: color 120ms ease-out; }
+  .sm-footer nav a:hover { color: var(--text); }
   @media (max-width: 760px) { .sm-footer-in { grid-template-columns: 1fr 1fr; } .sm-footer-brand { grid-column: 1 / -1; } }
+  @media (max-width: 420px) { .sm-footer-in { padding-inline: 16px; } }
 </style>

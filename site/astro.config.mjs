@@ -22,13 +22,16 @@ export default defineConfig({
         ThemeSelect: './src/components/ThemeSelect.astro',
         Footer: './src/components/Footer.astro',
       },
-      customCss: ['@fontsource-variable/archivo', '@fontsource/martian-mono/400.css', '@fontsource/martian-mono/500.css', './src/styles/tokens.css', './src/styles/starlight.css'],
+      customCss: ['@fontsource-variable/archivo', '@fontsource/martian-mono/400.css', '@fontsource/martian-mono/500.css', './src/styles/tokens.css', './src/styles/ui.css', './src/styles/starlight.css'],
       lastUpdated: false,
       pagination: true,
       tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 3 },
       expressiveCode: {
         themes: ['github-dark'],
-        styleOverrides: { borderRadius: '6px', codeFontFamily: 'var(--mono)' },
+        styleOverrides: {
+          borderRadius: '10px', borderColor: '#22211e', codeBackground: '#111110', codeFontFamily: 'var(--mono)', codeFontSize: '0.8125rem', uiFontFamily: 'var(--sans)',
+          frames: { editorTabBarBackground: '#181816', editorActiveTabBackground: '#111110', editorActiveTabIndicatorTopColor: '#f2a33a', terminalTitlebarBackground: '#181816', terminalBackground: '#111110', frameBoxShadowCssValue: 'none', inlineButtonBackground: '#33312c' },
+        },
         defaultProps: { overridesByLang: { 'sh,bash,shell,zsh,console': { frame: 'code' } } },
       },
       head: [

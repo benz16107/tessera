@@ -30,7 +30,9 @@ The tools that exist each cover one side of the gap. Lens and similar tools name
 
 ### Where does it work today?
 
-At one mapped spot: the Manhattan Bridge view from Washington St in DUMBO, Brooklyn. A photo from a place we have not mapped gets an honest "we haven't mapped this spot". Mapping a spot takes about 150 photos and about 23 minutes on a CPU.
+A photo from anywhere opens a shoot at its place. Tessera takes the place from the photo's GPS, or, without GPS, from Nemotron reading its signs, landmarks and script, which OpenStreetMap then finds on the map. Ben's Clifton Hill photo was read from its Travelodge and Ruby Tuesday signs as Clifton Hill, Niagara Falls, 40 m from its own GPS.
+
+The exact standing spot, heading and lens are still solved only at mapped spots. Today that is one: the Manhattan Bridge view from Washington St in DUMBO, Brooklyn. Mapping a spot takes about 150 photos and about 23 minutes on a CPU.
 
 ### Does it find the spot from Google's 3D map?
 

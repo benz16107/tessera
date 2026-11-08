@@ -2,6 +2,7 @@
 import '@fontsource-variable/archivo';
 import '@fontsource/martian-mono/400.css';
 import '../styles/tokens.css';
+import '../styles/ui.css';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import { DESCRIPTION, SITE_URL } from '../site.ts';
@@ -36,9 +37,9 @@ const { title, description = DESCRIPTION, current = 'home' } = Astro.props;
   * { box-sizing: border-box; }
   html { background: var(--bg); }
   body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 1rem; line-height: 1.5; -webkit-font-smoothing: antialiased; }
-  .skip { position: absolute; left: 16px; top: -48px; background: var(--amber); color: var(--amber-ink); padding: 8px 12px; border-radius: var(--r-sm); z-index: 10; }
+  .skip { position: absolute; left: 16px; top: -48px; background: var(--amber); color: var(--amber-ink); padding: 8px 12px; border-radius: var(--r); z-index: 10; }
   .skip:focus { top: 8px; }
-  .land-head { position: sticky; top: 0; z-index: 5; height: 56px; padding: 0 24px; background: rgba(11, 11, 10, 0.94); border-bottom: 1px solid var(--line); }
-  @media (max-width: 420px) { .land-head { padding: 0 16px; } }
+  .land-head { position: sticky; top: 0; z-index: 5; height: var(--header-h); padding: 0 8px 0 16px; background: var(--bg); border-bottom: 1px solid var(--line); }
+  img { outline: 1px solid rgba(255, 255, 255, 0.1); outline-offset: -1px; }
   :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 </style>

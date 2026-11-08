@@ -26,10 +26,12 @@ async function positions(page) {
     };
     const below = (sel, off) => Math.round(document.querySelector(sel).getBoundingClientRect().top + scrollY - off);
     return [
-      ...at('[data-hero]', [0, 0.25, 0.55, 0.97]),
+      ...at('[data-hero]', [0, 0.35, 0.7, 1]),
       ...at('[data-steps]', [0.05, 0.38, 0.68, 0.97]),
-      below('[data-views]', 120),
-      below('[data-numbers]', innerHeight * 0.3),
+      below('.anywhere', 96),
+      below('.camera', 96),
+      below('.bake', 96),
+      below('.live', 96),
       document.documentElement.scrollHeight - innerHeight,
     ];
   });
@@ -46,7 +48,7 @@ for (const [size, opts] of Object.entries(SIZES)) {
   const frames = [];
   for (const [i, y] of (await positions(page)).entries()) {
     await page.evaluate((y) => scrollTo(0, y), y);
-    await sleep(i === 8 ? 2200 : i === 9 ? 1800 : 700); // the Simple-to-Studio wipe and the count-up need time to finish
+    await sleep(900);
     frames.push(await page.screenshot());
   }
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
@@ -79,12 +81,12 @@ const page = await ctx.newPage();
 await page.goto(base + '/', { waitUntil: 'networkidle' });
 await sleep(1500);
 await page.mouse.move(640, 400);
-// About 30 s of scrolling, with short holds where the story lands: the camera view, and the Simple-to-Studio wipe.
+// About 30 s of scrolling, with short holds where the story lands: dusk at the end of the time scrub, and the camera.
 const total = await page.evaluate(() => document.documentElement.scrollHeight - innerHeight);
 const holds = await page.evaluate(() => {
   const sp = document.querySelector('[data-hero]').closest('.pin-spacer');
-  const views = document.querySelector('[data-views]');
-  return [sp.offsetTop + sp.offsetHeight * 0.62, views.getBoundingClientRect().top + scrollY - innerHeight * 0.3];
+  const cam = document.querySelector('[data-camera]');
+  return [sp.offsetTop + sp.offsetHeight * 0.55, cam.getBoundingClientRect().top + scrollY - innerHeight * 0.2];
 });
 const step = Math.max(24, Math.round(total / 520));
 for (let y = 0; y < total; y += step) {
