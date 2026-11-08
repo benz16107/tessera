@@ -113,6 +113,21 @@ Google Lens names the place in a photo. It doesn't say where the photographer st
 
 ![Through Cam A beside the AI render, with Nemotron's check](https://tesseraphoto.com/devpost/3-render.jpg)
 
+### How we built it
+
+- **The solver** (Python): we built a 3D model of the spot from 155 Creative Commons photos with pycolmap, then match a new photo against it with SuperPoint, LightGlue and MegaLoc to recover the position, heading and focal length. It runs on a CPU.
+- **The live set** (SpacetimeDB): one TypeScript module is the whole backend. Rows, row-level security, schedules for the sun and alerts, and a procedure that calls Nemotron.
+- **The crew service** (Node on a Vultr VM): it calls the Nemotron models, the render on Vultr Serverless Inference, Photon and ElevenLabs, behind Caddy with HTTPS.
+- **The apps** (React, three.js, MapLibre): Studio for the crew, Simple for everyone else, and an Astro site with a page per track.
+- **Our model:** a LoRA on Nemotron Nano 12B v2 VL, trained on a Brev A100 and served with vLLM.
+
+### Challenges
+
+- FLUX.1-dev returned HTTP 500 all night, so the render moved to Qwen-Image on Vultr, and every result names the model that made it.
+- TRELLIS failed often, so a failed prop becomes a flat cut-out at its real size instead of nothing.
+- Vultr's monthly cap blocked a GPU instance, so the fine-tune ran on Brev.
+- A SpacetimeDB database that other databases have called can't be deleted and recreated, which cost us our dev database once.
+
 ### Limits
 
 - One spot is mapped exactly today (DUMBO). A new spot takes about 150 photos and 23 minutes on a CPU. Anywhere else, Nemotron names the place, OpenStreetMap pins it, and Tessera marks it approximate.
