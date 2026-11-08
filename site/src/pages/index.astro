@@ -17,6 +17,7 @@ import yours from '../assets/shots/simple-yours-phone.png';
 import there from '../assets/shots/simple-there-start-phone.png';
 import live from '../assets/shots/studio-live-prod.png';
 import anywhere from '../assets/shots/simple-anywhere-phone.png';
+import anywhereArea from '../assets/shots/simple-anywhere-area-phone.png';
 import renderPair from '../assets/camera/render-pair.png';
 import vf16 from '../assets/camera/vf-16mm.png';
 import vf35 from '../assets/camera/vf-35mm.png';
@@ -123,12 +124,15 @@ const demo = `${APP_URL}/p/${DEMO_CODE}`;
     <div class="copy">
       <p class="label">Works anywhere</p>
       <h2 id="anywhere-h">Any photo opens a shoot at its place.</h2>
-      <p>With GPS in the photo, Tessera uses it. Without, Nemotron reads the signs, landmarks and script, and OpenStreetMap finds the place it names, in about <span class="num">2.5 s</span>. The exact standing spot and lens are solved where the place has a mapped model, like DUMBO; anywhere else the shoot says it is approximate.</p>
+      <p>With GPS in the photo, Tessera uses it. Without, Nemotron reads the signs, landmarks and script, and OpenStreetMap finds the place it names, in about <span class="num">2.5 s</span>. If the guess is wrong, search a name, tap the exact spot, or circle an area and Nemotron looks again inside it. The exact standing spot and lens are solved where the place has a mapped model, like DUMBO; anywhere else the shoot says it is approximate.</p>
       <p class="fine">Coordinates come from the photo's GPS or the geocoder, never from the model.</p>
     </div>
     <figure class="anywhere-shot">
-      <div class="anywhere-phone"><Iphone><Image src={anywhere} alt="Simple on a phone, dark: a photo of the Eiffel Tower from the Seine with no GPS, marked Approximate, Eiffel Tower, Paris, Nemotron's guess from the photo, with Change place, facing not measured and lens unknown" widths={[400, 800]} sizes="(max-width: 900px) 70vw, 300px" loading="lazy" /></Iphone></div>
-      <figcaption>Production, a photo with no GPS. Photo: <a href="https://commons.wikimedia.org/wiki/File:Eiffel_Tower,_Paris,_France_(Unsplash_PM4VZZn-YyM).jpg">John Towner</a>, CC0.</figcaption>
+      <div class="anywhere-phones">
+        <div class="anywhere-phone"><Iphone><Image src={anywhere} alt="Simple on a phone: a photo of the Eiffel Tower from the Seine with no GPS, marked Approximate, Eiffel Tower, Paris, Nemotron's guess from the photo, with Change place, facing not measured and lens unknown" widths={[400, 800]} sizes="(max-width: 900px) 42vw, 240px" loading="lazy" /></Iphone></div>
+        <div class="anywhere-phone"><Iphone><Image src={anywhereArea} alt="The same shoot after Change place: Search, Exact spot and Area, with Area chosen: a dark map of Paris with a 1.5 km circle to drag over where the photo was taken, and Find it in this area" widths={[400, 800]} sizes="(max-width: 900px) 42vw, 240px" loading="lazy" /></Iphone></div>
+      </div>
+      <figcaption>Production, a photo with no GPS: Nemotron's guess, then Change place and circle the area. Photo: <a href="https://commons.wikimedia.org/wiki/File:Eiffel_Tower,_Paris,_France_(Unsplash_PM4VZZn-YyM).jpg">John Towner</a>, CC0.</figcaption>
     </figure>
   </section>
 
@@ -256,8 +260,9 @@ const demo = `${APP_URL}/p/${DEMO_CODE}`;
 
   .split .copy p.fine { margin-top: 16px; color: var(--text-3); font-size: var(--t-sm); }
   .anywhere-shot { margin: 0; justify-self: center; text-align: center; }
-  .anywhere-phone { width: min(300px, 70vw); margin: 0 auto; }
-  .anywhere-shot figcaption { margin-top: 16px; max-width: 36ch; color: var(--text-3); font-size: var(--t-xs); line-height: 1.5; }
+  .anywhere-phones { display: flex; justify-content: center; gap: 16px; }
+  .anywhere-phone { width: min(240px, 42vw); }
+  .anywhere-shot figcaption { margin: 16px auto 0; max-width: 44ch; color: var(--text-3); font-size: var(--t-xs); line-height: 1.5; }
   .anywhere-shot figcaption a { color: inherit; }
 
   .camera .seg { margin-top: 24px; flex-wrap: wrap; }
