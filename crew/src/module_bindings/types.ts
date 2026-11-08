@@ -150,6 +150,31 @@ export const Reminder = __t.object("Reminder", {
 });
 export type Reminder = __Infer<typeof Reminder>;
 
+export const SceneObject = __t.object("SceneObject", {
+  id: __t.u64(),
+  sessionId: __t.u64(),
+  kind: __t.string(),
+  assetId: __t.string(),
+  name: __t.string(),
+  x: __t.f64(),
+  y: __t.f64(),
+  z: __t.f64(),
+  qx: __t.f64(),
+  qy: __t.f64(),
+  qz: __t.f64(),
+  qw: __t.f64(),
+  scale: __t.f64(),
+  color: __t.string(),
+  intensity: __t.f64(),
+  lightType: __t.string(),
+  params: __t.string(),
+  visible: __t.bool(),
+  lockedBy: __t.option(__t.identity()),
+  updatedBy: __t.identity(),
+  updatedAt: __t.timestamp(),
+});
+export type SceneObject = __Infer<typeof SceneObject>;
+
 export const Session = __t.object("Session", {
   id: __t.u64(),
   code: __t.string(),

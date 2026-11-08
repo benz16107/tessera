@@ -166,6 +166,27 @@ const shotSettings = table({ name: 'shot_settings', public: true }, {
   updatedBy: t.identity(),
 });
 
+// The virtual set: every object in the shared 3D scene. Positions are metres in the session's local
+// east-north-up frame centred on the spot (spot.lat/lon at ground level), so every client agrees.
+const sceneObject = table({ name: 'scene_object', public: true }, {
+  id: t.u64().primaryKey().autoInc(),
+  sessionId: t.u64().index('btree'),
+  kind: t.string(),      // model | person | light | camera | prop_generated | text
+  assetId: t.string(),   // catalog id, or a /asset/<file>.glb URL for generated props
+  name: t.string(),
+  x: t.f64(), y: t.f64(), z: t.f64(),           // east, north, up (m)
+  qx: t.f64(), qy: t.f64(), qz: t.f64(), qw: t.f64(),
+  scale: t.f64(),
+  color: t.string(),     // hex, for lights and tinting
+  intensity: t.f64(),    // lights: lux or candela per lightType; others 0
+  lightType: t.string(), // sun | point | spot | area | ''
+  params: t.string(),    // small key=value;key=value list for kind-specific settings (pose, focal, aperture)
+  visible: t.bool(),
+  lockedBy: t.option(t.identity()), // the editor holding the gizmo, so two people don't drag one object
+  updatedBy: t.identity(),
+  updatedAt: t.timestamp(),
+});
+
 // Toasts every client in the session sees once: "solve finished", "scout reached the spot".
 const toast = table({ name: 'toast', public: true, event: true }, {
   sessionId: t.u64(),
@@ -196,7 +217,7 @@ const sweepTimer = table({ name: 'sweep_timer' }, {
 
 const spacetimedb = schema({
   config, spot, session, participant, photo, solveJob, solveResult, camera, person,
-  devicePose, previewJob, message, agentStep, toast, sweepTimer, reminder, outbox, shotSettings,
+  devicePose, previewJob, message, agentStep, toast, sweepTimer, reminder, outbox, shotSettings, sceneObject,
 });
 export default spacetimedb;
 
@@ -263,8 +284,11 @@ export const onConnect = spacetimedb.clientConnected(ctx => {
 });
 
 export const onDisconnect = spacetimedb.clientDisconnected(ctx => {
-  for (const p of ctx.db.participant.identity.filter(ctx.sender))
+  for (const p of ctx.db.participant.identity.filter(ctx.sender)) {
     ctx.db.participant.id.update({ ...p, online: false, lastSeen: ctx.timestamp });
+    for (const o of [...ctx.db.sceneObject.sessionId.filter(p.sessionId)])
+      if (o.lockedBy?.equals(ctx.sender)) ctx.db.sceneObject.id.update({ ...o, lockedBy: undefined });
+  }
 });
 
 // The owner sets a one-time code out of band; the crew process redeems it to become the worker identity.
@@ -446,6 +470,54 @@ export const setShotSettings = spacetimedb.reducer(
   }
 );
 
+const SCENE_KINDS = ['model', 'person', 'light', 'camera', 'prop_generated', 'text'];
+const OBJ = {
+  sessionId: t.u64(), kind: t.string(), assetId: t.string(), name: t.string(),
+  x: t.f64(), y: t.f64(), z: t.f64(), qx: t.f64(), qy: t.f64(), qz: t.f64(), qw: t.f64(), scale: t.f64(),
+  color: t.string(), intensity: t.f64(), lightType: t.string(), params: t.string(), visible: t.bool(),
+};
+type ObjArgs = { sessionId: bigint; kind: string; assetId: string; name: string; x: number; y: number; z: number;
+  qx: number; qy: number; qz: number; qw: number; scale: number; color: string; intensity: number; lightType: string; params: string; visible: boolean };
+const checkObj = (a: ObjArgs) => {
+  if (!SCENE_KINDS.includes(a.kind)) throw new SenderError('unknown object kind');
+  finite(a.x, a.y, a.z, a.qx, a.qy, a.qz, a.qw, a.scale, a.intensity);
+  if (Math.abs(a.x) > 5000 || Math.abs(a.y) > 5000 || Math.abs(a.z) > 2000) throw new SenderError('object too far from the spot');
+  if (!(a.scale > 0 && a.scale <= 1000)) throw new SenderError('bad scale');
+  const n = Math.hypot(a.qx, a.qy, a.qz, a.qw);
+  if (!(n > 0.5 && n < 1.5)) throw new SenderError('rotation must be a unit quaternion');
+  return { ...a, assetId: text(a.assetId, 300), name: text(a.name, 80), color: text(a.color, 16), lightType: text(a.lightType, 16), params: text(a.params, 500) };
+};
+const MAX_OBJECTS = 300;
+
+export const addSceneObject = spacetimedb.reducer(OBJ, (ctx, a) => {
+  requireMember(ctx, a.sessionId);
+  if ([...ctx.db.sceneObject.sessionId.filter(a.sessionId)].length >= MAX_OBJECTS) throw new SenderError('scene is full');
+  ctx.db.sceneObject.insert({ ...checkObj(a), id: 0n, lockedBy: undefined, updatedBy: ctx.sender, updatedAt: ctx.timestamp });
+});
+
+export const updateSceneObject = spacetimedb.reducer({ id: t.u64(), ...OBJ }, (ctx, { id, ...a }) => {
+  const o = ctx.db.sceneObject.id.find(id);
+  if (!o || o.sessionId !== a.sessionId) throw new SenderError('no such object in this session');
+  requireMember(ctx, a.sessionId);
+  if (o.lockedBy && !o.lockedBy.equals(ctx.sender)) throw new SenderError('someone else is moving this object');
+  ctx.db.sceneObject.id.update({ ...o, ...checkObj(a), updatedBy: ctx.sender, updatedAt: ctx.timestamp });
+});
+
+export const lockSceneObject = spacetimedb.reducer({ id: t.u64(), lock: t.bool() }, (ctx, { id, lock }) => {
+  const o = ctx.db.sceneObject.id.find(id);
+  if (!o) throw new SenderError('no such object');
+  requireMember(ctx, o.sessionId);
+  if (lock && o.lockedBy && !o.lockedBy.equals(ctx.sender)) throw new SenderError('someone else is moving this object');
+  ctx.db.sceneObject.id.update({ ...o, lockedBy: lock ? ctx.sender : undefined });
+});
+
+export const deleteSceneObject = spacetimedb.reducer({ id: t.u64() }, (ctx, { id }) => {
+  const o = ctx.db.sceneObject.id.find(id);
+  if (!o) return;
+  requireMember(ctx, o.sessionId);
+  ctx.db.sceneObject.id.delete(id);
+});
+
 export const removePerson = spacetimedb.reducer({ id: t.u64() }, (ctx, { id }) => {
   const p = ctx.db.person.id.find(id);
   if (!p) return;
@@ -583,6 +655,7 @@ export const deleteSession = spacetimedb.reducer({ sessionId: t.u64() }, (ctx, {
   for (const x of [...ctx.db.previewJob.sessionId.filter(sessionId)]) ctx.db.previewJob.id.delete(x.id);
   for (const x of [...ctx.db.person.sessionId.filter(sessionId)]) ctx.db.person.id.delete(x.id);
   ctx.db.shotSettings.sessionId.delete(sessionId);
+  for (const x of [...ctx.db.sceneObject.sessionId.filter(sessionId)]) ctx.db.sceneObject.id.delete(x.id);
   for (const x of [...ctx.db.devicePose.sessionId.filter(sessionId)]) ctx.db.devicePose.participantId.delete(x.participantId);
   for (const x of [...ctx.db.message.sessionId.filter(sessionId)]) ctx.db.message.id.delete(x.id);
   for (const x of [...ctx.db.agentStep.sessionId.filter(sessionId)]) ctx.db.agentStep.id.delete(x.id);

@@ -35,16 +35,19 @@ import {
 
 // Import all reducer arg schemas
 import AddPhotoReducer from "./add_photo_reducer";
+import AddSceneObjectReducer from "./add_scene_object_reducer";
 import CancelReminderReducer from "./cancel_reminder_reducer";
 import ClaimJobReducer from "./claim_job_reducer";
 import ClaimPreviewReducer from "./claim_preview_reducer";
 import CreateSessionReducer from "./create_session_reducer";
 import DeletePhotoReducer from "./delete_photo_reducer";
+import DeleteSceneObjectReducer from "./delete_scene_object_reducer";
 import DeleteSessionReducer from "./delete_session_reducer";
 import EnqueueSolveReducer from "./enqueue_solve_reducer";
 import FinishJobReducer from "./finish_job_reducer";
 import FinishPreviewReducer from "./finish_preview_reducer";
 import JoinSessionReducer from "./join_session_reducer";
+import LockSceneObjectReducer from "./lock_scene_object_reducer";
 import LogAgentStepReducer from "./log_agent_step_reducer";
 import MarkOutboxReducer from "./mark_outbox_reducer";
 import MoveCameraReducer from "./move_camera_reducer";
@@ -62,6 +65,7 @@ import SetPersonPoseReducer from "./set_person_pose_reducer";
 import SetPlanTimeReducer from "./set_plan_time_reducer";
 import SetSessionSpotReducer from "./set_session_spot_reducer";
 import SetShotSettingsReducer from "./set_shot_settings_reducer";
+import UpdateSceneObjectReducer from "./update_scene_object_reducer";
 import UpsertSpotReducer from "./upsert_spot_reducer";
 
 // Import all procedure arg schemas
@@ -77,6 +81,7 @@ import PersonRow from "./person_table";
 import PhotoRow from "./photo_table";
 import PreviewJobRow from "./preview_job_table";
 import ReminderRow from "./reminder_table";
+import SceneObjectRow from "./scene_object_table";
 import SessionRow from "./session_table";
 import ShotSettingsRow from "./shot_settings_table";
 import SolveJobRow from "./solve_job_table";
@@ -235,6 +240,20 @@ const tablesSchema = __schema({
       { name: 'reminder_scheduled_id_key', constraint: 'unique', columns: ['scheduledId'] },
     ],
   }, ReminderRow),
+  sceneObject: __table({
+    name: 'scene_object',
+    indexes: [
+      { accessor: 'id', name: 'scene_object_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'sessionId', name: 'scene_object_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'scene_object_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, SceneObjectRow),
   session: __table({
     name: 'session',
     indexes: [
@@ -322,16 +341,19 @@ const tablesSchema = __schema({
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
   __reducerSchema("add_photo", AddPhotoReducer),
+  __reducerSchema("add_scene_object", AddSceneObjectReducer),
   __reducerSchema("cancel_reminder", CancelReminderReducer),
   __reducerSchema("claim_job", ClaimJobReducer),
   __reducerSchema("claim_preview", ClaimPreviewReducer),
   __reducerSchema("create_session", CreateSessionReducer),
   __reducerSchema("delete_photo", DeletePhotoReducer),
+  __reducerSchema("delete_scene_object", DeleteSceneObjectReducer),
   __reducerSchema("delete_session", DeleteSessionReducer),
   __reducerSchema("enqueue_solve", EnqueueSolveReducer),
   __reducerSchema("finish_job", FinishJobReducer),
   __reducerSchema("finish_preview", FinishPreviewReducer),
   __reducerSchema("join_session", JoinSessionReducer),
+  __reducerSchema("lock_scene_object", LockSceneObjectReducer),
   __reducerSchema("log_agent_step", LogAgentStepReducer),
   __reducerSchema("mark_outbox", MarkOutboxReducer),
   __reducerSchema("move_camera", MoveCameraReducer),
@@ -349,6 +371,7 @@ const reducersSchema = __reducers(
   __reducerSchema("set_plan_time", SetPlanTimeReducer),
   __reducerSchema("set_session_spot", SetSessionSpotReducer),
   __reducerSchema("set_shot_settings", SetShotSettingsReducer),
+  __reducerSchema("update_scene_object", UpdateSceneObjectReducer),
   __reducerSchema("upsert_spot", UpsertSpotReducer),
 );
 
