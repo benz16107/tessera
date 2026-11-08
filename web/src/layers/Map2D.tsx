@@ -92,7 +92,8 @@ export default function Map2D({ geo, center, camera, height = 320, zoom = 16.2, 
       const add = (spec: Parameters<MlMap['addLayer']>[0]) => m.addLayer(spec);
       add({ id: 'geo-shadow', type: 'fill', source: 'geo-shadow', filter: ['==', ['get', 'kind'], 'building_shadow'], paint: { 'fill-color': '#000', 'fill-opacity': 0.38 } });
       add({ id: 'geo-buildings', type: 'fill-extrusion', source: 'geo-buildings', paint: { 'fill-extrusion-color': '#3a3833', 'fill-extrusion-height': ['coalesce', ['get', 'height_m'], 9], 'fill-extrusion-opacity': 0.8 } });
-      add({ id: 'geo-alerts', type: 'fill', source: 'geo-alerts', paint: { 'fill-color': '#e8675e', 'fill-opacity': 0.12 } });
+      // Alert zones are county-sized: a light tint zoomed out, nearly clear at street level (the outline and the Conditions chip carry it).
+      add({ id: 'geo-alerts', type: 'fill', source: 'geo-alerts', paint: { 'fill-color': '#e8675e', 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 9, 0.12, 14, 0.03] } });
       add({ id: 'geo-alerts-line', type: 'line', source: 'geo-alerts', paint: { 'line-color': '#e8675e', 'line-width': 1.5 } });
       add({ id: 'geo-film', type: 'fill', source: 'geo-film', paint: { 'fill-color': '#f2a33a', 'fill-opacity': ['case', ['==', ['get', 'active'], true], 0.55, 0.09] } });
       add({ id: 'geo-closures', type: 'fill', source: 'geo-closures', paint: { 'fill-color': '#e8675e', 'fill-opacity': 0.55 } });

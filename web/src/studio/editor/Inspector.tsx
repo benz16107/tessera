@@ -26,6 +26,8 @@ export interface InspectorProps {
   row: SceneObject | undefined;
   isShot: boolean;
   camName: string;
+  /** The shot camera is Simple's stand-in at a free-location pin (approx=1); shown when no row is selected. */
+  approx?: boolean;
   lockedBy: string | null;
   placedBy: string;
   shot: Shot; setShot: (p: Partial<Shot>) => void; shotError: string;
@@ -317,7 +319,7 @@ function CameraPage(p: InspectorProps) {
   );
   return (
     <div className="st-insp">
-      <Header icon="camera" name={row?.name ?? p.camName} sub={row && parseParams(row.params).approx === '1' ? 'Approximate, drag to aim' : `${p.isShot || !row ? 'Shot camera' : 'Camera'} · ${Math.round(shot.focalMm)} mm · f/${shot.aperture}`}
+      <Header icon="camera" name={row?.name ?? p.camName} sub={(row ? parseParams(row.params).approx === '1' : p.approx) ? 'Approximate, drag to aim' : `${p.isShot || !row ? 'Shot camera' : 'Camera'} · ${Math.round(shot.focalMm)} mm · f/${shot.aperture}`}
         onName={v => { if (row && s) p.onChange(row, { ...s, name: v }, 'name'); }} visible={row?.visible ?? true}
         onVisible={() => { if (row && s) p.onChange(row, { ...s, visible: !row.visible }, ''); }} locked={p.lockedBy} />
       {row && !p.isShot && <button className="st-btn small" onClick={() => p.onMakeShot(row)}>Make this the shot camera</button>}

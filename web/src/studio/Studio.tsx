@@ -175,14 +175,15 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
 
   const photoAspect = photo && photo.height ? photo.width / photo.height : 1.5;
   const defaults = useMemo(() => {
-    const d = defaultShot(solved?.pose.f35 ?? 35, 8, sceneEv);
+    // Like Simple: a free-location shoot starts at the photo's EXIF lens, else a phone's 26 mm.
+    const d = defaultShot(solved?.pose.f35 ?? (geoSpot && photo ? photo.exifF35 ?? 26 : 35), 8, sceneEv);
     const r = Math.max(photoAspect, 1 / photoAspect);
     const aspect = ['3:2', '4:3', '4:5', '1:1', '16:9'].reduce((b, a) => {
       const [x, y] = a.split(':').map(Number), [bx, by] = b.split(':').map(Number);
       return Math.abs(Math.log(x / y / r)) < Math.abs(Math.log(bx / by / r)) ? a : b;
     }, '3:2');
     return { ...d, aspect };
-  }, [solved?.pose.f35, Math.round(sceneEv * 3), photoAspect]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [solved?.pose.f35, !!geoSpot, photo?.exifF35, Math.round(sceneEv * 3), photoAspect]); // eslint-disable-line react-hooks/exhaustive-deps
   const { shot, set: setShot, error: shotError } = useShotSettings(sid, defaults);
   const frame = useMemo(() => frameFromPhoto(photo), [photo?.width, photo?.height]); // eslint-disable-line react-hooks/exhaustive-deps
   const o = useMemo(() => opticsOf(shot, frame), [shot, frame]);
@@ -1251,7 +1252,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
             <div className="st-div" />
           </div>
         )}
-        <Inspector row={selRow} isShot={!selRow || selRow.id === shotRow?.id} camName={shotName} lockedBy={selRow ? lockOwner(selRow)?.name ?? null : null}
+        <Inspector row={selRow} isShot={!selRow || selRow.id === shotRow?.id} camName={shotName} approx={approx} lockedBy={selRow ? lockOwner(selRow)?.name ?? null : null}
           placedBy={selRow ? (isMe(selRow.updatedBy) ? 'you' : nameOf(selRow.updatedBy)) : ''}
           shot={shot} setShot={setShotPhysical} shotError={shotError} optics={o} sceneEv={meterEv} vignette={vignette} setVignette={setVignette}
           subjectLock={subjectLock} onSubjectLock={setSubjectLock} tint={tint} onTint={setTint} cropNote={view === 'shot' ? cropNote : null} shakePx={shakePx}

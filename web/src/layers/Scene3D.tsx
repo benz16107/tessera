@@ -72,7 +72,7 @@ export default function GeoScene({ geo, origin, groundAt, labels = true, overlay
       {geo.on('film') && L.film && <Zones fc={L.film} P={P} gz={groundAt} color={loud ? COLORS.film : QUIET} dim={!loud} lift={high ? 0.06 : 0.45} xray={high} labels={labels} quiet={quiet} />}
       {geo.on('closures') && L.closures && <Zones fc={L.closures} P={P} gz={groundAt} color={loud ? COLORS.closures : QUIET} dim={!loud} lift={high ? 0.08 : 0.5} xray={high} labels={labels} quiet={quiet} />}
       {geo.on('construction') && L.construction && <Sheds fc={L.construction} P={P} gz={groundAt} labels={labels} dim={!loud} />}
-      {geo.on('alerts') && L.alerts && <Alerts fc={L.alerts} P={P} gz={groundAt} />}
+      {geo.on('alerts') && L.alerts && <Alerts fc={L.alerts} P={P} gz={groundAt} labels={labels} />}
       {geo.on('pois') && L.pois && <Pins fc={L.pois} P={P} gz={groundAt} labels={quiet} />}
       {geo.on('photographers') && L.photographers && <Heat fc={L.photographers} P={P} gz={groundAt} high={high} hotspots={quiet ? d.summary.photographers?.hotspots ?? [] : []} />}
       {geo.on('shadow') && labels && d.summary.shadow?.probes.map((pr, i, all) => <Probe key={pr.label} probe={pr} label={i === all.length - 1} xray={high} sunUp={(d.summary.shadow?.sun.alt ?? 1) > 0} P={P} gz={groundAt} />)}
@@ -217,7 +217,7 @@ function inside([x, y]: XY, ring: XY[]) {
 }
 
 /** NWS alert areas are county-sized: when the spot is inside one, a translucent drum around the set says so. */
-function Alerts({ fc, P, gz }: { fc: FC; P: (c: number[]) => XY; gz: Gz }) {
+function Alerts({ fc, P, gz, labels }: { fc: FC; P: (c: number[]) => XY; gz: Gz; labels: boolean }) {
   const hits = fc.features.filter(f => ringsOf(f).some(r => inside([0, 0], r.map(P))) || !f.geometry);
   if (!hits.length) return null;
   const sev = '#e8675e'; // alerts read as red at every severity (no orange highlights)
@@ -228,9 +228,11 @@ function Alerts({ fc, P, gz }: { fc: FC; P: (c: number[]) => XY; gz: Gz }) {
         <cylinderGeometry args={[180, 180, 60, 64, 1, true]} />
         <meshBasicMaterial color={sev} transparent opacity={0.09} depthWrite={false} side={DoubleSide} toneMapped={false} />
       </mesh>
-      <Html position={[0, 0, z + 14]} center zIndexRange={[20, 0]}>
-        <span className="st-obj-label geo-label" style={{ borderLeft: `2px solid ${sev}` }}>{hits.map(f => f.properties.label).join(' · ')}</span>
-      </Html>
+      {labels && (
+        <Html position={[0, 0, z + 14]} center zIndexRange={[20, 0]}>
+          <span className="st-obj-label geo-label" style={{ borderLeft: `2px solid ${sev}` }}>{hits.map(f => f.properties.label).join(' · ')}</span>
+        </Html>
+      )}
     </group>
   );
 }

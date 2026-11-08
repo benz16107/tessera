@@ -196,10 +196,11 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
   const placeAt: OnPlace = async (lat, lon, by, radiusM, name) => {
     // The place's own name ("Palace of Fine Arts"), short and safe for the key=value params list.
     const place = name ? name.split(',').slice(0, 2).join(',').replace(/[;=]/g, ' ').trim().slice(0, 80) : undefined;
-    placedNext.current = { by, radiusM, name: place }; // before the pin moves, so the first render after it already has the right label
-    await setSessionSpot({ sessionId: sid, spotId: geoSpotId(lat, lon, await groundHeight(lat, lon)) });
+    // The label and name go first, the pin second, so no screen pairs the new mark with the old place's name.
+    placedNext.current = { by, radiusM, name: place };
     const patch = { placed: by, area: by === 'area' && radiusM ? Math.round(radiusM) : '', approx: 1, place: place ?? '' };
     if (shotRow) scene.setObject(shotRow, withParams({ ...stateOf(shotRow), x: 0, y: 0, z: 1.6 }, patch));
+    await setSessionSpot({ sessionId: sid, spotId: geoSpotId(lat, lon, await groundHeight(lat, lon)) });
   };
   const camPrm: Record<string, string> = shotRow ? parseParams(shotRow.params) : {};
   const placedBy = (camPrm.placed as PlacedBy | undefined) ?? placedNext.current?.by;
