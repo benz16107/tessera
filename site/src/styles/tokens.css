@@ -23,5 +23,6 @@
   --r: 8px;
   --r-sm: 6px;
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   color-scheme: dark;
 }

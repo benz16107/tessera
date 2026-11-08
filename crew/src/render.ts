@@ -25,7 +25,7 @@ export { fluxSize, lensWords, renderPrompt } from './prompts.ts';
 import { describeObjects, parseParams, setContext, sessionObjects } from './set.ts';
 import { bearingTo, frameOf } from './setgeo.ts';
 import { relativeAngle } from './geo.ts';
-import { alphaOf, applyShadow, azDiff, blendMasked, blur1, contactMask, harmonizeBeauty, jpeg, maskBox, matchParams, objectMasks, over, pasteCrop, rawRgb, rawRgba, ringOf, shadowParams, strengthMap, sunFromRead } from './composite.ts';
+import { alphaOf, applyShadow, azDiff, blendMasked, blur1, contactMask, harmonizeBeauty, jpeg, maskBox, matchParams, objectMasks, over, pasteCrop, rawRgb, changedRegion, toneToBorder, rawRgba, ringOf, shadowParams, strengthMap, sunFromRead } from './composite.ts';
 
 export type RenderIn = {
   sessionId: bigint; photoId: bigint; beauty: Buffer; shadow?: Buffer; text?: string; f35?: number; aperture?: number; focusM?: number; iso?: number;
@@ -74,6 +74,10 @@ Also: does any person still look like a grey mannequin, a statue or a 3D model, 
 Reply with strict JSON only: {"pass": true|false, "summary": "<one sentence>", "placeholders": [<ids>], "objects": [{"name": "...", "light": true, "shadow": true, "scale": true, "color": true, "note": "..."}],
 "strength": "up|down|same" (up = objects still look pasted on and need more blending, down = the scene itself changed too much), "prompt_add": "<words to add to the render prompt, or empty>",
 "sun_fix": null or {"azimuth": <deg from north>, "altitude": <deg>, "why": "..."} when the 3D sun is on the wrong side or at the wrong height}`;
+
+/** Higher is better: a pass, fewer placeholders still flagged, fewer light/shadow/scale/colour faults. */
+export const checkScore = (c: Pick<Check, 'pass' | 'placeholders' | 'objects'>) =>
+  (c.pass ? 100 : 0) - 10 * c.placeholders.length - c.objects.reduce((n, o) => n + [o.light, o.shadow, o.scale, o.color].filter(x => !x).length, 0);
 
 /** Nemotron 3.5 Super VL checks the render's physics, object by object. */
 async function verify(sid: bigint, img: Buffer, round: number, light: LightRead | undefined, sun: { az: number; alt: number } | undefined, heading: number | undefined): Promise<Check | null> {
@@ -211,9 +215,12 @@ export async function render(inp: RenderIn): Promise<RenderOut> {
       }
       if (stuck.length || (!patchPath && (c1.strength !== 'same' || c1.promptAdd))) {
         rerendered = true;
+        const first = out;
         out = await finalize(2);
         const c2 = await verify(sid, out.img, 2, light, sun, ctx?.cam.heading).catch(() => null);
         if (c2) checks.push(c2);
+        // The second try is not always better (it sometimes fades a person into the road): keep whichever round scored higher.
+        if (c2 && checkScore(c2) < checkScore(c1)) { out = first; rerendered = false; await logStep(sid, 'render', 'kept round 1', `round 2 scored lower (${checkScore(c2)} vs ${checkScore(c1)})`, 0); }
       }
     }
     sunFix = checks.map(c => c.sunFix).filter(Boolean).pop() ?? sunFix;
@@ -227,6 +234,19 @@ export async function render(inp: RenderIn): Promise<RenderOut> {
   } finally { if (renew) clearInterval(renew); }
 }
 
+/** Share of the placeholder's pixels the edit left as they were in the composite (the mannequin is still standing). */
+export function residue(comp: Buffer, w: number, crop: Buffer, box: { left: number; top: number; width: number; height: number }, objLocal: Buffer): number {
+  let n = 0, same = 0;
+  for (let y = 0; y < box.height; y++) for (let x = 0; x < box.width; x++) {
+    const i = y * box.width + x;
+    if (!objLocal[i]) continue;
+    const o = ((box.top + y) * w + box.left + x) * 3, e = i * 3;
+    n++;
+    if (Math.max(Math.abs(comp[o] - crop[e]), Math.abs(comp[o + 1] - crop[e + 1]), Math.abs(comp[o + 2] - crop[e + 2])) < 24) same++;
+  }
+  return n ? same / n : 0;
+}
+
 /** One placeholder's padded crop of the composite, edited on its own into the real thing, pasted into the frame fully opaque
  *  (only the outer few px feathered, tone matched at the border). Attempt 2 uses a firmer prompt. */
 async function realify(sid: bigint, frame: Buffer, composite: Buffer, p: { id: string; name: string; kind: string; mask: Buffer; prompt: string }, w: number, h: number, attempt: number): Promise<{ rgb: Buffer; model?: string }> {
@@ -236,11 +256,23 @@ async function realify(sid: bigint, frame: Buffer, composite: Buffer, p: { id: s
   const ask = `Photorealistic photo. ${p.prompt.replace(/^the /, 'The ')}. Replace the grey mannequin or toy-like model with the real ${what} at exactly the same place and size, standing on the same ground, solid and fully opaque. Keep the background, the framing and the perspective exactly the same. No text.` +
     (attempt > 1 ? ` The ${what} must be completely real: nothing grey, see-through, ghosted or doll-like remains.` : '');
   try {
-    const crop = await sharp(composite).extract(box).jpeg({ quality: 92 }).toBuffer();
-    const r = await editImage(crop, ask, editSize(box.width, box.height));
-    const patch = await rawRgb(r.image, box.width, box.height);
-    await logStep(sid, 'realify', `object ${p.id} ${p.name}, crop ${box.width}x${box.height}${attempt > 1 ? ', second try' : ''}`, `${r.model}: ${p.prompt}`.slice(0, 600), Date.now() - t0);
-    return { rgb: pasteCrop(frame, w, patch, box, 3), model: r.model };
+    const crop = await sharp(composite).extract(box).jpeg({ quality: 92 }).toBuffer(), compRaw = await rawRgb(composite, w, h);
+    const local = Buffer.alloc(box.width * box.height);
+    for (let y = 0; y < box.height; y++) p.mask.copy(local, y * box.width, (box.top + y) * w + box.left, (box.top + y) * w + box.left + box.width);
+    // The edit model sometimes draws a person in front of the mannequin and leaves it standing: when over 35% of the
+    // mannequin's pixels come back unchanged, it edits once more (each call gives a different result).
+    let r = await editImage(crop, ask, editSize(box.width, box.height)), patch = await rawRgb(r.image, box.width, box.height);
+    let toned = toneToBorder(frame, w, patch, box), left = residue(compRaw, w, toned, box, local);
+    if (left > 0.35) {
+      await logStep(sid, 'realify', `object ${p.id} ${p.name}`, `${Math.round(left * 100)}% of the mannequin is still there; editing again`, Date.now() - t0);
+      const r2 = await editImage(crop, `${ask} Remove the grey figure entirely.`, editSize(box.width, box.height)), patch2 = await rawRgb(r2.image, box.width, box.height);
+      const toned2 = toneToBorder(frame, w, patch2, box), left2 = residue(compRaw, w, toned2, box, local);
+      if (left2 < left) { r = r2; toned = toned2; left = left2; }
+    }
+    await logStep(sid, 'realify', `object ${p.id} ${p.name}, crop ${box.width}x${box.height}${attempt > 1 ? ', second try' : ''}`, `${r.model}, ${Math.round(left * 100)}% of the mannequin left: ${p.prompt}`.slice(0, 600), Date.now() - t0);
+    // Paste only the placeholder and what the edit changed near it, so the background it redrew elsewhere in the crop never shows.
+    const region = await changedRegion(frame, w, toned, box, local, Math.max(4, box.height * 0.03));
+    return { rgb: pasteCrop(frame, w, toned, box, 3, region), model: r.model };
   } catch (e) {
     await logStep(sid, 'realify', `object ${p.id} ${p.name}`, `error: ${(e as Error).message.slice(0, 200)}`, Date.now() - t0);
     return { rgb: frame };

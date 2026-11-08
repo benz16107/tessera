@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import {
   BufferGeometry, DepthTexture, EdgesGeometry, Euler, ExtrudeGeometry, Float32BufferAttribute, Group, Matrix4, Mesh, MeshBasicMaterial,
-  MeshStandardMaterial, PerspectiveCamera, Quaternion, Scene, Shape, SRGBColorSpace, TextureLoader, Vector2, Vector3, WebGLRenderTarget,
+  MeshLambertMaterial, PerspectiveCamera, Quaternion, Scene, Shape, SRGBColorSpace, TextureLoader, Vector2, Vector3, WebGLRenderTarget,
   type Texture,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -50,18 +50,23 @@ function groundQuad(gz: Gz) {
 }
 
 /** Clay that shows the projected photo where the projector sees it. `matte`: show only the photo (sky and bridge), else discard. */
-function projectedMaterial(color: string, matte: boolean) {
+function projectedMaterial(color: string, lift: string, matte: boolean) {
   const u = {
     uProjTex: { value: null as Texture | null }, uProjDepth: { value: null as Texture | null }, uProjMat: { value: new Matrix4() },
     uProjPos: { value: new Vector3() }, uProjOn: { value: 0 },
   };
-  const mat = matte ? new MeshBasicMaterial({ color: '#000', toneMapped: false }) : new MeshStandardMaterial({ color, roughness: 0.95, metalness: 0, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+  // Lambert, not Standard: the scene's image light comes from the photo and tints standard clay purple-brown.
+  const mat = matte ? new MeshBasicMaterial({ color: '#000', toneMapped: false })
+    : new MeshLambertMaterial({ color, emissive: lift, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
   mat.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, u);
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nuniform mat4 uProjMat;\nvarying vec4 vProj;\nvarying vec3 vWPos;\nvarying vec3 vWNrm;')
-      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvec4 wp = modelMatrix * vec4(transformed, 1.0);\nvProj = uProjMat * wp;\nvWPos = wp.xyz;\nvWNrm = normalize(mat3(modelMatrix) * objectNormal);');
-    if (!sh.vertexShader.includes('objectNormal')) sh.vertexShader = sh.vertexShader.replace('vWNrm = normalize(mat3(modelMatrix) * objectNormal);', 'vWNrm = vec3(0.0, 1.0, 0.0);');
+      .replace('#include <worldpos_vertex>', `#include <worldpos_vertex>
+vec4 wp = modelMatrix * vec4(transformed, 1.0);
+vProj = uProjMat * wp;
+vWPos = wp.xyz;
+vWNrm = ${matte ? 'vec3(0.0, 1.0, 0.0)' : 'normalize(mat3(modelMatrix) * objectNormal)'};`); // MeshBasicMaterial has no objectNormal
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
 uniform sampler2D uProjTex; uniform sampler2D uProjDepth; uniform vec3 uProjPos; uniform float uProjOn;
@@ -79,7 +84,7 @@ float projLinear(float d) { float z = d * 2.0 - 1.0; return 2.0 * ${NEAR.toFixed
     : `float dz = projLinear(ndc.z * 0.5 + 0.5);
   float vis = inside * step(dz, projLinear(stored) * 1.01 + 0.15);
   vec3 toP = normalize(uProjPos - vWPos);
-  vis *= smoothstep(0.08, 0.3, dot(normalize(vWNrm), toP));`}
+  vis *= smoothstep(0.0, 0.04, dot(normalize(vWNrm), toP)); // the street is always grazing from 1 m up: keep it`}
   vis *= uProjOn;
   vec4 photo = linearToOutputTexel(vec4(texture2D(uProjTex, puv).rgb, 1.0));
   ${matte ? 'if (vis < 0.01) discard;\n  gl_FragColor = vec4(photo.rgb, 1.0);' : 'gl_FragColor.rgb = mix(gl_FragColor.rgb, photo.rgb, vis);'}
@@ -98,7 +103,7 @@ export default function Clay({ buildings, geo, origin, gz, projector }: {
   const facades = useMemo(() => (geo ? facadeGeometry(geo) : null), [geo]);
   useEffect(() => () => { bGeom?.dispose(); edges?.dispose(); }, [bGeom, edges]);
 
-  const mats = useMemo(() => ({ building: projectedMaterial('#b7b1a6', false), ground: projectedMaterial('#8b867d', false), matte: projectedMaterial('', true) }), []);
+  const mats = useMemo(() => ({ building: projectedMaterial('#d9d4ca', '#3b3833', false), ground: projectedMaterial('#9f998e', '#26241f', false), matte: projectedMaterial('', '', true) }), []);
   const all = [mats.building, mats.ground, mats.matte];
   useEffect(() => () => all.forEach(m => m.mat.dispose()), []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -160,7 +165,7 @@ export default function Clay({ buildings, geo, origin, gz, projector }: {
       <mesh geometry={ground} material={mats.ground.mat} receiveShadow raycast={() => null} />
       {bGeom && <mesh geometry={bGeom} material={mats.building.mat} castShadow receiveShadow raycast={() => null} />}
       {facades && <mesh geometry={facades} material={mats.building.mat} castShadow receiveShadow raycast={() => null} />}
-      {edges && <lineSegments geometry={edges} raycast={() => null}><lineBasicMaterial color="#3d3a35" transparent opacity={0.55} /></lineSegments>}
+      {edges && <lineSegments geometry={edges} raycast={() => null}><lineBasicMaterial color="#26231f" transparent opacity={0.6} /></lineSegments>}
       {matte && tex && <mesh geometry={matte} material={mats.matte.mat} raycast={() => null} />}
     </group>
   );

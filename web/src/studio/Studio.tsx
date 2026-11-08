@@ -18,7 +18,7 @@ import { sunAt, spotZone, fmtTime } from '../geo.ts';
 import { ENU_TO_THREE, enuToThree, threeToEnu, llhToEnu, enuToLlh, cameraQuat, cameraHpr, yawQuat, type Origin } from './frame.ts';
 import { useGeoLayers, GeoScene, GeoButton, GeoPanel, GeoBands, GeoOverview } from '../layers/index.ts';
 import { sceneEv100, meterStops, whiteBalanceGains, fmtShutter, kelvinToRgb } from './optics.ts';
-import { lightColorK, sunStrength, sunVector } from './light/sun.ts';
+import { lightColorK, sunPath, sunStrength, sunVector } from './light/sun.ts';
 import { useScene } from './state/useScene.ts';
 import { useShotSettings, defaultShot } from './state/useShotSettings.ts';
 import { makeObject, newUid, parseParams, stateOf, withParams, fmtParams, type AddItem, type ObjState } from './scene/objects.ts';
@@ -100,6 +100,7 @@ const gizmoBusy = { current: false };
 const MADE_CAM = new Set<bigint>();
 const FIXED_CAM = new Set<bigint>();
 const camLetter = (i: number) => `Cam ${String.fromCharCode(65 + i)}`;
+const compass = (az: number) => ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][Math.round((((az % 360) + 360) % 360) / 45) % 8];
 const GUIDES = { thirds: 'Thirds', golden: 'Golden', spiral: 'Spiral', off: 'Off' } as const;
 
 function StudioView({ session, myName }: { session: Session; myName: string }) {
@@ -126,12 +127,14 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const [splatFull, setSplatFull] = useState(false);
   const [splatSkip, setSplatSkip] = useState<string[]>([]);
   const splatUrl = useSplatUrl(session.spotId, splatFull, splatSkip);
-  const [world, setWorld] = useState<WorldMode>('tiles');
+  // Clay + photo by default (crisp from every angle); a person's own pick is remembered in this browser.
+  const [world, setWorldState] = useState<WorldMode>(() => {
+    try { const w = localStorage.getItem('studio/world') as WorldMode | null; if (w && w in WORLD_LABEL) return w; } catch { /* private mode */ }
+    return 'clayPhoto';
+  });
+  const setWorld = (w: WorldMode) => { setWorldState(w); try { localStorage.setItem('studio/world', w); } catch { /* private mode */ } };
   const [splatState, setSplatState] = useState<{ loaded: boolean; progress: number }>({ loaded: false, progress: 0 });
   const worlds: WorldMode[] = splatUrl ? ['splat', 'clayPhoto', 'clay', 'tiles', 'off'] : ['clayPhoto', 'clay', 'tiles', 'off'];
-  // The splat becomes the world once, when its file answers; after that the World style menu decides.
-  const autoWorld = useRef(false);
-  useEffect(() => { if (splatUrl && !autoWorld.current) { autoWorld.current = true; setWorld(w => (w === 'tiles' ? 'splat' : w)); } }, [splatUrl]);
   const [worldMenu, setWorldMenu] = useState(false);
 
   // Time of day: shared through session.planTime (and the spacetime sun clock), local while dragging.
@@ -338,13 +341,13 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     scene.addObject({
       ...makeObject({ kind: 'prop_generated', url: res.url, name: res.name }, at, faceCamFrom(at), at, uid), params,
     });
-    setToast(`Generated "${res.name}". Drag the gizmo to place it.`);
+    setToast(`Generated "${res.name}"${res.fallback ? ' as a flat cut-out (the 3D model service failed)' : ''}. Drag the gizmo to place it.`);
   };
   const regenerate = async (row: SceneObject, file?: File) => {
     const prm = parseParams(row.params);
     try {
       setToast(file ? 'Making a 3D model from the photo' : 'Regenerating with a new seed');
-      const j = await generate(sid, file ? { image: await shrinkToDataUrl(file), name: row.name, mode: '3d' } : { prompt: prm.prompt ?? row.name, name: row.name, mode: '3d', ...{ seed: Math.floor(Math.random() * 1e6) } } as never);
+      const j = await generate(sid, file ? { image: await shrinkToDataUrl(file), name: row.name, mode: '3d' } : { prompt: prm.prompt ?? row.name, name: row.name, mode: '3d', seed: Math.floor(Math.random() * 1e6) });
       scene.setObject(row, withParams({ ...stateOf(row), assetId: String(j.url) }, { src: file ? 'photo' : prm.src, ms: Number(j.ms) || undefined }));
       setToast('Replaced the model.');
     } catch (e) { setToast(`Generate failed: ${(e as Error).message}`); }
@@ -505,6 +508,38 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   }, [shotPose, geo, gz]);
   const cone = origin && shotPose ? { ...enuToLlh(origin, shotPose.pos), heading: shotPose.hpr.heading, hfovDeg: o.hfovDeg } : null;
   const sunDir = sunVector(sun.azimuth, sun.altitude);
+  // Nemotron's read of the photo's light (docs/NVIDIA.md, GET /api/set/light): its sun drives the render layers' shadows,
+  // because they composite onto the photo. Overcast (sun null) puts the sun overhead: soft contact shade the crew blurs.
+  // 'plan' uses the planned time's sun instead (the override, and after a render check's sun fix moves the plan time).
+  const [lightRead, setLightRead] = useState<{ sun: { azimuth: number; altitude: number } | null; light?: { time_look?: string; sky?: string } } | null>(null);
+  const [sunSource, setSunSource] = useState<'photo' | 'plan'>('photo');
+  const [fixNote, setFixNote] = useState('');
+  useEffect(() => {
+    let live = true;
+    fetch(`/api/set/light?session=${sid}`).then(r => (r.ok ? r.json() : null)).then(j => { if (live && j) setLightRead(j); }).catch(() => {});
+    return () => { live = false; };
+  }, [sid, photo?.id]);
+  const photoSun = lightRead && sunSource === 'photo' ? (lightRead.sun ?? { azimuth: sun.azimuth, altitude: 90 }) : null;
+  const renderSun = useMemo(() => {
+    if (!photoSun) return null;
+    const v = sunVector(photoSun.azimuth, photoSun.altitude);
+    return enuToThree({ x: v[0], y: v[1], z: v[2] }).normalize();
+  }, [photoSun?.azimuth, photoSun?.altitude]); // eslint-disable-line react-hooks/exhaustive-deps
+  const sunMatch = !lightRead ? null : sunSource === 'photo'
+    ? `Sun matched to your photo (${lightRead.sun ? `${compass(lightRead.sun.azimuth)}, ${Math.round(lightRead.sun.altitude)}° up` : lightRead.light?.time_look ?? 'overcast'})`
+    : `Sun from the planned time, ${fmtTime(planTime, zone)}`;
+  /** A render check's sun fix: move the plan time to when the sun is nearest that direction today, and use that sun. */
+  const applySunFix = (azimuth: number, altitude: number) => {
+    if (!origin) return;
+    const want = sunVector(azimuth, altitude);
+    const best = sunPath(planTime, origin.lat, origin.lon, 2).reduce((b, x) => {
+      const v = sunVector(x.azimuth, x.altitude), d = v[0] * want[0] + v[1] * want[1] + v[2] * want[2];
+      return d > b.d ? { x, d } : b;
+    }, { x: null as null | { t: Date; azimuth: number; altitude: number }, d: -2 });
+    if (!best.x) return;
+    changeTime(best.x.t); setSunSource('plan');
+    setFixNote(`Sun moved to ${fmtTime(best.x.t, zone)} (${Math.round(best.x.altitude)}° up, from the ${compass(best.x.azimuth)}) to match the render check.`);
+  };
   const sunColor = kelvinToRgb(lightColorK(sun.altitude, 'clear'));
   const objectsForLayers = () => scene.rows.filter(r => r.visible && r.kind !== 'camera' && r.kind !== 'light' && groups.current.get(r.id))
     .map(r => ({ id: r.id, name: r.name, kind: r.kind, root: groups.current.get(r.id)! }));
@@ -607,7 +642,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                   <Tiles apiKey={cfg.mapsKey} origin={origin} probes={probes} visible={showTiles} extraCamera={view === 'shot' ? shotCam : null}
                     contextOnly={showSplat && splatState.loaded} groundAt={gz} onAttribution={setAttribution} onGround={setGroundOffset} />
                 )}
-                {splatUrl && world !== 'off' && (
+                {splatUrl && world === 'splat' && (
                   <Splat spotId={session.spotId} url={splatUrl} visible={showSplat} fade={view !== 'shot' ? streetFade : null}
                     onProgress={f => setSplatState(s => ({ ...s, progress: f }))} onLoaded={() => setSplatState({ loaded: true, progress: 1 })}
                     onError={e => { console.warn('splat failed, trying the next file', splatUrl, e); setSplatState({ loaded: false, progress: 0 }); setSplatSkip(k => [...k, splatUrl]); }} />
@@ -651,7 +686,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               <XROrigin position={vrOrigin ?? enuToThree({ x: shotPose?.pos.x ?? 0, y: shotPose?.pos.y ?? 0, z: shotPose ? gz(shotPose.pos.x, shotPose.pos.y) : 0 })} />
               <ViewBroadcaster ev={ev} />
               <Picker pickRef={pickRef} />
-              <Capture capture={capture} camera={shotCam} vfovDeg={o.vfovDeg} frame={frame} objects={objectsForLayers} />
+              <Capture capture={capture} camera={shotCam} vfovDeg={o.vfovDeg} frame={frame} objects={objectsForLayers} renderSun={renderSun} />
             </XR>
           </Canvas>
         </div>
@@ -804,7 +839,9 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
         )}
         {addOpen && <AddDrawer onAdd={i => addItem(i)} sessionId={sid} onGenerated={onGenerated} genFile={genFile} onClose={() => setAddOpen(false)} startTab={genFile ? 'Generate' : undefined} />}
         {!focus && <BuildCard spotName={spot?.name} solved={solved ? { f35: solved.pose.f35, heading: solved.pose.heading, inliers: solved.inliers, alt: solved.pose.alt, pitch: solved.pose.pitch, secs: solved.secs } : null}
-          hasCam={!!shotRow} worldReady={splatState.loaded || attribution !== ''} splat={!!splatUrl} progress={splatState.progress} />}
+          hasCam={!!shotRow} worldReady={world === 'clay' || world === 'clayPhoto' ? !!layers.data?.layers.buildings : splatState.loaded || attribution !== ''}
+          worldNote={world === 'clay' || world === 'clayPhoto' ? `Clay massing from ${layers.data?.layers.buildings?.features.length ?? 'the'} building footprints${world === 'clayPhoto' ? ', your photo projected on it' : ''}` : undefined}
+          splat={world === 'splat' && !!splatUrl} progress={splatState.progress} />}
         {page !== 'set' && (
           <div className="st-page">
             <button className="st-btn small" onClick={() => setPage('set')} style={{ marginBottom: 16 }}>Back to the set</button>
@@ -836,7 +873,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
         {renderOpen && view === 'shot' && (
           <div className="st-insp" style={{ paddingBottom: 0, gap: 16 }}>
             <RenderSection getLayers={getLayers} sessionId={sid} photoId={photo?.id} shot={shot} f35={o.f35}
-              time={`${fmtTime(planTime, zone)} (${sun.altitude.toFixed(0)}° sun)`} sun={sun} />
+              time={`${fmtTime(planTime, zone)} (${sun.altitude.toFixed(0)}° sun)`} sun={photoSun ?? sun}
+              sunMatch={sunMatch} sunSource={sunSource} onSunSource={setSunSource} onSunFix={applySunFix} fixNote={fixNote} onFixDone={() => setFixNote('')} />
             <NvidiaSlot name="ArtDirector" props={{ sessionId: sid, photoId: photo?.id, getLayers }} fallbackText="" />
             <div className="st-div" />
           </div>
@@ -881,9 +919,9 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
 }
 
 /** V-1 "Building your set": shown while the shot camera and the world come in, then it gets out of the way. */
-function BuildCard({ spotName, solved, hasCam, worldReady, splat, progress }: {
+function BuildCard({ spotName, solved, hasCam, worldReady, worldNote, splat, progress }: {
   spotName?: string; solved: { f35: number; heading: number; inliers: number; alt: number; pitch: number; secs: number } | null;
-  hasCam: boolean; worldReady: boolean; splat: boolean; progress: number;
+  hasCam: boolean; worldReady: boolean; worldNote?: string; splat: boolean; progress: number;
 }) {
   const [closed, setClosed] = useState(false);
   const done = hasCam && worldReady;
@@ -900,7 +938,7 @@ function BuildCard({ spotName, solved, hasCam, worldReady, splat, progress }: {
       <ol>
         {step(spotName ? 'done' : 'now', 'Found the spot', spotName ?? 'Looking up the spot')}
         {step(solved ? 'done' : 'now', 'Solved the camera', solved ? `${Math.round(solved.f35)} mm, facing ${Math.round(solved.heading)}°. ${solved.inliers} matches in ${Math.round(solved.secs)} s` : 'Waiting for the solve')}
-        {step(worldReady ? 'done' : 'now', 'Streaming the world', splat ? 'Photoreal splat of the spot, then 3D tiles around it' : 'Google Photorealistic 3D Tiles around the mark', splat ? progress : undefined)}
+        {step(worldReady ? 'done' : 'now', 'Building the world', worldNote ?? (splat ? 'Photoreal splat of the spot, then 3D tiles around it' : 'Google Photorealistic 3D Tiles around the mark'), splat ? progress : undefined)}
         {step(hasCam ? 'done' : solved ? 'now' : 'next', 'Placing Cam A where you stood', solved ? `${solved.alt.toFixed(1)} m above the ground, tilted ${solved.pitch.toFixed(0)}° ${solved.pitch >= 0 ? 'up' : 'down'}` : 'After the solve')}
       </ol>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -925,7 +963,7 @@ function SunLight({ dir, color, strength, center }: { dir: [number, number, numb
   return (
     <>
       <primitive object={target} position={c} />
-      <directionalLight position={c.clone().add(d.multiplyScalar(150))} target={target} color={color} intensity={strength} castShadow
+      <directionalLight name="sun" position={c.clone().add(d.multiplyScalar(150))} target={target} color={color} intensity={strength} castShadow
         shadow-mapSize={[4096, 4096]} shadow-radius={5} shadow-blurSamples={16} shadow-camera-left={-50} shadow-camera-right={50} shadow-camera-top={50}
         shadow-camera-bottom={-50} shadow-camera-far={500} shadow-bias={-0.0003} shadow-normalBias={0.02} />
     </>
@@ -1094,9 +1132,10 @@ function isHelper(o: Object3D | null): boolean {
   return false;
 }
 
-function Capture({ capture, camera, vfovDeg, frame, objects }: {
+function Capture({ capture, camera, vfovDeg, frame, objects, renderSun }: {
   capture: React.MutableRefObject<(() => Promise<Layers>) | null>; camera: PerspectiveCamera; vfovDeg: number;
   frame: { w: number; h: number }; objects: () => { id: bigint; name: string; kind: string; root: Object3D }[];
+  renderSun: Vector3 | null; // three-world direction toward the photo's sun (Nemotron's light read), for the composite
 }) {
   const { gl, scene } = useThree();
   const get = useThree(s => s.get);
@@ -1107,7 +1146,12 @@ function Capture({ capture, camera, vfovDeg, frame, objects }: {
       const hide: Object3D[] = [];
       if (tilesRef.current) hide.push(tilesRef.current.group);
       if (sparkRef.current) hide.push(sparkRef.current); // our own data, but the layers carry only the user's objects
-      return renderLayers({ gl, scene, camera, vfovDeg, width: frame.w, height: frame.h, hide, objects: objects() });
+      // The layers composite onto the user's photo, so their shadows follow the photo's light, not the planned time.
+      const sun = scene.getObjectByName('sun') as (Object3D & { target: Object3D }) | undefined;
+      const was = sun?.position.clone();
+      if (sun && renderSun) { sun.position.copy(sun.target.position).addScaledVector(renderSun, 150); sun.updateMatrixWorld(); }
+      try { return await renderLayers({ gl, scene, camera, vfovDeg, width: frame.w, height: frame.h, hide, objects: objects() }); }
+      finally { if (sun && was) { sun.position.copy(was); sun.updateMatrixWorld(); } }
     };
   });
   return null;

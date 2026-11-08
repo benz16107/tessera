@@ -7,7 +7,7 @@ import { tables } from '../../module_bindings/index.ts';
 import { Ico, Seg } from './ui.tsx';
 
 export type GenMode = '3d' | 'image3d' | 'poster';
-export interface GenResult { url: string; name: string; prompt?: string; source: 'words' | 'photo' | 'voice'; conceptUrl?: string; heightM?: number; mode: GenMode; ms?: number; model?: string; objectId?: string }
+export interface GenResult { url: string; name: string; prompt?: string; source: 'words' | 'photo' | 'voice'; conceptUrl?: string; heightM?: number; mode: GenMode; ms?: number; model?: string; objectId?: string; fallback?: string }
 
 const IMG_RE = /\/(?:asset|preview|photo|concept)\/[\w.-]+\.(?:png|jpe?g|webp)/i;
 
@@ -21,14 +21,23 @@ export async function shrinkToDataUrl(file: Blob, max = 1024): Promise<string> {
   return c.toDataURL('image/jpeg', 0.9);
 }
 
-export async function generate(sessionId: bigint, body: { prompt?: string; image?: string; name: string; mode: GenMode }): Promise<Record<string, unknown>> {
+// The crew's modes (docs/NVIDIA.md): words to 3D, words to a concept image to 3D, a photo to 3D, or a flat textured plane.
+const CREW_MODE: Record<GenMode, string> = { '3d': 'text3d', image3d: 'image3d', poster: 'flat' };
+
+/** POST /api/props/generate with place: false (the studio places it). Adds `url` (asset.url, a GLB in every mode) and
+ *  `heightM` (dims.height_m) to the crew's response. */
+export async function generate(sessionId: bigint, body: { prompt?: string; image?: string; name: string; mode: GenMode; seed?: number }): Promise<Record<string, unknown>> {
+  const mode = body.image ? (body.mode === 'poster' ? 'flat' : 'photo3d') : CREW_MODE[body.mode];
   const r = await fetch('/api/props/generate', {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ sessionId: String(sessionId), place: false, ...body }),
+    body: JSON.stringify({ sessionId: String(sessionId), place: false, ...body, label: body.name, mode }),
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(String(j.error ?? `generate HTTP ${r.status}`));
-  return j;
+  const asset = j.asset as { url?: string } | undefined, dims = j.dims as { height_m?: number } | undefined;
+  const url = asset?.url ?? j.url;
+  if (!url) throw new Error('the generator returned no model');
+  return { ...j, url, heightM: dims?.height_m ?? j.heightM };
 }
 
 const clean = (s: string) => s.replace(/[;=\n]/g, ' ').trim();
@@ -65,7 +74,7 @@ export default function Generate({ sessionId, onResult, external }: {
       const res: GenResult = {
         url: String(j.url), name: clean(body.name).slice(0, 60) || 'Generated prop', prompt: body.prompt ? clean(body.prompt).slice(0, 200) : undefined,
         source, conceptUrl, mode: body.mode, ms: Number(j.ms) || undefined, model: j.model ? String(j.model) : undefined,
-        heightM: Number(j.heightM ?? j.height_m) || undefined,
+        heightM: Number(j.heightM) || undefined, fallback: j.fallback ? String(j.fallback) : undefined,
         objectId: (j.object as { id?: string } | undefined)?.id,
       };
       setDone(res);

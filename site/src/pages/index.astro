@@ -1,280 +1,237 @@
 ---
+// Landing v2. One idea per section, each carried by a real screenshot in a device or window frame.
+// The HTML and CSS below are the complete static page (no JavaScript, or prefers-reduced-motion).
+// src/scripts/landing.ts adds the scroll story on top: html.motion is set before first paint.
 import { Image } from 'astro:assets';
 import Landing from '../layouts/Landing.astro';
-import { APP_URL, DEMO_CODE, TAGLINE } from '../site.ts';
-import hero from '../assets/shots/studio-polish-prod-camera.png';
+import Iphone from '../components/frames/Iphone.astro';
+import Browser from '../components/frames/Browser.astro';
+import { APP_URL, DEMO_CODE } from '../site.ts';
+import world from '../assets/shots/studio-polish-prod.png';
+import camera from '../assets/shots/studio-polish-prod-camera.png';
+import photo from '../assets/shots/user-photo-d0481.jpg';
 import drop from '../assets/shots/simple-drop-phone.png';
 import found from '../assets/shots/simple-found-phone.png';
 import yours from '../assets/shots/simple-yours-phone.png';
 import there from '../assets/shots/simple-there-start-phone.png';
 import simple from '../assets/shots/simple-prod-found-desktop.png';
-import studio from '../assets/shots/studio-render-layers.png';
 
-const demo = `${APP_URL}/p/${DEMO_CODE}`;
 const steps = [
-  { n: '01', img: drop, title: 'Drop a photo', body: 'Any photo of a mapped place, from your camera roll or a link. Each step of the solve shows as it runs: safety check, spot, lens read, match.' },
-  { n: '02', img: found, title: 'Found it', body: 'Where to stand, which way to face and which lens, as "2.2x on your iPhone\'s main camera". The photo blends over the 3D view so you can check the answer yourself.' },
-  { n: '03', img: yours, title: 'Make it yours', body: 'Add friends, change the lens, move the sun to golden hour, describe a change in words. The render puts your people into your own photo.' },
-  { n: '04', img: there, title: 'Take me there', body: 'Walk to the mark with the original as a ghost over your camera. Friends planning at home watch your dot move.' },
+  { img: drop, title: 'Drop a photo', alt: 'Simple on a phone: Where did they stand? with a drop zone for a photo' },
+  { img: found, title: 'Found it', alt: 'Simple on a phone: Solid match, Manhattan Bridge from Washington St, facing 4 degrees N, lens 2.2x' },
+  { img: yours, title: 'Make it yours', alt: 'Simple on a phone: the original photo beside an AI render with two people at golden hour' },
+  { img: there, title: 'Take me there', alt: 'Simple on a phone: Walk to the mark, with Open camera and compass' },
 ];
 const numbers = [
-  { v: '10 of 11', l: 'held out photos placed at the DUMBO spot. The eleventh said "Couldn\'t place" instead of guessing.', href: '/docs/how-it-works/solve/' },
-  { v: '3%', l: 'median focal length error on those photos, with a median solve of 15.8 s on a CPU.', href: '/docs/how-it-works/solve/' },
-  { v: '900 of 900', l: 'set edits committed when three people dragged objects at 10 Hz for 30 s. Median round trip 42 to 50 ms.', href: '/tracks/spacetime/' },
-  { v: '72.4%', l: 'of long lens photos flagged by our fine tuned Nemotron Nano VL on landmarks it never saw. OpenAI zero shot: 48.3%.', href: '/tracks/nvidia/' },
+  { n: 10, suffix: '/11', label: 'held out photos placed' },
+  { n: 3, suffix: '%', label: 'median focal error' },
+  { n: 900, suffix: '/900', label: 'live edits committed' },
 ];
 const tracks = [
-  { name: 'NVIDIA', line: 'Nemotron turns words into set edits, rebuilds the scene from your photo, checks each render\'s physics, and reads lenses with our own fine tune.', href: '/tracks/nvidia/' },
-  { name: 'SpacetimeDB', line: 'The set is the database. Every person, prop, light and camera is a row that every screen, phone and worker shares live.', href: '/tracks/spacetime/' },
-  { name: 'Photon', line: 'The set reaches people on iMessage, Telegram, SMS, WhatsApp and email, and by phone call, each in that app\'s own form.', href: '/tracks/photon/' },
-  { name: 'Best Design', line: 'Three directions in Figma before any code. The dark one became Studio, the light one became Simple, over one live set.', href: '/tracks/design/' },
-  { name: 'Vultr', line: 'Production runs on a Vultr VM in Dallas, with Vultr Object Storage and Vultr Serverless Inference. So does this site.', href: '/tracks/vultr/' },
+  { name: 'NVIDIA', href: '/tracks/nvidia/' },
+  { name: 'SpacetimeDB', href: '/tracks/spacetime/' },
+  { name: 'Photon', href: '/tracks/photon/' },
+  { name: 'Best Design', href: '/tracks/design/' },
+  { name: 'Vultr', href: '/tracks/vultr/' },
 ];
-const faq = [
-  { q: 'Where does it work today?', a: 'At one mapped spot: the Manhattan Bridge view from Washington St in DUMBO, Brooklyn. A photo from a place we have not mapped gets an honest "we haven\'t mapped this spot". Mapping a spot takes about 150 photos and about 23 minutes on a CPU.' },
-  { q: 'Does it find the spot from Google\'s 3D map?', a: 'No. The solver matches your photo against our own 3D model, built from 155 Creative Commons photos. Google Photorealistic 3D Tiles only draw the planning view, with Google\'s credits on screen, and never enter a render, an export or an AI step.' },
-  { q: 'Are the renders real photos?', a: 'No. Every render is labelled "AI interpretation". Your people and props are composited into your own photo with shadows from the real sun position, and the AI generator is blended only around them, so the rest of your photo stays as it was.' },
-  { q: 'Do my friends need the app?', a: 'No. Anyone with the link joins in a browser. The set can also reach people by text and by phone call through Photon; the crew is connected to Photon, and the numbers to text and call are being set up.' },
-  { q: 'What happens to my photo?', a: 'It is stored so everyone in your shoot can see it, and NVIDIA hosted models read it to place objects and make renders. Your position is shared only while the camera page is open. The privacy page lists every service that touches it.' },
-  { q: 'Can someone use it to find where a person lives?', a: 'ShotMatch can only place a photo at a spot we mapped, and we map public places that are already famous. Nemotron Content Safety screens every upload.' },
-];
+// The solved camera's far plane in studio-polish-prod.png (1512 x 982): corners measured from the screenshot.
+const F = { x0: 661, y0: 380, x1: 806, y1: 569, cx: 732, cy: 551 };
+const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(3)}%`;
 ---
 <Landing title="ShotMatch: stand where the photo was taken">
-  <section class="hero">
-    <div class="wrap hero-copy">
-      <p class="eyebrow">HackUTD 2026</p>
-      <h1>Stand where the photo was taken.{' '}<br />Then make the shot yours.</h1>
-      <p class="lede">Drop a photo of a place. ShotMatch finds where the photographer stood, which way they faced and what lens they used, rebuilds the place as a 3D set, and your group plans its own version there together.</p>
+  <section class="hero" data-hero>
+    <div class="hero-copy">
+      <h1>Stand where the photo was taken.</h1>
+      <p class="lede">Drop a photo. ShotMatch finds where the photographer stood, the heading and the lens.</p>
       <div class="ctas">
-        <a class="btn primary" href={demo}>Try the Manhattan Bridge shot</a>
-        <a class="btn quiet" href="/docs/get-started/">Read the docs</a>
+        <a class="btn primary" href={APP_URL}>Open the app</a>
+        <a class="btn quiet" href="/tracks/">Tracks</a>
       </div>
-      <p class="proof"><span class="num">10 of 11</span>{' '}held out photos placed, median focal error{' '}<span class="num">3%</span></p>
     </div>
-    <figure class="wrap hero-shot">
-      <Image src={hero} alt="ShotMatch Studio looking through Cam A at the Manhattan Bridge from Washington St: the original photo as the backplate, two placed walking figures, a 51 mm lens at f/2.8 focused at 2.1 m, and the golden hour band on the timeline." widths={[800, 1200, 1600, 2000]} sizes="(max-width: 1200px) 100vw, 1200px" loading="eager" fetchpriority="high" />
-      <figcaption>Studio, looking through the shot camera at session {DEMO_CODE}. The photo is the backplate; the two figures and the lens are part of the shared set.</figcaption>
+    <figure class="hero-stage">
+      <Browser url={`104-238-146-229.sslip.io/studio/${DEMO_CODE}`}>
+        <div class="h-zoom">
+        <Image class="h-world" src={world} alt="Studio's 3D set of Washington St, rebuilt from Commons photos, with two placed figures and the solved camera, Cam A." widths={[800, 1200, 1600]} sizes="(max-width: 900px) 100vw, 900px" loading="eager" fetchpriority="high" />
+        <svg class="h-frustum" viewBox="0 0 1512 982" aria-hidden="true">
+          {[[F.x0, F.y0], [F.x1, F.y0], [F.x1, F.y1], [F.x0, F.y1]].map(([x, y]) => <line class="ray" x1={F.cx} y1={F.cy} x2={x} y2={y} pathLength="1" />)}
+          <rect class="plane" x={F.x0} y={F.y0} width={F.x1 - F.x0} height={F.y1 - F.y0} pathLength="1" />
+        </svg>
+        <div class="h-card" style={`left:${pct(F.x0, 1512)};top:${pct(F.y0, 982)};width:${pct(F.x1 - F.x0, 1512)};height:${pct(F.y1 - F.y0, 982)}`}>
+          <Image src={photo} alt="The photo being located: the Manhattan Bridge framed by brick buildings on Washington St" widths={[400, 800]} sizes="(max-width: 900px) 60vw, 420px" loading="eager" />
+        </div>
+        <span class="chip readout" style={`left:${pct((F.x0 + F.x1) / 2, 1512)};top:${pct(F.y0, 982)}`}>4° N · 53 mm · Solid</span>
+        <Image class="h-cam" src={camera} alt="Looking through Cam A: the user's photo as the backplate with the two figures placed in it" widths={[800, 1200, 1600]} sizes="(max-width: 900px) 100vw, 900px" loading="eager" />
+        </div>
+        <span class="chip card-chip">Your photo</span>
+        <span class="chip cam-chip">Through Cam A</span>
+      </Browser>
+      <figcaption>Photo: <a href="https://commons.wikimedia.org/wiki/File:Manhattan_Bridge_-1.jpg">Shah Ronak S</a>, CC BY-SA 4.0</figcaption>
     </figure>
   </section>
 
-  <section class="wrap problem" aria-labelledby="problem-h">
-    <h2 id="problem-h">A photo shows you the place, not where to stand</h2>
-    <div class="cols">
-      <p>Google Lens names a landmark in a second. The standing spot, the direction and the zoom are still guesswork, so people ask strangers online, message photographers who often won't say, or walk around until it lines up. A phone on 1x still gets a different picture when the original was shot from farther back with a longer lens.</p>
-      <ul class="asks">
-        <li><a href="https://reddit.com/r/AskPhotography/comments/1wpvtk0/">A couple's photographer "just couldn't get the focal length/settings right"</a> <span>r/AskPhotography, 1,215 upvotes</span></li>
-        <li><a href="https://reddit.com/r/WeddingPhotography/comments/1hr7i2c/">A wedding photographer with 10 years in can't find the spot in her sister's elopement photos</a> <span>r/WeddingPhotography</span></li>
-        <li><a href="https://triptins.com/manhattan-bridge-view-spot-dumbo/">Guides to our demo shot disagree on which block to stand on</a> <span>triptins.com</span></li>
-      </ul>
-    </div>
-  </section>
-
-  <section class="wrap flow" aria-labelledby="flow-h">
-    <h2 id="flow-h">Four steps, one photo</h2>
-    <ol class="steps">
-      {steps.map((s) => (
-        <li>
-          <Image src={s.img} alt={`ShotMatch Simple on a phone: ${s.title}`} widths={[320, 480, 640]} sizes="(max-width: 760px) 80vw, 280px" />
-          <span class="num step-n">{s.n}</span>
-          <h3>{s.title}</h3>
-          <p>{s.body}</p>
+  <section class="steps" data-steps aria-label="How it works, in four steps">
+    <ol class="steps-list">
+      {steps.map((s, i) => (
+        <li class="step" data-step={i}>
+          <div class="step-phone"><Iphone><Image src={s.img} alt={s.alt} widths={[400, 800]} sizes="(max-width: 760px) 70vw, 340px" /></Iphone></div>
+          <p class="step-title"><span class="num">0{i + 1}</span>{s.title}</p>
         </li>
       ))}
     </ol>
+    <div class="steps-rail" aria-hidden="true">{steps.map(() => <span />)}</div>
   </section>
 
-  <section class="wrap reveal" aria-label="What ShotMatch does">
-    <p class="reveal-text" data-reveal>Where to stand, which way to face, which lens to bring and when the light will be right, from one photo.</p>
-  </section>
-
-  <section class="wrap views" aria-labelledby="views-h">
-    <h2 id="views-h">Simple for anyone, Studio for photographers</h2>
-    <p class="sub">Both views read and write the same live set, so a friend on a phone and a photographer at a laptop plan one shot together. One switch moves between them.</p>
-    <div class="pair">
-      <figure>
-        <Image src={simple} alt="ShotMatch Simple on a laptop: the Manhattan Bridge photo with placed figures beside the answer card reading Solid match, facing 4 degrees N, lens 2.2x on your iPhone's main camera, and the next golden hour." widths={[700, 1000, 1400]} sizes="(max-width: 900px) 100vw, 580px" />
-        <figcaption><strong>Simple.</strong> Light and phone first: the answer in plain words, one tap presets, and Take me there.</figcaption>
-      </figure>
-      <figure>
-        <Image src={studio} alt="ShotMatch Studio in its dark theme: the outliner and asset library on the left, the view through Cam A in the middle, an AI render labelled AI interpretation beside it, and the render layers panel on the right." widths={[700, 1000, 1400]} sizes="(max-width: 900px) 100vw, 580px" />
-        <figcaption><strong>Studio.</strong> The Darkroom set editor: real bodies and lenses, depth of field, render layers, Nemotron's command bar and the live data inspector.</figcaption>
-      </figure>
+  <section class="views" data-views>
+    <div class="seg" role="group" aria-label="Show the view">
+      <button type="button" class="seg-btn" aria-pressed="true" data-view="simple">Simple</button>
+      <button type="button" class="seg-btn" aria-pressed="false" data-view="studio">Studio</button>
+    </div>
+    <p class="views-line">Same live set. Simple for friends, Studio for photographers.</p>
+    <div class="views-stage">
+      <Browser url={`104-238-146-229.sslip.io/p/${DEMO_CODE}`}>
+        <Image class="v-simple" src={simple} alt="Simple on a laptop: the photo with placed figures beside the answer, facing 4 degrees N and 2.2x on your iPhone" widths={[800, 1200, 1600]} sizes="(max-width: 1100px) 100vw, 1040px" />
+        <Image class="v-studio" src={world} alt="Studio on a laptop: the same set in the Darkroom editor, with the scene outline, the 3D view and the camera inspector" widths={[800, 1200, 1600]} sizes="(max-width: 1100px) 100vw, 1040px" />
+      </Browser>
     </div>
   </section>
 
-  <section class="wrap numbers" aria-labelledby="numbers-h">
-    <h2 id="numbers-h">Measured, with the misses</h2>
+  <section class="numbers" data-numbers>
     <dl>
       {numbers.map((n) => (
         <div>
-          <dt class="num">{n.v}</dt>
-          <dd>{n.l}{' '}<a href={n.href}>Source</a></dd>
+          <dt class="num"><span data-count={n.n}>{n.n}</span>{n.suffix}</dt>
+          <dd>{n.label}</dd>
         </div>
       ))}
     </dl>
+    <a class="more" href="/docs/why-shotmatch/#measured">How we measured</a>
   </section>
 
-  <section class="wrap tracks" aria-labelledby="tracks-h">
-    <h2 id="tracks-h">Every sponsor track runs on the same set</h2>
-    <ul class="track-list">
-      {tracks.map((t) => (
-        <li>
-          <a href={t.href}>
-            <span class="t-name">{t.name}</span>
-            <span class="t-line">{t.line}</span>
-            <span class="t-go" aria-hidden="true">Read</span>
-          </a>
-        </li>
-      ))}
-    </ul>
+  <section class="tracks" aria-labelledby="tracks-h">
+    <h2 id="tracks-h" class="label">Tracks</h2>
+    <ul>{tracks.map((t) => <li><a href={t.href}>{t.name}</a></li>)}</ul>
   </section>
 
-  <section class="wrap faq" aria-labelledby="faq-h">
-    <h2 id="faq-h">Questions</h2>
-    <div class="faq-list">
-      {faq.map((f) => (
-        <details>
-          <summary>{f.q}</summary>
-          <p>{f.a}</p>
-        </details>
-      ))}
-    </div>
-  </section>
-
-  <section class="wrap final">
-    <h2>{TAGLINE}</h2>
-    <div class="ctas">
-      <a class="btn primary" href={demo}>Try the Manhattan Bridge shot</a>
-      <a class="btn quiet" href={APP_URL}>Open the app with your own photo</a>
-    </div>
+  <section class="final">
+    <a class="btn primary big" href={`${APP_URL}/p/${DEMO_CODE}`}>Try the Manhattan Bridge shot</a>
   </section>
 </Landing>
 
-<script>
-  // Words of the tagline brighten in reading order as the section crosses the middle of the screen.
-  const el = document.querySelector<HTMLElement>('[data-reveal]');
-  if (el && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    const words = el.textContent!.trim().split(/\s+/);
-    el.textContent = '';
-    const spans = words.map((w, i) => {
-      const s = document.createElement('span');
-      s.textContent = w + (i < words.length - 1 ? ' ' : '');
-      el.append(s);
-      return s;
-    });
-    el.classList.add('armed');
-    let queued = false;
-    const update = () => {
-      queued = false;
-      const r = el.getBoundingClientRect();
-      const start = innerHeight * 0.85, end = innerHeight * 0.35;
-      const p = Math.min(1, Math.max(0, (start - r.top) / (start - end + r.height * 0.5)));
-      const lit = Math.round(p * spans.length);
-      spans.forEach((s, i) => s.classList.toggle('on', i < lit));
-    };
-    const io = new IntersectionObserver(([e]) => {
-      if (e.isIntersecting) addEventListener('scroll', onScroll, { passive: true });
-      else removeEventListener('scroll', onScroll);
-      update();
-    });
-    const onScroll = () => { if (!queued) { queued = true; requestAnimationFrame(update); } };
-    io.observe(el);
-  }
-</script>
+<script src="../scripts/landing.ts"></script>
 
-<style>
-  .wrap { max-width: 1200px; margin-inline: auto; padding-inline: 24px; }
-  @media (max-width: 420px) { .wrap { padding-inline: 16px; } }
-  section { margin-top: 96px; }
-  h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; text-wrap: balance; margin: 0; }
-  h2 { font-size: 1.875rem; line-height: 2.25rem; max-width: 680px; }
-  p { text-wrap: pretty; }
-  .num { font-family: var(--mono); font-feature-settings: 'tnum'; letter-spacing: -0.02em; }
-  .eyebrow { font-family: var(--mono); font-size: 0.75rem; line-height: 1rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--amber); margin: 0 0 16px; }
-
-  .hero { margin-top: 0; padding-top: 80px; }
-  .hero h1 { font-size: 3.75rem; line-height: 1; max-width: 900px; }
-  .lede { font-size: 1.25rem; line-height: 1.75rem; color: var(--text-2); max-width: 680px; margin: 24px 0 0; }
-  .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
-  .btn { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px; border-radius: var(--r); font-weight: 600; font-size: 1rem; text-decoration: none; transition: background-color 0.25s var(--ease), color 0.25s var(--ease); }
-  .btn:active { transform: translateY(1px); }
+<style is:global>
+  /* Global on purpose: the selectors reach <img> elements rendered by astro:assets and the frame components. */
+  section { padding-inline: 24px; }
+  @media (max-width: 420px) { section { padding-inline: 16px; } }
+  h1 { margin: 0; font-weight: 600; letter-spacing: -0.03em; text-wrap: balance; }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .btn { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px; border-radius: var(--r); font-weight: 600; font-size: 1rem; text-decoration: none; transition: background-color 0.2s ease, transform 0.16s var(--ease-out); }
+  .btn:active { transform: scale(0.97); }
   .btn.primary { background: var(--amber); color: var(--amber-ink); }
-  .btn.primary:hover { background: #f5b65c; }
-  .btn.quiet { color: var(--text); background: var(--raise); }
-  .btn.quiet:hover { background: var(--field); }
-  .proof { margin: 24px 0 0; color: var(--text-3); font-size: 0.875rem; }
-  .proof .num { color: var(--text); }
-  .hero-shot { margin-top: 48px; margin-bottom: 0; }
-  .hero-shot img { display: block; width: 100%; height: auto; border-radius: var(--r); border: 1px solid var(--line); }
-  figcaption { margin-top: 12px; color: var(--text-3); font-size: 0.875rem; line-height: 1.25rem; max-width: 72ch; }
-  figcaption strong { color: var(--text); font-weight: 600; }
+  .btn.quiet { background: var(--raise); color: var(--text); }
+  @media (hover: hover) and (pointer: fine) { .btn.primary:hover { background: #f5b65c; } .btn.quiet:hover { background: var(--field); } }
+  .chip { position: absolute; z-index: 3; font-family: var(--mono); font-size: clamp(0.5625rem, 1vw, 0.75rem); line-height: 1; white-space: nowrap; color: var(--text); background: rgba(11, 11, 10, 0.88); border: 1px solid var(--line-2); border-radius: 4px; padding: 0.45em 0.6em; pointer-events: none; }
 
-  .cols { display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; margin-top: 24px; }
-  .cols > p { margin: 0; font-size: 1.125rem; line-height: 1.75rem; color: var(--text-2); }
-  .asks { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
-  .asks li { border-top: 1px solid var(--line); padding-top: 16px; }
-  .asks a { color: var(--text); text-decoration: none; font-weight: 500; }
-  .asks a:hover { text-decoration: underline; text-underline-offset: 0.18em; }
-  .asks span { display: block; margin-top: 4px; color: var(--text-3); font-size: 0.75rem; font-family: var(--mono); }
+  /* Hero: copy beside the window on wide screens, above it on narrow ones. */
+  .hero { min-height: calc(100svh - 56px); display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 40px; align-items: center; align-content: center; max-width: 1560px; margin: 0 auto; padding-block: 32px; }
+  .hero h1 { font-size: 3rem; line-height: 1.05; }
+  .lede { margin: 16px 0 0; font-size: 1.125rem; line-height: 1.6; color: var(--text-2); text-wrap: pretty; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+  .hero-stage { margin: 0; width: min(100%, calc((100svh - 176px) * 1.48)); justify-self: center; }
+  .h-zoom { position: absolute; inset: 0; transform-origin: 48.51% 48.32%; }
+  .hero-stage figcaption { margin-top: 8px; font-size: 0.75rem; color: var(--text-3); }
+  .hero-stage figcaption a { color: inherit; }
+  .h-world, .h-cam { position: absolute; inset: 0; }
+  .h-cam { opacity: 0; }
+  .h-frustum { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; overflow: visible; }
+  .h-frustum line, .h-frustum rect { fill: none; stroke: var(--amber); stroke-width: 3; vector-effect: non-scaling-stroke; stroke-dasharray: 1; stroke-dashoffset: 0; }
+  .h-card { position: absolute; z-index: 1; border-radius: 3px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5); transform-origin: 50% 50%; }
+  .h-card img { width: 100%; height: 100%; object-fit: cover; border-radius: 3px; }
+  .card-chip { left: 50%; top: 12px; transform: translateX(-50%); opacity: 0; }
+  .readout { transform: translate(-50%, calc(-100% - 10px)); }
+  .cam-chip { left: 12px; top: 12px; opacity: 0; }
 
-  .steps { list-style: none; padding: 0; margin: 40px 0 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
-  .steps img { display: block; width: 100%; height: auto; aspect-ratio: 393 / 852; object-fit: cover; object-position: top; border-radius: 16px; border: 1px solid var(--line); background: var(--panel); }
-  .step-n { display: block; margin-top: 16px; color: var(--amber); font-size: 0.75rem; }
-  .steps h3 { font-size: 1.25rem; line-height: 1.75rem; margin-top: 4px; }
-  .steps p { margin: 8px 0 0; color: var(--text-2); font-size: 0.875rem; line-height: 1.25rem; }
+  /* Steps: four phones in a row when static; one pinned phone that changes screens with motion. */
+  .steps { max-width: 1200px; margin: 96px auto 0; }
+  .steps-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; }
+  .step-phone { max-width: 280px; margin: 0 auto; }
+  .step-title { margin: 16px 0 0; text-align: center; font-size: 1.25rem; font-weight: 600; letter-spacing: -0.01em; }
+  .step-title .num { display: block; font-size: 0.75rem; color: var(--amber); margin-bottom: 4px; }
+  .steps-rail { display: none; }
 
-  .reveal-text { font-size: 3rem; line-height: 1.1; font-weight: 600; letter-spacing: -0.02em; max-width: 900px; margin: 0; text-wrap: balance; }
-  .reveal-text.armed :global(span) { color: rgba(242, 239, 232, 0.28); transition: color 0.6s var(--ease); }
-  .reveal-text.armed :global(span.on) { color: var(--text); }
+  /* Simple and Studio: one window, two screenshots. Studio wipes in over Simple. */
+  .views { max-width: 1088px; margin: 128px auto 0; text-align: center; }
+  .seg { display: inline-flex; padding: 4px; gap: 4px; border-radius: 12px; background: var(--raise); }
+  .seg-btn { min-height: 40px; padding: 8px 20px; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); font: 600 0.875rem/1 var(--sans); cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease, transform 0.16s var(--ease-out); }
+  .seg-btn[aria-pressed='true'] { background: var(--field); color: var(--text); box-shadow: 0 0 0 1px var(--line-2); }
+  .seg-btn:active { transform: scale(0.97); }
+  .views-line { margin: 16px auto 32px; color: var(--text-2); }
+  .views-stage { text-align: left; }
+  .v-simple, .v-studio { position: absolute; inset: 0; }
+  .v-studio { clip-path: inset(0 0 0 100%); }
+  .views[data-show='studio'] .v-studio { clip-path: inset(0 0 0 0); }
 
-  .sub { color: var(--text-2); max-width: 680px; margin: 16px 0 0; font-size: 1.125rem; line-height: 1.75rem; }
-  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 40px; }
-  .pair figure { margin: 0; }
-  .pair img { display: block; width: 100%; height: auto; border-radius: var(--r); border: 1px solid var(--line); }
-
-  .numbers dl { margin: 40px 0 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; }
+  /* Numbers. */
+  .numbers { max-width: 1088px; margin: 128px auto 0; }
+  .numbers dl { margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
   .numbers dl > div { border-top: 1px solid var(--line-2); padding-top: 16px; }
-  .numbers dt { font-size: 1.875rem; line-height: 2.25rem; color: var(--text); }
-  .numbers dd { margin: 12px 0 0; color: var(--text-2); font-size: 0.875rem; line-height: 1.25rem; }
-  .numbers dd a { color: var(--text-3); }
-  .numbers dd a:hover { color: var(--text); }
+  .numbers dt { font-size: 3.75rem; line-height: 1; color: var(--text); }
+  .numbers dd { margin: 12px 0 0; color: var(--text-2); }
+  .more { display: inline-block; margin-top: 32px; color: var(--text-2); font-size: 0.875rem; text-underline-offset: 0.2em; }
+  .more:hover { color: var(--text); }
 
-  .track-list { list-style: none; margin: 32px 0 0; padding: 0; border-top: 1px solid var(--line); }
-  .track-list a { display: grid; grid-template-columns: 180px 1fr auto; gap: 24px; align-items: baseline; padding: 24px 0; border-bottom: 1px solid var(--line); color: inherit; text-decoration: none; transition: background-color 0.25s var(--ease); }
-  .track-list a:hover { background: var(--panel); }
-  .t-name { font-weight: 600; font-size: 1.25rem; line-height: 1.75rem; }
-  .t-line { color: var(--text-2); }
-  .t-go { font-size: 0.875rem; font-weight: 600; color: var(--amber); padding-right: 12px; }
+  /* Tracks as a strip of names. */
+  .tracks { max-width: 1088px; margin: 128px auto 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 16px 40px; border-top: 1px solid var(--line); padding-top: 32px; }
+  .label { margin: 0; font: 400 0.75rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); }
+  .tracks ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 32px; }
+  .tracks a { color: var(--text); text-decoration: none; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.01em; text-decoration-color: var(--amber); text-underline-offset: 0.2em; }
+  .tracks a:hover, .tracks a:focus-visible { text-decoration-line: underline; }
 
-  .faq-list { margin-top: 32px; border-top: 1px solid var(--line); max-width: 860px; }
-  .faq details { border-bottom: 1px solid var(--line); }
-  .faq summary { cursor: pointer; padding: 16px 0; font-weight: 600; font-size: 1.125rem; line-height: 1.75rem; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
-  .faq summary::-webkit-details-marker { display: none; }
-  .faq summary::after { content: '+'; font-family: var(--mono); color: var(--text-3); }
-  .faq details[open] summary::after { content: '\2212'; }
-  .faq details p { margin: 0 0 24px; color: var(--text-2); max-width: 70ch; }
-
-  .final { margin-bottom: 96px; padding-top: 48px; border-top: 1px solid var(--line); }
-  .final h2 { font-size: 2.25rem; line-height: 2.5rem; }
+  .final { margin: 128px auto 128px; text-align: center; }
+  .btn.big { min-height: 56px; padding: 12px 24px; font-size: 1.125rem; }
 
   @media (max-width: 900px) {
-    .hero h1 { font-size: 3rem; }
-    .cols, .pair { grid-template-columns: 1fr; gap: 32px; }
-    .steps { grid-template-columns: repeat(2, 1fr); }
-    .numbers dl { grid-template-columns: repeat(2, 1fr); }
-    .reveal-text { font-size: 2.25rem; }
-  }
-  @media (max-width: 560px) {
-    section { margin-top: 64px; }
-    .hero { padding-top: 48px; }
-    .hero h1 { font-size: 2.25rem; line-height: 2.5rem; }
-    .lede { font-size: 1.125rem; line-height: 1.75rem; }
-    .hero h1 br { display: none; }
-    .steps { grid-template-columns: 1fr 1fr; gap: 16px; }
+    .hero { grid-template-columns: 1fr; gap: 32px; min-height: auto; padding-block: 48px 32px; }
+    .hero-stage { width: 100%; }
+    /* On a phone the desktop screenshot is too small to read, so the window shows the 3D view around Cam A. */
+    .h-zoom { transform: scale(1.6); }
+    .hero h1 { font-size: 2.25rem; }
+    .steps-list { grid-template-columns: repeat(2, 1fr); gap: 32px 16px; }
     .numbers dl { grid-template-columns: 1fr; gap: 24px; }
-    .track-list a { grid-template-columns: 1fr; gap: 4px; }
-    .t-go { display: none; }
-    .reveal-text { font-size: 1.875rem; line-height: 2.25rem; }
-    .final h2 { font-size: 1.875rem; line-height: 2.25rem; }
+    .numbers dt { font-size: 3rem; }
+    .views, .numbers, .tracks { margin-top: 96px; }
+  }
+
+  /* Reduced motion: keep colour feedback, drop movement. Scroll motion is already off (html.motion is never set). */
+  @media (prefers-reduced-motion: reduce) {
+    .btn, .seg-btn { transition: background-color 0.2s ease, color 0.2s ease; }
+    .btn:active, .seg-btn:active { transform: none; }
+  }
+
+  /* With motion: the hero starts with the photo held up in front of the set, and the steps stack into one phone. */
+  html.motion .hero { min-height: calc(100svh - 56px); }
+  html.motion .h-world { opacity: 0.35; }
+  html.motion .h-card { transform: translate(15.5%, 8.7%) scale(4.2) rotate(-3deg); }
+  @media (max-width: 900px) { html.motion .h-card { transform: translate(9.7%, 5.5%) scale(2.6) rotate(-3deg); } }
+  html.motion .card-chip { opacity: 1; }
+  html.motion .h-frustum line, html.motion .h-frustum rect { stroke-dashoffset: 1; }
+  html.motion .readout { opacity: 0; }
+  html.motion .steps { min-height: calc(100svh - 56px); max-width: 1040px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 48px; margin-top: 64px; }
+  html.motion .steps-list { display: block; position: relative; height: min(76svh, 720px); }
+  html.motion .step { position: absolute; inset: 0; display: grid; grid-template-columns: auto minmax(0, 400px); justify-content: center; align-items: center; gap: 80px; }
+  html.motion .step + .step { opacity: 0; }
+  html.motion .step-phone { height: 100%; width: auto; aspect-ratio: 433 / 882; max-width: none; margin: 0; }
+  html.motion .step-title { text-align: left; font-size: 3rem; line-height: 1.05; letter-spacing: -0.03em; margin: 0; }
+  html.motion .step-title .num { font-size: 0.875rem; margin-bottom: 12px; }
+  html.motion .steps-rail { display: flex; flex-direction: column; gap: 8px; }
+  html.motion .steps-rail span { width: 3px; height: 32px; border-radius: 2px; background: var(--line-2); }
+  html.motion .steps-rail span.on { background: var(--amber); }
+  @media (max-width: 900px) {
+    html.motion .steps { grid-template-columns: 1fr; gap: 0; }
+    html.motion .steps-list { height: min(78svh, 680px); }
+    html.motion .step { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); gap: 16px; justify-items: center; }
+    html.motion .step-title { order: -1; text-align: center; font-size: 1.875rem; }
+    html.motion .step-phone { height: 100%; min-height: 0; }
+    html.motion .steps-rail { display: none; }
   }
 </style>

@@ -71,11 +71,17 @@ async function crop(jpeg: Buffer, box: number[] | null): Promise<Buffer> {
   return r - l > 16 && bt - t > 16 ? sharp(jpeg).extract({ left: l, top: t, width: r - l, height: bt - t }).jpeg({ quality: 92 }).toBuffer() : jpeg;
 }
 
+let conceptFluxDownUntil = 0;
+
 /** A concept image: FLUX.1-dev base mode first, then Qwen-Image on Vultr (named in `model`). */
 async function conceptImage(prompt: string, product: boolean): Promise<{ jpeg: Buffer; model: string; fallback?: string }> {
   const p = product ? `Product photo of ${prompt}, a single object, whole object in view, plain light grey background, soft studio light, photorealistic` : prompt;
   try {
-    const j = await genai(MODELS.flux, { prompt: p, mode: 'base', cfg_scale: 3.5, width: 1024, height: 1024, seed: 0, steps: 30 }, product ? 'concept image for 3D' : 'image for a flat prop', 1, 90_000);
+    // FLUX base mode has answered 500 or timed out all night: after a failure it is skipped for 10 minutes, so a prop request
+    // does not spend 90 s on it every time (a 90 s wait plus TRELLIS is what got cut off by a crew restart as a 502).
+    if (Date.now() < conceptFluxDownUntil) throw new Error('skipped: it failed within the last 10 minutes');
+    const j = await genai(MODELS.flux, { prompt: p, mode: 'base', cfg_scale: 3.5, width: 1024, height: 1024, seed: 0, steps: 30 }, product ? 'concept image for 3D' : 'image for a flat prop', 1, 45_000)
+      .catch(e => { conceptFluxDownUntil = Date.now() + 600_000; throw e; });
     const b64 = j.artifacts?.[0]?.base64;
     if (!b64) throw new Error('no image');
     return { jpeg: await sharp(Buffer.from(b64, 'base64')).jpeg({ quality: 92 }).toBuffer(), model: MODELS.flux };
@@ -143,7 +149,7 @@ export async function generateProp(inp: GenIn): Promise<GenOut> {
     let text = prompt;
     if (mode === 'photo3d') {
       const s = Date.now(), f = await findObject(photo!, inp.label);
-      description = f.description; dims = f.dims; name = inp.label || f.label; text = f.description || f.label;
+      description = f.description; name = inp.label || f.label; text = f.description || f.label;
       const c = await crop(photo!, f.box), file = `${randomUUID().replace(/-/g, '').slice(0, 16)}.jpg`;
       await saveImage(`/preview/${file}`, join(PREVIEWS_DIR, file), c);
       conceptUrl = `/preview/${file}`;
@@ -156,7 +162,7 @@ export async function generateProp(inp: GenIn): Promise<GenOut> {
         conceptUrl = `/preview/${file}`;
         await log('concept_image', prompt, `${c.model}: ${conceptUrl}`, Date.now() - s);
         const s2 = Date.now(), f = await findObject(c.jpeg, prompt);
-        description = f.description; dims = f.dims; text = f.description || prompt;
+        description = f.description; text = f.description || prompt;
         await log('object_read', 'concept image', `${f.description} (${f.dims.length_m} x ${f.dims.width_m} x ${f.dims.height_m} m)`, Date.now() - s2);
       } catch (e) {
         mode = 'text3d';
@@ -174,12 +180,14 @@ export async function generateProp(inp: GenIn): Promise<GenOut> {
       await log('trellis', text.slice(0, 200), `error: ${(e as Error).message.slice(0, 160)}`, Date.now() - s);
       const img = conceptUrl ? await ensureLocal(conceptUrl) : null;
       if (!img) throw e;
-      const out = await generateProp({ ...inp, mode: 'flat', image: undefined, imageUrl: conceptUrl, label: undefined, mount: 'stand', height_m: dims?.height_m ?? inp.height_m, width_m: dims?.length_m });
+      const d = dims ?? await realDims(description ? `${name}: ${description}` : name).catch(() => undefined);
+      const out = await generateProp({ ...inp, mode: 'flat', prompt: name, image: undefined, imageUrl: conceptUrl, label: undefined, mount: 'stand', height_m: d?.height_m ?? inp.height_m });
       return { ...out, name, description, conceptUrl, ran: [...ran, ...out.ran], fallback: `TRELLIS failed (${(e as Error).message.slice(0, 100)}); placed the ${mode === 'photo3d' ? 'photo' : 'concept image'} as a flat cut-out at real size`, ms: Date.now() - t0 };
     }
   }
 
-  if (!dims) { const s = Date.now(); dims = await realDims(name).catch(() => readDims({}, 'default')); await log('real_scale', name, `${dims.length_m} x ${dims.width_m} x ${dims.height_m} m (${dims.source})`, Date.now() - s); }
+  // Size from text, not from pixels: Super VL sizing a patio umbrella from the photo said 0.2 m tall.
+  if (!dims) { const s = Date.now(); dims = await realDims(description ? `${name}: ${description}` : name).catch(() => readDims({}, 'default')); await log('real_scale', name, `${dims.length_m} x ${dims.width_m} x ${dims.height_m} m (${dims.source})`, Date.now() - s); }
   else await log('real_scale', name, `${dims.length_m} x ${dims.width_m} x ${dims.height_m} m (${dims.source}); the studio scales the GLB to ${dims.height_m} m tall and stands it on the ground`, 0);
   if (inp.height_m && mode !== 'flat') dims = { ...dims, height_m: clampM(inp.height_m, 0.02, 60)!, source: 'given' };
 

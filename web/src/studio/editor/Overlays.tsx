@@ -63,9 +63,17 @@ export default function Overlays({ vw, vh, rect, aspect, overlays, pitchDeg, rol
         {on('horizon') && (
           <g clipPath="url(#st-frame)" transform={`rotate(${-rollDeg} ${cx} ${hy})`}>
             <line x1={c.x - c.w} x2={c.x + 2 * c.w} y1={hy} y2={hy} stroke="var(--z)" strokeOpacity={0.75} strokeDasharray="10 6" />
-            <text x={c.x + 8} y={hy - 6} className="st-ov-label">HORIZON {rollDeg >= 0 ? '+' : ''}{rollDeg.toFixed(1)}°</text>
           </g>
         )}
+        {on('horizon') && (() => {
+          // In the margin where the horizon leaves the frame's right edge, clear of anything in the picture.
+          const ex = c.x + c.w, ey = hy - Math.tan((rollDeg * Math.PI) / 180) * (ex - cx), room = vw - ex > 110;
+          return (
+            <text x={room ? ex + 8 : ex - 8} y={ey + 4} textAnchor={room ? 'start' : 'end'} className="st-ov-label" style={{ paintOrder: 'stroke', stroke: 'var(--bg)', strokeWidth: 3 }}>
+              Horizon {rollDeg >= 0 ? '+' : ''}{rollDeg.toFixed(1)}°
+            </text>
+          );
+        })()}
         {on('safe') && [0.93, 0.9].map(k => { const s = safe(k); return <rect key={k} x={s.x} y={s.y} width={s.w} height={s.h} fill="none" stroke="var(--text)" strokeOpacity={0.35} strokeDasharray={k === 0.9 ? '2 4' : undefined} />; })}
       </svg>
       {readout && <p className="st-readout" style={{ left: rect.x + 12, top: rect.y + 12 }}>{readout}</p>}

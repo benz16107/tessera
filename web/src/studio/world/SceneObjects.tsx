@@ -4,7 +4,7 @@
 import { Component, Suspense, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html, Line, useGLTF, useTexture } from '@react-three/drei';
-import { AnimationMixer, Box3, BoxGeometry, CanvasTexture, EdgesGeometry, Group, Mesh, MeshStandardMaterial, Object3D, Quaternion, SRGBColorSpace, Vector3, type Object3DEventMap } from 'three';
+import { AnimationMixer, Box3, BoxGeometry, CanvasTexture, EdgesGeometry, Group, Mesh, MeshStandardMaterial, Object3D, type Material, Quaternion, SRGBColorSpace, Vector3, type Object3DEventMap } from 'three';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js';
 import type { SceneObject } from '../../module_bindings/types.ts';
@@ -39,7 +39,29 @@ const Placeholder = ({ h = 1, color = '#6b655b' }: { h?: number; color?: string 
 /** Real-world size of each object as drawn (east, north, up extents in metres), for the inspector and contact shadows. */
 export const objectSizes = new Map<bigint, [number, number, number]>();
 
-function FittedModel({ url, fit, onSize }: { url: string; fit: ['height' | 'length', number]; onSize?: (s: [number, number, number]) => void }) {
+/** Recolour a cloned model with scene_object.color (a #rrggbb from the set agent or the art director). Each material is
+ *  cloned once and the shared original comes back when the colour clears; a textured material multiplies its texture. */
+function useTint(obj: Object3D, tint?: string) {
+  useLayoutEffect(() => {
+    const on = !!tint && /^#[0-9a-f]{6}$/i.test(tint);
+    obj.traverse(o => {
+      const m = o as Mesh;
+      if (!m.isMesh) return;
+      const one = (mt: Material) => {
+        const base = (mt.userData.tintBase as Material | undefined) ?? mt;
+        if (mt !== base) mt.dispose();
+        if (!on || !(base as MeshStandardMaterial).color) return base;
+        const c = base.clone() as MeshStandardMaterial;
+        c.userData.tintBase = base;
+        c.color.set(tint!);
+        return c;
+      };
+      m.material = Array.isArray(m.material) ? m.material.map(one) : one(m.material);
+    });
+  }, [obj, tint]);
+}
+
+function FittedModel({ url, fit, onSize, tint }: { url: string; fit: ['height' | 'length', number]; onSize?: (s: [number, number, number]) => void; tint?: string }) {
   const { scene } = useGLTF(url, DRACO);
   const { obj, k, off, dims } = useMemo(() => {
     const obj = scene.clone(true);
@@ -50,6 +72,7 @@ function FittedModel({ url, fit, onSize }: { url: string; fit: ['height' | 'leng
     return { obj, k, off: [-c.x * k, -box.min.y * k, -c.z * k] as [number, number, number], dims: [size.x * k, size.z * k, size.y * k] as [number, number, number] };
   }, [scene, fit[0], fit[1]]); // eslint-disable-line react-hooks/exhaustive-deps
   useLayoutEffect(() => { onSize?.(dims); }, [dims]); // eslint-disable-line react-hooks/exhaustive-deps
+  useTint(obj, tint);
   return <group quaternion={GLTF_UPRIGHT}><group position={off} scale={k}><primitive object={obj} /></group></group>;
 }
 
@@ -89,7 +112,7 @@ function ImagePlane({ url, w, h }: { url: string; w: number; h: number }) {
 
 const CLIP_AT: Record<string, number> = { walk: 0.3, jump: 0.45, push: 0.4 }; // fraction of the clip that reads best as a still
 
-function Person({ pose, height }: { pose: string; height: number }) {
+function Person({ pose, height, tint }: { pose: string; height: number; tint?: string }) {
   const { scene, animations } = useGLTF(MANNEQUIN, DRACO);
   const obj = useMemo(() => {
     const o = cloneSkinned(scene);
@@ -103,6 +126,7 @@ function Person({ pose, height }: { pose: string; height: number }) {
     });
     return o;
   }, [scene]);
+  useTint(obj, tint);
   useLayoutEffect(() => {
     const clip = animations.find(a => a.name === (pose === 'lean' ? 'stand' : pose)) ?? animations[0];
     if (!clip) return;
@@ -210,19 +234,19 @@ export function ObjectNode(p: NodeProps) {
   let foot: [number, number] | null = null;
   if (row.kind === 'person') {
     const h = num(prm, 'height', 1.75);
-    body = <Person pose={prm.pose ?? 'stand'} height={h} />;
+    body = <Person pose={prm.pose ?? 'stand'} height={h} tint={row.color} />;
     foot = prm.pose === 'sit' ? [0.55, 0.6] : [0.5, 0.36];
     if (!objectSizes.has(row.id)) objectSizes.set(row.id, [0.5, 0.3, h]);
   } else if (row.kind === 'model') {
     const spec = propById(row.assetId);
-    body = <FittedModel url={propUrl(row)} fit={spec?.fit ?? ['height', 1]} onSize={onSize} />;
+    body = <FittedModel url={propUrl(row)} fit={spec?.fit ?? ['height', 1]} onSize={onSize} tint={row.color} />;
     foot = size ? [size[0], size[1]] : null;
   } else if (row.kind === 'prop_generated' && prm.type === 'image') {
     const w = num(prm, 'w', 1), h = num(prm, 'h', 1);
     body = <ImagePlane url={row.assetId} w={w} h={h} />;
     objectSizes.set(row.id, [w, 0.01, h]);
   } else if (row.kind === 'prop_generated') {
-    body = <FittedModel url={propUrl(row)} fit={['height', num(prm, 'h', 1)]} onSize={onSize} />;
+    body = <FittedModel url={propUrl(row)} fit={['height', num(prm, 'h', 1)]} onSize={onSize} tint={row.color} />;
     foot = size ? [size[0], size[1]] : null;
   } else if (row.kind === 'light') body = <Light row={row} expo={p.expo} selected={p.selected} />;
   else if (row.kind === 'camera') body = p.isShot && p.lookingThrough ? null : <CameraGizmo o={p.optics} selected={p.selected} isShot={p.isShot} focusM={p.focusM} />;

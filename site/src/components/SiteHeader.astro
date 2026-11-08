@@ -29,6 +29,7 @@ const here = current ?? (path.startsWith('/tracks') ? 'tracks' : path.startsWith
   .sm-nav .sm-cta { color: var(--amber-ink); background: var(--amber); margin-left: 8px; }
   .sm-nav .sm-cta:hover { color: var(--amber-ink); background: #f5b65c; }
   .sm-nav .sm-cta:active { transform: translateY(1px); }
+  @media (prefers-reduced-motion: reduce) { .sm-nav a { transition: none; } .sm-nav .sm-cta:active { transform: none; } }
   @media (max-width: 420px) {
     .sm-bar { gap: 8px; }
     .sm-nav a { padding: 8px; }

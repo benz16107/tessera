@@ -10,6 +10,7 @@ const headings = [
   { depth: 2, slug: 'lens-dataset', text: 'Lens reader training photos' },
   { depth: 2, slug: 'models-and-data', text: 'Models, maps and open data' },
   { depth: 2, slug: 'studio-assets', text: 'Studio assets' },
+  { depth: 2, slug: 'this-site', text: 'This site' },
   { depth: 2, slug: 'software', text: 'Software' },
 ];
 const counts = (rows: ReturnType<typeof lensCredits>) => licenseCounts(rows).map(([l, n]) => `${l} (${n})`).join(', ');
@@ -66,6 +67,18 @@ const counts = (rows: ReturnType<typeof lensCredits>) => licenseCounts(rows).map
       <tr><td>Icons</td><td><a href="https://phosphoricons.com">Phosphor Icons</a></td><td>MIT</td></tr>
       <tr><td>Fonts: Archivo, Martian Mono</td><td>Omnibus-Type; Evil Martians</td><td>SIL Open Font License 1.1</td></tr>
       <tr><td>Generated props (<code>/asset/&lt;id&gt;.glb</code>)</td><td>Made on request by NVIDIA TRELLIS for the session that asked</td><td>Each session's output</td></tr>
+    </tbody>
+  </table>
+
+  <AnchorHeading level="2" id="this-site">This site</AnchorHeading>
+  <table>
+    <thead><tr><th>What</th><th>Source</th><th>License</th></tr></thead>
+    <tbody>
+      <tr><td>iPhone frame around the phone screenshots (a generic iPhone with a Dynamic Island, not a specific model)</td><td><a href="https://magicui.design">Magic UI</a> <code>iphone</code> component, ported to Astro in <code>site/src/components/frames/Iphone.astro</code></td><td>MIT, Copyright (c) Magic UI</td></tr>
+      <tr><td>Browser window frame around the desktop screenshots</td><td><a href="https://magicui.design">Magic UI</a> <code>safari</code> component, ported to Astro in <code>site/src/components/frames/Browser.astro</code></td><td>MIT, Copyright (c) Magic UI</td></tr>
+      <tr><td>Scroll animation on the home page</td><td><a href="https://gsap.com">GSAP</a> 3.15.0 with ScrollTrigger</td><td><a href="https://gsap.com/standard-license">GSAP Standard "no charge" license</a></td></tr>
+      <tr><td>Smooth scrolling on the home page</td><td><a href="https://lenis.darkroom.engineering">Lenis</a> 1.3.27</td><td>MIT</td></tr>
+      <tr><td>Screenshots</td><td>The ShotMatch app itself, captured with Playwright</td><td>Ours; the photo in them is credited above (Shah Ronak S, CC BY-SA 4.0)</td></tr>
     </tbody>
   </table>
 

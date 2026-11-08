@@ -113,11 +113,10 @@ export async function contactMask(beautyA: Buffer, shadowA: Buffer | null, w: nu
   return blur1(m, w, h, 1.2);
 }
 
-/** Pastes an edited crop back at full opacity, colour-matched to the original at its border, with only the outer
- *  `feather` px blended (a person comes back solid, no see-through body, no seam). Returns a new RGB frame. */
-export function pasteCrop(frame: Buffer, w: number, crop: Buffer, box: { left: number; top: number; width: number; height: number }, feather: number): Buffer {
-  const out = Buffer.from(frame), bw = box.width, bh = box.height, ring = Math.max(2, Math.round(Math.min(bw, bh) * 0.08));
-  // Per-channel mean and spread over the crop's border ring, original against edited, so the edit's tone matches its surroundings.
+/** The edited crop's tone matched to the frame at the crop's border ring (per-channel mean and spread), so pasted pixels
+ *  sit in the same exposure and white balance as their surroundings. */
+export function toneToBorder(frame: Buffer, w: number, crop: Buffer, box: { left: number; top: number; width: number; height: number }): Buffer {
+  const bw = box.width, bh = box.height, ring = Math.max(2, Math.round(Math.min(bw, bh) * 0.08));
   const st = [0, 1, 2].map(() => ({ so: 0, so2: 0, se: 0, se2: 0, n: 0 }));
   for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
     if (x >= ring && y >= ring && x < bw - ring && y < bh - ring) continue;
@@ -129,10 +128,39 @@ export function pasteCrop(frame: Buffer, w: number, crop: Buffer, box: { left: n
     const g = Math.max(0.7, Math.min(1.4, so / se));
     return (v: number) => Math.max(0, Math.min(255, Math.round((v - me) * g + mo)));
   });
+  const out = Buffer.alloc(crop.length);
+  for (let i = 0; i < crop.length; i++) out[i] = tf[i % 3](crop[i]);
+  return out;
+}
+
+/** Where an edited crop should replace the frame: the placeholder's own pixels, plus pixels near it (within `reach` px) that
+ *  the edit really changed (the new person, their shadow). Background the model merely redrew elsewhere in the crop stays
+ *  original, so no box edge shows. One channel, crop-local, softened by `soft` px. */
+export async function changedRegion(frame: Buffer, w: number, crop: Buffer, box: { left: number; top: number; width: number; height: number }, objLocal: Buffer, reach: number, soft = 2): Promise<Buffer> {
+  const bw = box.width, bh = box.height;
+  const near = await blur1(objLocal, bw, bh, reach);
+  const r = Buffer.alloc(bw * bh);
   for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
-    const a = Math.min(1, (Math.min(x, y, bw - 1 - x, bh - 1 - y) + 1) / Math.max(1, feather));
+    const i = y * bw + x, o = ((box.top + y) * w + box.left + x) * 3, e = i * 3;
+    const d = Math.max(Math.abs(frame[o] - crop[e]), Math.abs(frame[o + 1] - crop[e + 1]), Math.abs(frame[o + 2] - crop[e + 2]));
+    r[i] = objLocal[i] || (near[i] > 6 && d > 36) ? 255 : 0;
+  }
+  // Close small holes (a jacket close to the street's colour) and soften the edge.
+  const closed = await blur1(r, bw, bh, Math.max(2, reach / 6));
+  for (let i = 0; i < r.length; i++) r[i] = closed[i] > 90 || objLocal[i] ? 255 : 0;
+  return blur1(r, bw, bh, soft);
+}
+
+/** Pastes an edited crop at full opacity inside `region` (or the whole box), with only the outer `feather` px of the box
+ *  blended (a person comes back solid: no see-through body, no seam). Returns a new RGB frame. */
+export function pasteCrop(frame: Buffer, w: number, crop: Buffer, box: { left: number; top: number; width: number; height: number }, feather: number, region?: Buffer): Buffer {
+  const out = Buffer.from(frame), bw = box.width, bh = box.height;
+  for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+    const edge = Math.min(1, (Math.min(x, y, bw - 1 - x, bh - 1 - y) + 1) / Math.max(1, feather));
+    const a = region ? Math.min(edge, region[y * bw + x] / 255) : edge;
+    if (!a) continue;
     const o = ((box.top + y) * w + box.left + x) * 3, e = (y * bw + x) * 3;
-    for (let c = 0; c < 3; c++) out[o + c] = Math.round(tf[c](crop[e + c]) * a + frame[o + c] * (1 - a));
+    for (let c = 0; c < 3; c++) out[o + c] = Math.round(crop[e + c] * a + frame[o + c] * (1 - a));
   }
   return out;
 }

@@ -54,7 +54,7 @@ export default defineConfig({
           label: 'Tracks',
           items: ['tracks', 'tracks/nvidia', 'tracks/spacetime', 'tracks/photon', 'tracks/design', 'tracks/vultr'],
         },
-        { label: 'Get started', items: ['docs/get-started'] },
+        { label: 'Get started', items: ['docs/get-started', 'docs/why-shotmatch'] },
         {
           label: 'How it works',
           items: [

@@ -66,15 +66,19 @@ test('object masks from the ID layer, in sRGB or linear, and strength inside a m
   assert.deepEqual(maskBox(m.get('7')!, W, H, 0), { left: 15, top: 10, width: 10, height: 15 });
 });
 
-test('a pasted crop is solid inside, feathered at the edge, and tone-matched to its border', async () => {
-  const { pasteCrop } = await import('../src/composite.ts');
+test('an edited crop replaces the placeholder and what changed near it, solid, tone-matched; redrawn background stays original', async () => {
+  const { pasteCrop, toneToBorder, changedRegion } = await import('../src/composite.ts');
   const frame = fill(3, () => [100, 100, 100]);
   const box = { left: 10, top: 5, width: 20, height: 20 };
-  const crop = Buffer.from(Array.from({ length: 400 }, (_, i) => { const x = i % 20, y = (i / 20) | 0; return x > 5 && x < 14 && y > 5 && y < 14 ? [220, 40, 40] : [130, 130, 130]; }).flat());
-  const out = pasteCrop(frame, W, crop, box, 3);
+  // The edit: a red person where the mannequin was, background lifted to 130 (a tone drift the border match removes).
+  const crop = Buffer.from(Array.from({ length: 400 }, (_, i) => { const x = i % 20, y = (i / 20) | 0; return x > 6 && x < 13 && y > 4 && y < 16 ? [220, 40, 40] : [130, 130, 130]; }).flat());
+  const obj = Buffer.from(Array.from({ length: 400 }, (_, i) => { const x = i % 20, y = (i / 20) | 0; return x > 7 && x < 12 && y > 5 && y < 15 ? 255 : 0; }));
+  const toned = toneToBorder(frame, W, crop, box);
+  const region = await changedRegion(frame, W, toned, box, obj, 4, 0.5);
+  const out = pasteCrop(frame, W, toned, box, 3, region);
   const at = (x: number, y: number) => [...out.subarray((y * W + x) * 3, (y * W + x) * 3 + 3)];
   const mid = at(20, 15);
   assert.ok(mid[0] > 150 && mid[1] < 80, `person solid: ${mid}`);
-  assert.ok(Math.abs(at(12, 7)[0] - 100) <= 6, 'border background matches the frame');
+  assert.ok(Math.abs(at(12, 7)[0] - 100) <= 3, `background near the box edge stays the frame's: ${at(12, 7)}`);
   assert.deepEqual(at(5, 5), [100, 100, 100], 'outside the box untouched');
 });

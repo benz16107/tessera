@@ -22,6 +22,8 @@ const { title, description = DESCRIPTION } = Astro.props;
     <meta property="og:image" content={`${SITE_URL}/og.jpg`} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="theme-color" content="#0b0b0a" />
+    <!-- Before first paint: scroll motion only for people who have not asked for reduced motion. -->
+    <script is:inline>if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('motion');</script>
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>

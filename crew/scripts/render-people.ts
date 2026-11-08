@@ -75,7 +75,6 @@ for (const n of (process.argv.slice(2).map(Number).filter(Boolean).length ? proc
     const file = (u: string) => join(PREVIEWS_DIR, u.replace('/preview/', ''));
     await sharp(file(r.compositeUrl)).png().toFile(join(OUT, `render-people-${n}-before.png`));
     await sharp(file(r.url)).png().toFile(join(OUT, `render-people-${n}-after.png`));
-    if (r.rerendered) await sharp(file(r.url.replace(/r2\.jpg$/, '.jpg'))).png().toFile(join(OUT, `render-people-${n}-after-round1.png`));
     console.log(`\n${n} people: ${Date.now() - t0} ms, ${r.model}, placeholders ${r.placeholders}, rerendered ${r.rerendered}${r.fallback ? `\n  fallback: ${r.fallback.slice(0, 160)}` : ''}`);
     for (const c of r.checks) console.log(`  check ${c.round}: ${c.pass ? 'pass' : 'fail'}, mannequins ${JSON.stringify(c.placeholders)}: ${c.summary}`);
     console.log(`  prompt: ${r.prompt.slice(0, 700)}`);

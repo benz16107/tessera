@@ -11,6 +11,8 @@ interface Props {
   sessionId: bigint; photoId?: bigint;
   shot: Shot; f35: number; time: string;
   sun: { azimuth: number; altitude: number };
+  sunMatch: string | null; sunSource: 'photo' | 'plan'; onSunSource: (s: 'photo' | 'plan') => void;
+  onSunFix: (azimuth: number, altitude: number) => void; fixNote: string; onFixDone: () => void;
 }
 
 export default function RenderSection(p: Props) {
@@ -39,9 +41,28 @@ export default function RenderSection(p: Props) {
     setBusy('');
   };
 
+  // One click after a sun fix: fresh layers with the new sun, straight to the AI render (the result lands beside the frame).
+  const again = async () => {
+    setBusy('Rendering again with the new sun'); setMsg('');
+    try {
+      const l = await p.getLayers();
+      await postRender(l, { sessionId: String(p.sessionId), photoId: String(p.photoId ?? ''), settings });
+      setMsg('Rendering. The new version appears beside the frame and in Renders.'); p.onFixDone();
+    } catch (e) { setMsg(String((e as Error).message ?? e)); }
+    setBusy('');
+  };
+
   return (
     <div className="st-render st-sec">
-      {has && <NvidiaSlot name="RenderPanel" props={{ sessionId: p.sessionId, photoId: p.photoId, getLayers: p.getLayers, settings: JSON.parse(settings) }} />}
+      {p.sunMatch && (
+        <p className="st-note" role="status">{p.sunMatch}.{' '}
+          <button className="st-link" onClick={() => p.onSunSource(p.sunSource === 'photo' ? 'plan' : 'photo')}>{p.sunSource === 'photo' ? 'Use the planned sun' : 'Match the photo'}</button></p>
+      )}
+      {p.fixNote && (
+        <div className="st-note" role="status">{p.fixNote}{' '}
+          <button className="st-btn small" onClick={again} disabled={!!busy || p.photoId === undefined}>Render again</button></div>
+      )}
+      {has && <NvidiaSlot name="RenderPanel" props={{ sessionId: p.sessionId, photoId: p.photoId, getLayers: p.getLayers, settings: JSON.parse(settings), onSunFix: p.onSunFix }} />}
       <header className="st-sec-head"><span className="st-label">Render layers</span><span className="st-meta">your objects only, no map tiles</span></header>
       <p className="st-note">Beauty, shadows, depth and an object mask from {''}
         the shot camera at the photo's size. {has ? 'The NVIDIA panel above sends them to the AI render.' : 'The crew composites them over your photo for the AI render.'}</p>
