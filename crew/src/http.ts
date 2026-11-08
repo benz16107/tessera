@@ -94,8 +94,12 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
     const lat = Number(b.lat), lon = Number(b.lon), gps = b.lat != null && b.lon != null && Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
     try {
       const deps = realDeps();
-      const r = gps ? await locateGps(lat, lon, deps) : await locatePhoto(await dataUrl(file, 1024), deps);
-      console.log(`locate ${b.photoUrl}: ${r.source} "${r.place}" ${r.confidence} ${r.lat?.toFixed(4) ?? '-'},${r.lon?.toFixed(4) ?? '-'} ${r.ms} ms`);
+      // The user's clue: a circle ("somewhere around here") and/or their own words; GPS still wins over it.
+      const a = b.hint?.area, area = a && [a.lat, a.lon, a.radiusM].every((v: unknown) => Number.isFinite(Number(v))) && Math.abs(Number(a.lat)) <= 90 && Math.abs(Number(a.lon)) <= 180
+        ? { lat: Number(a.lat), lon: Number(a.lon), radiusM: Math.max(50, Math.min(200_000, Number(a.radiusM))) } : undefined;
+      const hint = area || typeof b.hint?.text === 'string' ? { area, text: typeof b.hint?.text === 'string' ? b.hint.text.slice(0, 200) : undefined } : undefined;
+      const r = gps ? await locateGps(lat, lon, deps) : await locatePhoto(await dataUrl(file, 1024), deps, Date.now, hint);
+      console.log(`locate ${b.photoUrl}${hint ? ' (with a hint)' : ''}: ${r.source} "${r.place}" ${r.confidence} ${r.lat?.toFixed(4) ?? '-'},${r.lon?.toFixed(4) ?? '-'} ${r.ms} ms`);
       json(res, 200, r);
     } catch (e) { fail(503, e); }
     return true;

@@ -42,3 +42,37 @@ test('GPS photos keep their own coordinates and get a place name', async () => {
   assert.deepEqual([r.lat, r.lon, r.confidence, r.source], [43.0912, -79.0745, 'high', 'gps']);
   assert.match(r.place, /Clifton Hill/);
 });
+
+test('an area hint reaches the prompt and bounds the geocoding; matches outside the circle are refused', async () => {
+  const area = { lat: 43.08, lon: -79.07, radiusM: 5000 };
+  const prompts: (string | undefined)[] = [], areas: unknown[] = [];
+  const reply = '{"place": "Ruby Tuesday, Clifton Hill", "query": "Ruby Tuesday Clifton Hill Niagara Falls", "confidence": "medium", "reason": "a Ruby Tuesday sign"}';
+  const mk = (hit: { lat: number; lon: number; name: string } | null): Deps => ({
+    ask: async (_img, hint) => { prompts.push(hint); return reply; },
+    geocode: async (_q, a) => { areas.push(a); return hit; },
+    reverse: async () => ({ lat: 43.08, lon: -79.07, name: 'Niagara Falls, Ontario, Canada' }),
+  });
+  const inside = await locatePhoto('img', mk({ lat: 43.0914, lon: -79.0749, name: 'Ruby Tuesday' }), clock(), { area, text: 'by the falls' });
+  assert.match(prompts[0]!, /within about 5 km of Niagara Falls, Ontario, Canada/);
+  assert.match(prompts[0]!, /by the falls/);
+  assert.deepEqual(areas[0], area, 'the geocoder is bounded to the area');
+  assert.deepEqual([inside.lat, inside.lon, inside.confidence], [43.0914, -79.0749, 'medium']);
+  // A Ruby Tuesday in Toronto is outside the circle: the pin goes to the centre instead.
+  const outside = await locatePhoto('img', mk({ lat: 43.65, lon: -79.38, name: 'Ruby Tuesday Toronto' }), clock(), { area });
+  assert.deepEqual([outside.lat, outside.lon, outside.confidence, outside.place], [43.08, -79.07, 'area', 'Niagara Falls, Ontario, Canada']);
+  assert.deepEqual(outside.area, area);
+  assert.match(outside.reason, /centre/);
+});
+
+test('without an area nothing changes: a miss has no coordinates', async () => {
+  const r = await locatePhoto('img', deps('{"place": "Somewhere", "query": "Somewhere", "confidence": "high", "reason": "x"}', {}), clock(), { text: 'Lisbon' });
+  assert.deepEqual([r.lat, r.confidence, r.area], [null, 'low', null]);
+});
+
+test('with an area, a model failure still answers with the centre', async () => {
+  const area = { lat: 37.77, lon: -122.44, radiusM: 8000 };
+  const failing: Deps = { ask: async () => { throw new Error('timeout'); }, geocode: async () => null, reverse: async () => ({ lat: 37.77, lon: -122.44, name: 'San Francisco' }) };
+  const r = await locatePhoto('img', failing, clock(), { area });
+  assert.deepEqual([r.lat, r.lon, r.confidence, r.place], [37.77, -122.44, 'area', 'San Francisco']);
+  await assert.rejects(locatePhoto('img', failing, clock()), /timeout/, 'without an area the error reaches the route (503)');
+});
