@@ -109,20 +109,23 @@ export default function Found({ result, photo, spot, zone, credit, onGo }: {
 
 /** Found it for a free-location shoot (anywhere.md, anywhere2.md): planned at a pin from the photo's GPS, Nemotron's guess, a
  *  searched place, an exact spot someone set, or the centre of an area. Only an exact spot drops the "Approximate" label. */
-export function PinFound({ photo, geo, title, zone, placed, areaM, credit, onPlace, onGo }: {
-  photo: Photo; geo: { lat: number; lon: number }; title: string; zone: string; placed?: PlacedBy; areaM?: number; credit?: string;
-  onPlace: OnPlace; onGo: () => void;
+export function PinFound({ photo, geo, title, zone, placed, areaM, placeName, credit, onPlace, onGo }: {
+  photo: Photo; geo: { lat: number; lon: number }; title: string; zone: string; placed?: PlacedBy; areaM?: number; placeName?: string;
+  credit?: string; onPlace: OnPlace; onGo: () => void;
 }) {
-  const [place, setPlace] = useState(title === 'Untitled shoot' ? '' : title);
+  const [place, setPlace] = useState(placeName || (title === 'Untitled shoot' ? '' : title));
+  useEffect(() => { if (placeName) setPlace(placeName); }, [placeName]);
   const [clue, setClue] = useState(false);
   const moved = photo.pinLat == null || photo.pinLon == null || metersBetween(photo.pinLat, photo.pinLon, geo.lat, geo.lon) > 50;
-  // The title names the place the shoot was made for. After the pin moves, the crew's geocoder names the new spot.
+  // A name recorded when it was placed wins. Otherwise a guess pin is named by reading the photo again (the street at a
+  // landmark's point is the wrong name), and any other moved pin by the crew's reverse geocoder.
   useEffect(() => {
-    if (!moved && place) return;
+    if (placeName || (!moved && place)) return;
     let live = true;
-    locate(photo.url, geo).then(r => { if (live && r?.place) setPlace(r.place.split(',').slice(0, 2).join(',').trim()); });
+    const guess = placed === 'guess' || (!placed && photo.source === 'locate');
+    locate(photo.url, guess ? undefined : geo).then(r => { if (live && r?.place) setPlace(r.place.split(',').slice(0, 2).join(',').trim()); });
     return () => { live = false; };
-  }, [photo.url, geo.lat, geo.lon, moved]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [photo.url, geo.lat, geo.lon, moved, placeName, placed]); // eslint-disable-line react-hooks/exhaustive-deps
   const by: PlacedBy = placed ?? (photo.source === 'locate' ? 'guess' : moved ? 'search' : 'gps');
   const name = place || 'this place';
   const km = areaM ? (areaM >= 1000 ? `${(areaM / 1000).toFixed(1)} km` : `${Math.round(areaM)} m`) : '';

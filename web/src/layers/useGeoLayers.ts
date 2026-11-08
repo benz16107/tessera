@@ -10,9 +10,9 @@ export type { FC, Feature, Place };
 
 export const LAYERS = [
   { id: 'alerts', name: 'Weather alerts', color: '#e8675e', spatial: true, def: true, note: 'NWS warnings and advisories' },
-  { id: 'film', name: 'Film and event permits', color: '#f2a33a', spatial: true, def: true, note: 'NYC film shoots, parades, load-ins' },
+  { id: 'film', name: 'Film and event permits', color: '#f2a33a', spatial: true, def: false, note: 'NYC film shoots, parades, load-ins' },
   { id: 'closures', name: 'Street closures', color: '#e8675e', spatial: true, def: true, note: 'NYC DOT construction closures' },
-  { id: 'construction', name: 'Sheds and scaffolds', color: '#d9b44a', spatial: true, def: true, note: 'NYC DOB permits' },
+  { id: 'construction', name: 'Sheds and scaffolds', color: '#d9b44a', spatial: true, def: false, note: 'NYC DOB permits' },
   { id: 'shadow', name: 'Building shadows', color: '#7f8ea8', spatial: true, def: true, note: 'Real footprints cast shadows' },
   { id: 'buildings', name: 'Building outlines', color: '#a39f96', spatial: true, def: false, note: 'Footprints and heights' },
   { id: 'photographers', name: 'Where photographers stand', color: '#e6d3a8', spatial: true, def: true, note: 'Geotagged Commons photos' },

@@ -185,23 +185,26 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
       scene.addObject({
         kind: 'camera', assetId: '', name: 'Cam A', x: p.x, y: p.y, z: gz(p.x, p.y) + pose.alt, qx: q.x, qy: q.y, qz: q.z, qw: q.w, scale: 1,
         color: '', intensity: 0, lightType: '', visible: true,
-        params: `uid=${newUid()};shot=1;photo=${photo.id};alt=${pose.alt}${solved ? '' : `;approx=1;placed=${placedNext.current?.by ?? (photo.source === 'locate' ? 'guess' : 'gps')}${placedNext.current?.radiusM ? `;area=${Math.round(placedNext.current.radiusM)}` : ''}`}`,
+        params: `uid=${newUid()};shot=1;photo=${photo.id};alt=${pose.alt}${solved ? '' : `;approx=1;placed=${placedNext.current?.by ?? (photo.source === 'locate' ? 'guess' : 'gps')}${placedNext.current?.radiusM ? `;area=${Math.round(placedNext.current.radiusM)}` : ''}${placedNext.current?.name ? `;place=${placedNext.current.name}` : ''}`}`,
       });
     }, 4000);
     return () => clearTimeout(t);
   }, [scene.ready, cams.length, solved, pinShoot, origin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Every clue (search, exact spot, area, Nemotron's guess) moves the pin for everyone and records on Cam A how it was placed.
-  const placedNext = useRef<{ by: PlacedBy; radiusM?: number } | null>(null);
-  const placeAt: OnPlace = async (lat, lon, by, radiusM) => {
-    placedNext.current = { by, radiusM }; // before the pin moves, so the first render after it already has the right label
+  const placedNext = useRef<{ by: PlacedBy; radiusM?: number; name?: string } | null>(null);
+  const placeAt: OnPlace = async (lat, lon, by, radiusM, name) => {
+    // The place's own name ("Palace of Fine Arts"), short and safe for the key=value params list.
+    const place = name ? name.split(',').slice(0, 2).join(',').replace(/[;=]/g, ' ').trim().slice(0, 80) : undefined;
+    placedNext.current = { by, radiusM, name: place }; // before the pin moves, so the first render after it already has the right label
     await setSessionSpot({ sessionId: sid, spotId: geoSpotId(lat, lon, await groundHeight(lat, lon)) });
-    const patch = { placed: by, area: by === 'area' && radiusM ? Math.round(radiusM) : '', approx: 1 };
+    const patch = { placed: by, area: by === 'area' && radiusM ? Math.round(radiusM) : '', approx: 1, place: place ?? '' };
     if (shotRow) scene.setObject(shotRow, withParams({ ...stateOf(shotRow), x: 0, y: 0, z: 1.6 }, patch));
   };
   const camPrm: Record<string, string> = shotRow ? parseParams(shotRow.params) : {};
   const placedBy = (camPrm.placed as PlacedBy | undefined) ?? placedNext.current?.by;
   const placedArea = camPrm.area ? Number(camPrm.area) : placedNext.current?.radiusM;
+  const placedName = camPrm.place || placedNext.current?.name;
 
   const [step, setStep] = useState<Step>('found');
   const [blend, setBlend] = useState(1); // open on the photo; the slider reveals the 3D on demand
@@ -221,7 +224,7 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
   else if (!pose) panel = <Solving photo={photo} job={job} result={result} spots={spots} onPlace={placeAt} />;
   else if (step === 'found') panel = solved ? <Found result={solved} photo={photo} spot={spot} zone={zone} credit={owner} onGo={() => setStep('there')} />
     : <PinFound photo={photo} geo={geoSpot!} title={session.title} zone={zone} credit={owner} onPlace={placeAt} onGo={() => setStep('there')}
-      placed={placedBy} areaM={placedArea} />;
+      placed={placedBy} areaM={placedArea} placeName={placedName} />;
   else if (step === 'yours') panel = (
     <Yours sessionId={sid} photo={photo} spotId={spotId} pose={pose} shot={shot} setShot={setShot} o={o} planTime={planTime} zone={zone}
       changeTime={changeTime} people={scene.rows.filter(r => r.kind === 'person').length} capture={capture} sun={sun} credit={owner} />
@@ -355,7 +358,7 @@ function Solving({ photo, job, result, spots, onPlace }: { photo: Photo; job?: S
       <p className="s-label">{unsure ? 'Nemotron thinks it might be' : 'Looks like'}</p>
       <p className="s-mid strong">{plan.place.split(',').slice(0, 2).join(',')}{unsure ? '?' : ''}</p>
       {(evidenceLine(plan.evidence) || plan.reason) && <p className="s-muted small">{evidenceLine(plan.evidence) || `Nemotron: ${plan.reason}`}</p>}
-      <button className="s-btn primary" disabled={placing} onClick={() => { setPlacing(true); onPlace(plan.lat!, plan.lon!, 'guess').catch(() => setPlacing(false)); }}>{placing ? 'Moving the shoot' : 'Plan it there'}</button>
+      <button className="s-btn primary" disabled={placing} onClick={() => { setPlacing(true); onPlace(plan.lat!, plan.lon!, 'guess', undefined, plan.place).catch(() => setPlacing(false)); }}>{placing ? 'Moving the shoot' : 'Plan it there'}</button>
     </div>
   );
   const clueRow = plan && !clueOpen

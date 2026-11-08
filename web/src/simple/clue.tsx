@@ -8,7 +8,7 @@ import { searchPlaces, type Place } from '../studio/editor/PlaceSearch.tsx';
 import { GeoPicker, type PickedArea, type PickedPoint } from '../layers/index.ts';
 import { locate, type PlacedBy } from './lib.ts';
 
-export type OnPlace = (lat: number, lon: number, by: PlacedBy, radiusM?: number) => Promise<void>;
+export type OnPlace = (lat: number, lon: number, by: PlacedBy, radiusM?: number, name?: string) => Promise<void>;
 
 type Tab = 'search' | 'pin' | 'area';
 const TABS: [Tab, string][] = [['search', 'Search'], ['pin', 'Exact spot'], ['area', 'Area']];
@@ -39,8 +39,8 @@ export function CluePanel({ photo, near, onPlace, onClose }: { photo: Photo; nea
   const findInArea = () => run('Looking inside the circle', async () => {
     if (!area) return;
     const r = await locate(photo.url, undefined, { area });
-    if (r && r.lat != null && r.lon != null && r.confidence !== 'area' && metersBetween(area.lat, area.lon, r.lat, r.lon) <= area.radiusM * 1.05) await onPlace(r.lat, r.lon, 'guess');
-    else await onPlace(area.lat, area.lon, 'area', area.radiusM);
+    if (r && r.lat != null && r.lon != null && r.confidence !== 'area' && metersBetween(area.lat, area.lon, r.lat, r.lon) <= area.radiusM * 1.05) await onPlace(r.lat, r.lon, 'guess', undefined, r.place);
+    else await onPlace(area.lat, area.lon, 'area', area.radiusM, r?.place);
   });
 
   return (
@@ -57,7 +57,7 @@ export function CluePanel({ photo, near, onPlace, onClose }: { photo: Photo; nea
           </div>
           {res && res.length > 0 && (
             <ul className="s-place-results">
-              {res.map(p => <li key={`${p.lat},${p.lon}`}><button type="button" disabled={!!busy} onClick={() => void run('Moving the shoot', () => onPlace(p.lat, p.lon, 'search'))}>{p.name}</button></li>)}
+              {res.map(p => <li key={`${p.lat},${p.lon}`}><button type="button" disabled={!!busy} onClick={() => void run('Moving the shoot', () => onPlace(p.lat, p.lon, 'search', undefined, p.name))}>{p.name}</button></li>)}
             </ul>
           )}
           <p className="s-place-credit">Search by Nominatim, data © OpenStreetMap contributors</p>
