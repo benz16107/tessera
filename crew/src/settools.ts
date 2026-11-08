@@ -9,6 +9,7 @@ import { searchAssets } from './search.ts';
 import { generateProp } from './gen.ts';
 import { sunWindows } from './sun.ts';
 import { planShootDay } from './shootday.ts';
+import { planWindow } from './route.ts';
 import { conditions } from './layers/index.ts';
 
 /** The geo thread's live conditions (crew/src/layers), trimmed for a model. Slow sources land in `unavailable`, never an error. */
@@ -210,14 +211,15 @@ export const SET_TOOLS: Record<string, Tool> = {
     },
   },
   set_time: {
-    description: 'Set the plan time, which drives the sun in the set: golden hour, blue hour, sunrise, sunset, or an ISO time.',
-    parameters: { type: 'object', properties: { when: { type: 'string' } }, required: ['when'] },
+    description: 'Set the plan time, which drives the sun in the set. Pass the user\'s words: "sunset", "dusk" or "golden hour this evening" pick the evening window; "sunrise", "dawn" or "morning" the morning one; a bare "golden hour" or "blue hour" the next one from now; or an ISO time.',
+    parameters: { type: 'object', properties: { when: { type: 'string', description: 'the user\'s words for the time, e.g. "sunset", or an ISO time' } }, required: ['when'] },
     async run(sid, a) {
-      const ctx = need(sid), w = sunWindows(ctx.origin.lat, ctx.origin.lon, ctx.cam.heading), s = String(a.when ?? '').toLowerCase();
-      const at = /blue/.test(s) ? w.blue?.start : /golden|sunset|evening/.test(s) ? w.golden?.start : /front/.test(s) ? w.goldenFrontLit?.start : !Number.isNaN(Date.parse(String(a.when))) ? new Date(String(a.when)) : undefined;
+      const ctx = need(sid), s = String(a.when ?? '');
+      const win = planWindow(s, ctx.origin.lat, ctx.origin.lon);
+      const at = win?.at ?? (/front/i.test(s) ? sunWindows(ctx.origin.lat, ctx.origin.lon, ctx.cam.heading).goldenFrontLit?.start : !Number.isNaN(Date.parse(s)) ? new Date(s) : undefined);
       if (!at) return { error: `could not read the time "${a.when}"` };
       await conn.reducers.setPlanTime({ sessionId: sid, at: new Timestamp(BigInt(at.getTime()) * 1000n) });
-      return { plan_time: at.toISOString() };
+      return { plan_time: at.toISOString(), ...(win && { window: `${win.period} ${win.kind} hour, ${win.start.toISOString()} to ${win.end.toISOString()}` }) };
     },
   },
   search_assets: {

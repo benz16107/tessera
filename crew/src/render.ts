@@ -31,6 +31,7 @@ export type RenderIn = {
   sessionId: bigint; photoId: bigint; beauty: Buffer; shadow?: Buffer; text?: string; f35?: number; aperture?: number; focusM?: number; iso?: number;
   sun?: { az: number; alt: number }; mode?: 'depth' | 'canny' | 'composite'; strength?: number;
   mask?: Buffer; legend?: { id: string; name: string; kind: string; color: string }[]; // the studio's object-ID layer
+  id?: string; // request id (16 hex), chosen by the async HTTP route so a client can poll before the work ends
 };
 export type Check = { round: number; pass: boolean; summary: string; objects: { name: string; light: boolean; shadow: boolean; scale: boolean; color: boolean; note: string }[]; placeholders: string[];
   strength: 'up' | 'down' | 'same'; promptAdd: string; sunFix?: { azimuth: number; altitude: number; why: string }; model: string; ms: number };
@@ -118,7 +119,7 @@ export async function render(inp: RenderIn): Promise<RenderOut> {
   const meta = await sharp(inp.beauty).metadata();
   const w = meta.width ?? photo.width, h = meta.height ?? photo.height;
   if (!w || !h || w > 8192 || h > 8192) throw new Error('beauty layer has a bad size');
-  const id = randomUUID().replace(/-/g, '').slice(0, 16);
+  const id = inp.id && /^[a-f0-9]{16}$/.test(inp.id) ? inp.id : randomUUID().replace(/-/g, '').slice(0, 16);
   const ctx = setContext(sid), light = sessionLight(sid), settings = conn.db.shotSettings.sessionId.find(sid);
 
   // 1. Composite: shadows into the photo, then the colour-matched beauty layer.
@@ -186,8 +187,14 @@ export async function render(inp: RenderIn): Promise<RenderOut> {
     let strength = Math.max(0.1, Math.min(0.9, inp.strength ?? 0.45));
     const patchPath = placeholders.length > 0, used = new Set<string>();
     let gen: Awaited<ReturnType<typeof generate>> | null = patchPath ? null : await generate(composite, w, h, prompt, mode);
-    let patched = compRgb;
-    if (patchPath) for (const p of placeholders) { const r = await realify(sid, patched, composite, base, p, w, h, 1); patched = r.rgb; if (r.model) used.add(r.model); }
+    // Placeholder crops are edited in parallel; the patches are pasted in order. Each object keeps its latest patch.
+    const patches = new Map<string, Patch>();
+    const editAll = async (ps: typeof placeholders, attempt: number) =>
+      (await Promise.all(ps.map(p => realify(sid, composite, compRgb, base, p, w, h, attempt).then(pt => [p.id, pt] as const))))
+        .forEach(([pid, pt]) => { if (pt) { patches.set(pid, pt); used.add(pt.model); } });
+    const assemble = () => placeholders.reduce((f, p) => (patches.has(p.id) ? applyPatch(f, w, base, patches.get(p.id)!) : f), compRgb);
+    if (patchPath) await editAll(placeholders, 1);
+    let patched = assemble();
     const checks: Check[] = [];
     const finalize = async (round: number) => {
       const map = gen && 'rgb' in gen ? await strengthMap(contact, strength, [], w, h) : null;
@@ -206,7 +213,7 @@ export async function render(inp: RenderIn): Promise<RenderOut> {
     if (c1 && !c1.pass) {
       // A placeholder that still looks like a mannequin, a model or a ghost gets one more focused edit with a firmer prompt.
       const stuck = patchPath ? placeholders.filter(p => c1.placeholders.includes(p.id)).slice(0, 3) : [];
-      for (const p of stuck) { const r = await realify(sid, patched, composite, base, p, w, h, 2); patched = r.rgb; if (r.model) used.add(r.model); }
+      if (stuck.length) { await editAll(stuck, 2); patched = assemble(); }
       if (gen && 'rgb' in gen) {
         if (c1.strength === 'up') strength = Math.min(0.85, strength + 0.25);
         if (c1.strength === 'down') strength = Math.max(0.15, strength - 0.2);
@@ -279,35 +286,43 @@ export function residue(comp: Buffer, w: number, crop: Buffer, box: { left: numb
 
 /** One placeholder's padded crop of the composite, edited on its own into the real thing, pasted into the frame fully opaque
  *  (only the outer few px feathered, tone matched at the border). Attempt 2 uses a firmer prompt. */
-async function realify(sid: bigint, frame: Buffer, composite: Buffer, backplate: Buffer, p: { id: string; name: string; kind: string; mask: Buffer; prompt: string }, w: number, h: number, attempt: number): Promise<{ rgb: Buffer; model?: string }> {
+type Patch = { box: { left: number; top: number; width: number; height: number }; toned: Buffer; region: Buffer; grown: Buffer; model: string };
+
+/** Puts one patch into a frame: the photo (clean backplate) back where the mannequin stood, then the new subject on top. */
+function applyPatch(frame: Buffer, w: number, backplate: Buffer, pt: Patch): Buffer {
+  const { box } = pt, cleared = Buffer.from(frame);
+  for (let y = 0; y < box.height; y++) for (let x = 0; x < box.width; x++) {
+    if (!pt.grown[y * box.width + x]) continue;
+    const o = ((box.top + y) * w + box.left + x) * 3;
+    backplate.copy(cleared, o, o, o + 3);
+  }
+  return pasteCrop(cleared, w, pt.toned, box, 3, pt.region);
+}
+
+async function realify(sid: bigint, composite: Buffer, compRaw: Buffer, backplate: Buffer, p: { id: string; name: string; kind: string; mask: Buffer; prompt: string }, w: number, h: number, attempt: number): Promise<Patch | null> {
   const box = maskBox(p.mask, w, h, 0.4);
-  if (!box || box.width < 16 || box.height < 16) return { rgb: frame };
+  if (!box || box.width < 16 || box.height < 16) return null;
   const t0 = Date.now(), what = p.kind === 'person' ? 'person' : 'object';
   const ask = `Photorealistic photo. ${p.prompt.replace(/^the /, 'The ')}. Replace the grey mannequin or toy-like model with the real ${what} at exactly the same place and size, standing on the same ground, solid and fully opaque. Keep the background, the framing and the perspective exactly the same. No text.` +
     (attempt > 1 ? ` The ${what} must be completely real: nothing grey, see-through, ghosted or doll-like remains.` : '');
   try {
-    const crop = await sharp(composite).extract(box).jpeg({ quality: 92 }).toBuffer(), compRaw = await rawRgb(composite, w, h);
+    const crop = await sharp(composite).extract(box).jpeg({ quality: 92 }).toBuffer();
     const local = Buffer.alloc(box.width * box.height);
     for (let y = 0; y < box.height; y++) p.mask.copy(local, y * box.width, (box.top + y) * w + box.left, (box.top + y) * w + box.left + box.width);
     // The edit model sometimes draws a person in front of the mannequin and leaves it standing: when over 35% of the
     // mannequin's pixels come back unchanged, it edits once more (each call gives a different result).
     let r = await editImage(crop, ask, editSize(box.width, box.height)), patch = await rawRgb(r.image, box.width, box.height);
-    let toned = toneToBorder(frame, w, patch, box), left = residue(compRaw, w, toned, box, local);
+    let toned = toneToBorder(compRaw, w, patch, box), left = residue(compRaw, w, toned, box, local);
     if (left > 0.35) {
       await logStep(sid, 'realify', `object ${p.id} ${p.name}`, `${Math.round(left * 100)}% of the mannequin is still there; editing again`, Date.now() - t0);
       const r2 = await editImage(crop, `${ask} Remove the grey figure entirely.`, editSize(box.width, box.height)), patch2 = await rawRgb(r2.image, box.width, box.height);
-      const toned2 = toneToBorder(frame, w, patch2, box), left2 = residue(compRaw, w, toned2, box, local);
+      const toned2 = toneToBorder(compRaw, w, patch2, box), left2 = residue(compRaw, w, toned2, box, local);
       if (left2 < left) { r = r2; toned = toned2; left = left2; }
     }
     await logStep(sid, 'realify', `object ${p.id} ${p.name}, crop ${box.width}x${box.height}${attempt > 1 ? ', second try' : ''}`, `${r.model}, ${Math.round(left * 100)}% of the mannequin left: ${p.prompt}`.slice(0, 600), Date.now() - t0);
     // The photo is a clean backplate (the mannequin was never in it): put it back wherever the mannequin stood, then paste only
     // what the edit made that the photo does not have, the new person and their shadow. No redrawn background remains.
-    const cleared = Buffer.from(frame), grown = await blur1(local, box.width, box.height, 1.5);
-    for (let y = 0; y < box.height; y++) for (let x = 0; x < box.width; x++) {
-      if (!grown[y * box.width + x]) continue;
-      const o = ((box.top + y) * w + box.left + x) * 3;
-      backplate.copy(cleared, o, o, o + 3);
-    }
+    const grown = await blur1(local, box.width, box.height, 1.5);
     const region = await changedRegion(backplate, w, toned, box, local, Math.max(4, box.height * 0.03), 2, false, 44);
     // Inside the old silhouette the model's redrawn background differs from the photo as much as the person does, so Super VL
     // boxes the new person and only changes inside that box (a little extra below the feet for the contact shadow) are kept.
@@ -328,10 +343,10 @@ async function realify(sid: bigint, frame: Buffer, composite: Buffer, backplate:
       how = `new ${what} boxed by Nemotron at ${pb.map(v => v.toFixed(2)).join(', ')}${keyed ? ', silhouette keyed from a green-screen edit' : ''}; the rest of the old silhouette restored from the photo`;
     }
     await logStep(sid, 'realify', `object ${p.id} paste`, how, 0);
-    return { rgb: pasteCrop(cleared, w, toned, box, 3, region), model: r.model };
+    return { box, toned, region, grown, model: r.model };
   } catch (e) {
     await logStep(sid, 'realify', `object ${p.id} ${p.name}`, `error: ${(e as Error).message.slice(0, 200)}`, Date.now() - t0);
-    return { rgb: frame };
+    return null;
   }
 }
 

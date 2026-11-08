@@ -188,9 +188,8 @@ Most people on a shoot won't install anything, and the scout's hands are full. P
 4. **The thread is the version tree.** Reply to v1 in any chat app and the set forks to v1.1.
 5. **Golden-hour alerts** with your walking time, sent on the next channel when the shared iMessage line refuses.
 
-A photo of one object becomes a 3D prop in the set. Status, plainly: Telegram is live. @ShotMatchSetBot answered a real message at 12:43 AM CT and located a texted
-photo at 12:51 AM CT ("Solid: Manhattan Bridge from Washington St, DUMBO. 1600 matches"). The iMessage, SMS, voice,
-email and WhatsApp lines need numbers, DNS and testers set up in Photon's dashboard, so all five mechanisms were also proven end to end against a stand-in for Photon's Beta API with
+A photo of one object becomes a 3D prop in the set. Status, plainly: live on Telegram. Between 12:42 and 1:03 AM CT on Nov 8, through Photon's live API and the managed Telegram bot @ShotMatchSetBot, a photo was located ("Solid ... 1600 matches ... 54 mm"), a set edit came back as v1 with its render, a native reply to v1 forked the set to v1.1, "versions" listed the tree, a street photo was solved as a check-in ("You're 9.3 m south of the mark. Step forward 12 paces, then 4 paces to your left."), a texted lamp became a prop (a flat cut-out: the hosted photo-to-3D model returned an error), and a render started in the studio arrived in Telegram on its own as an album of lens options. Screenshots are on the Photon page. iMessage, SMS, voice calls, email and
+WhatsApp Business need a number, DNS or Meta signup, so the call, the golden-hour alert and those channels were proven end to end against a stand-in for Photon's Beta API with
 the real crew, the real SpacetimeDB module and real NVIDIA models: 29 of 29 checks.
 
 Details: https://site.104-238-146-229.sslip.io/tracks/photon/

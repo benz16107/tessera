@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
@@ -199,11 +200,33 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
     const sun = Number.isFinite(az) && Number.isFinite(alt) && raw('sunAzimuth') !== undefined ? { az, alt } : undefined;
     const text = String(form.get('text') ?? settings.text ?? '').slice(0, 500);
     if (text) { const s = await screenText(text); if (!s.safe) { json(res, 422, { error: 'that instruction was refused by the safety check' }); return true; } }
-    try {
-      json(res, 200, await render({ sessionId: sid, photoId: BigInt(photoId), beauty: Buffer.from(await beauty.arrayBuffer()), shadow: shadow instanceof Blob ? Buffer.from(await shadow.arrayBuffer()) : undefined,
-        mask: mask instanceof Blob ? Buffer.from(await mask.arrayBuffer()) : undefined, legend,
-        text, f35: num('f35'), aperture: num('aperture'), focusM: num('focusM'), iso: num('iso'), strength: num('strength'), sun, mode: raw('mode') === 'canny' ? 'canny' : raw('mode') === 'composite' ? 'composite' : 'depth' }));
-    } catch (e) { fail(502, e); }
+    const mode = raw('mode') === 'canny' ? 'canny' : raw('mode') === 'composite' ? 'composite' : 'depth';
+    const input = { sessionId: sid, photoId: BigInt(photoId), beauty: Buffer.from(await beauty.arrayBuffer()), shadow: shadow instanceof Blob ? Buffer.from(await shadow.arrayBuffer()) : undefined,
+      mask: mask instanceof Blob ? Buffer.from(await mask.arrayBuffer()) : undefined, legend,
+      text, f35: num('f35'), aperture: num('aperture'), focusM: num('focusM'), iso: num('iso'), strength: num('strength'), sun, mode } as const;
+    // The composite alone takes under a second, so it answers directly. A render takes 30 to 90 s (placeholder edits, checks,
+    // a second round), longer than browsers and proxies keep a request open: it answers 202 at once and runs in the background.
+    // Poll GET /api/render/<requestId>; the preview_job row (kind 'render') gets the image too.
+    if (mode === 'composite') {
+      try { json(res, 200, await render(input)); } catch (e) { fail(502, e); }
+      return true;
+    }
+    const requestId = randomUUID().replace(/-/g, '').slice(0, 16);
+    renders.set(requestId, { state: 'running', startedAt: Date.now(), sessionId: String(sid) });
+    rendersRunning++;
+    render({ ...input, id: requestId })
+      .then(r => renders.set(requestId, { state: 'done', startedAt: renders.get(requestId)!.startedAt, sessionId: String(sid), result: r }))
+      .catch(e => renders.set(requestId, { state: 'failed', startedAt: renders.get(requestId)!.startedAt, sessionId: String(sid), error: (e as Error).message }))
+      .finally(() => { rendersRunning--; setTimeout(() => renders.delete(requestId), 3_600_000).unref(); });
+    json(res, 202, { requestId, state: 'running', poll: `/api/render/${requestId}` });
+    return true;
+  }
+
+  const poll = /^\/api\/render\/([a-f0-9]{16})$/.exec(p);
+  if (poll && req.method === 'GET') {
+    const r = renders.get(poll[1]);
+    if (!r) { json(res, 404, { error: 'no such render (renders are kept for an hour; a crew restart forgets them, the preview_job row keeps the image)' }); return true; }
+    json(res, 200, { requestId: poll[1], ...r, seconds: Math.round((Date.now() - r.startedAt) / 1000) });
     return true;
   }
 
@@ -336,10 +359,12 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
 }
 
 const LONG = /^\/api\/(render|props\/generate|set\/(command|critique|callsheet|rebuild|read|apply|check)|voice\/transcribe)$/;
-let draining = false, inFlight = 0;
+let draining = false, inFlight = 0, rendersRunning = 0;
+/** Background renders by request id, for GET /api/render/<id>. */
+const renders = new Map<string, { state: 'running' | 'done' | 'failed'; startedAt: number; sessionId: string; result?: unknown; error?: string }>();
 /** For a graceful restart: refuse new long requests and report how many are still running. */
 export const stopAccepting = () => { draining = true; };
-export const longRequests = () => inFlight;
+export const longRequests = () => inFlight + rendersRunning;
 
 export function startHttp() {
   createServer((req, res) => {

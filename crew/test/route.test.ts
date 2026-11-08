@@ -35,3 +35,22 @@ test('a view into the evening sun gets blue hour', () => {
   assert.match(chooseLight({ name: 'w', lat: 40.7, lon: -74, heading: 240, f35: 24 }, day, 'evening').light, /^blue hour/);
   assert.match(chooseLight({ name: 'e', lat: 40.7, lon: -74, heading: 60, f35: 24 }, day, 'evening').light, /sun behind you/);
 });
+
+test('plan time phrases pick the right light window at DUMBO', async () => {
+  const { planWindow } = await import('../src/route.ts');
+  const SunCalc = (await import('suncalc')).default;
+  const lat = 40.70319, lon = -73.9896, night = new Date('2026-11-08T06:00:00Z'); // 1 AM in New York
+  const sun8 = SunCalc.getTimes(new Date('2026-11-08T17:00:00Z'), lat, lon);
+  const inside = (d: Date | undefined, a: Date, b: Date) => assert.ok(d && d >= a && d <= b, `${d?.toISOString()} not in ${a.toISOString()}..${b.toISOString()}`);
+  for (const p of ['sunset', 'make it sunset', 'golden hour this evening', 'evening light']) inside(planWindow(p, lat, lon, night)?.at, sun8.goldenHour, sun8.sunset);
+  for (const p of ['blue hour after sunset', 'dusk']) inside(planWindow(p, lat, lon, night)?.at, sun8.sunset, sun8.dusk);
+  for (const p of ['sunrise', 'morning golden hour']) inside(planWindow(p, lat, lon, night)?.at, sun8.sunrise, sun8.goldenHourEnd);
+  inside(planWindow('dawn', lat, lon, night)?.at, sun8.dawn, sun8.sunrise);
+  // A bare "golden hour" is the next window from now: the morning at 1 AM, the evening at noon.
+  inside(planWindow('golden hour', lat, lon, night)?.at, sun8.sunrise, sun8.goldenHourEnd);
+  inside(planWindow('golden hour', lat, lon, new Date('2026-11-08T17:00:00Z'))?.at, sun8.goldenHour, sun8.sunset);
+  // After today's sunset, "sunset" is tomorrow's.
+  const sun9 = SunCalc.getTimes(new Date('2026-11-09T17:00:00Z'), lat, lon);
+  inside(planWindow('sunset', lat, lon, new Date('2026-11-08T23:30:00Z'))?.at, sun9.goldenHour, sun9.sunset);
+  assert.equal(planWindow('noon', lat, lon, night), null);
+});

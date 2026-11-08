@@ -17,9 +17,21 @@ export async function postLayers(l: Layers, f: { sessionId: bigint; photoId: big
   for (const [k, v] of Object.entries({ sessionId: sid(f.sessionId), photoId: sid(f.photoId), text: f.text ?? '', mode: f.mode ?? 'depth', settings: JSON.stringify(f.settings ?? {}), depthNearM: l.depthNearM, depthFarM: l.depthFarM }))
     fd.append(k, String(v));
   const r = await fetch('/api/render', { method: 'POST', body: fd });
-  const j = await r.json().catch(() => ({}));
+  let j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error ?? `render HTTP ${r.status}`);
-  return j;
+  // A render answers 202 and runs in the background (30 to 90 s); poll until it is done. The composite answers 200 directly.
+  for (const end = Date.now() + 10 * 60_000; r.status === 202 && j.state === 'running';) {
+    if (Date.now() > end) throw new Error('the render is taking more than 10 minutes');
+    await new Promise(ok => setTimeout(ok, 2500));
+    const q = await fetch(`/api/render/${j.requestId}`).catch(() => null);
+    if (!q) continue; // a dropped poll is retried
+    const k = await q.json().catch(() => ({}));
+    if (q.status === 404) throw new Error(k.error ?? 'the render was lost (the crew restarted); try again');
+    if (!q.ok) continue;
+    j = { ...k, requestId: j.requestId };
+  }
+  if (j.state === 'failed') throw new Error(j.error ?? 'the render failed');
+  return j.result ?? j;
 }
 
 export function RenderPanel({ sessionId, photoId, getLayers, settings, onSunFix }: Props) {

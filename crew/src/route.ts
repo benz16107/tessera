@@ -76,3 +76,20 @@ export function readRoute(resp: any, stops: Stop[], t0: Date, lat: number, lon: 
   const dropped = (sr.dropped_tasks?.task_index ?? []).map((i: number) => stops[i].name);
   return { stops: out, dropped, cost_min: sr.solution_cost };
 }
+
+/** The light window a phrase asks for, and the time to plan at (its middle). Evening words (sunset, dusk, evening, tonight,
+ *  "after sunset") pick the evening window; morning words (sunrise, dawn, morning, "before sunrise") the morning one; a bare
+ *  "golden hour" or "blue hour" the next such window from now. Blue for blue hour, dusk, dawn, twilight, "before sunrise". */
+export function planWindow(when: string, lat: number, lon: number, now = new Date()) {
+  const s = when.toLowerCase();
+  const kind: 'golden' | 'blue' | null = /blue|dusk|dawn|twilight|before sunrise/.test(s) ? 'blue' : /golden|sunset|sunrise|evening|morning|tonight|magic hour/.test(s) ? 'golden' : null;
+  if (!kind) return null;
+  const want: ('morning' | 'evening')[] = /sunset|dusk|evening|tonight|afternoon/.test(s) ? ['evening'] : /sunrise|dawn|morning/.test(s) ? ['morning'] : ['morning', 'evening'];
+  let best: { start: Date; end: Date; kind: 'golden' | 'blue'; period: 'morning' | 'evening' } | null = null;
+  for (let d = -1; d <= 2; d++) for (const period of want) {
+    const [start, end] = periodWindows(lat, lon, new Date(now.getTime() + d * 86_400_000), period)[kind];
+    if (isNaN(start.getTime()) || end <= now || (best && start >= best.start)) continue;
+    best = { start, end, kind, period };
+  }
+  return best && { ...best, at: new Date((best.start.getTime() + best.end.getTime()) / 2) };
+}
