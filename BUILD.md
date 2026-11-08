@@ -317,4 +317,5 @@ Cap: $50 total for the hackathon. One instance at most, deleted after judging Su
 | When (CT) | Event | Plan | $/h | Running total |
 |---|---|---|---|---|
 | Sat evening | Create refused: no account credit | A40 lax | 1.71 | $0 |
+| Sat ~8:25 PM | Create refused: monthly fee limit. Support ticket filed for a limit increase; `ops/gpu-create-retry.sh` retries every 10 min | A40 lax | 1.71 | $0 spent |
 | Sat ~8:20 PM | Added $25 credit on a card; MLH $100 code registered, email pending | n/a | n/a | $0 spent, $25 credit |
