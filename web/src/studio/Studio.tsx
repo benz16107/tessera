@@ -24,6 +24,7 @@ import { useScene } from './state/useScene.ts';
 import { useShotSettings, defaultShot } from './state/useShotSettings.ts';
 import { CluePanel, type OnPlace } from '../simple/clue.tsx';
 import { placeShoot } from '../simple/place.ts';
+import StreetViewSphere, { usePano } from './world/StreetView.tsx';
 import '../simple/simple.css'; // the clue panel's styles, scoped under .simple
 import { approxLabel, makeObject, newUid, parseParams, stateOf, withParams, fmtParams, type AddItem, type ObjState } from './scene/objects.ts';
 import { optics as opticsOf, frameFromPhoto, fitFrame, type Fit } from './camera/shot.ts';
@@ -251,7 +252,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const [snap, setSnap] = useState(true);
   const [gridOn, setGridOn] = useState(false);
   const [dofOn] = useState(true);
-  const [backplate, setBackplate] = useState<'photo' | 'world'>('photo');
+  const [backplate, setBackplate] = useState<'photo' | 'world' | 'streetview'>('photo');
   const [overlay, setOverlay] = useState<'thirds' | 'golden' | 'spiral' | 'off'>('thirds');
   const [extraOv, setExtraOv] = useState<string[]>(['horizon']);
   const [addOpen, setAddOpen] = useState(false);
@@ -324,6 +325,11 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     const fwd = new Vector3(0, 0, -1).applyQuaternion(q);
     return { pos: new Vector3(shotRow.x, shotRow.y, shotRow.z), q, fwd, hpr: cameraHpr(q) };
   }, [shotRow?.x, shotRow?.y, shotRow?.z, shotRow?.qx, shotRow?.qy, shotRow?.qz, shotRow?.qw]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Street View near Cam A (within 15 m) is a Through Cam A backplate, and the default there when it exists.
+  const camLL = useMemo(() => (shotPose && origin ? enuToLlh(origin, shotPose.pos) : null), [shotPose, origin]);
+  const pano = usePano(cfg.mapsKey, camLL);
+  const svAuto = useRef(false);
+  useEffect(() => { if (pano && !svAuto.current) { svAuto.current = true; setBackplate('streetview'); } }, [pano]);
 
   /** Where new things go: where the user last pointed, else on the ground in front of the shot camera at the focus distance. */
   const orbitTarget = useRef(new Vector3());
@@ -750,6 +756,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const objectsForLayers = () => scene.rows.filter(r => r.visible && r.kind !== 'camera' && r.kind !== 'light' && groups.current.get(r.id))
     .map(r => ({ id: r.id, name: r.name, kind: r.kind, root: groups.current.get(r.id)! }));
   const photoBack = view === 'shot' && backplate === 'photo' && !!photo;
+  const svBack = view === 'shot' && backplate === 'streetview' && !!pano; // no pano near Cam A: Earth shows instead
   // The meter reads the planned time's light, which the default settings were metered for: at those settings the photo
   // shows as shot, and every change of aperture, shutter or ISO moves it by real stops.
   const meterEv = sceneEv;
@@ -760,7 +767,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   // What a longer lens leaves of the photo from the same spot, and the handheld shake during the shutter.
   const photoF35 = solved?.pose.f35 ?? null;
   const mpLeft = photoF35 ? remainingMp(frame.w, frame.h, photoF35, o.f35) : null;
-  const cropNote = photoF35 && mpLeft !== null && o.f35 > photoF35 * 1.03 ? `${mpLeft.toFixed(1)} MP of your photo left at ${Math.round(shot.focalMm)} mm (it was ${Math.round(photoF35)} mm)`
+  const cropNote = svBack ? null : photoF35 && mpLeft !== null && o.f35 > photoF35 * 1.03 ? `${mpLeft.toFixed(1)} MP of your photo left at ${Math.round(shot.focalMm)} mm (it was ${Math.round(photoF35)} mm)`
     : photoF35 && o.f35 < photoF35 * 0.97 ? `Wider than your photo (${Math.round(photoF35)} mm): the edges show the 3D world` : null;
   const shakePx = shakeBlurPx(shot.shutterS, shot.focalMm, o.crop, Math.max(o.ibisStops, o.ois ? 4 : 0), o.cocMm, o.fpx);
   const [hist, setHist] = useState<Histogram | null>(null);
@@ -801,9 +808,9 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const grabRef = useRef<((url: string) => void) | null>(null);
   const [compare, setCompare] = useState<{ url: string; label: string } | null>(null);
   const settingsLabel = `${Math.round(shot.focalMm)} mm f/${shot.aperture} ${fmtShutter(shot.shutterS)} ISO ${shot.iso}`;
-  const showSplat = !explore && world === 'splat' && !!splatUrl && !photoBack;
-  const showTiles = (!!explore || world === 'tiles' || (world === 'splat' && !splatState.loaded)) && !photoBack;
-  const showClay = !explore && (world === 'clay' || world === 'clayPhoto') && !photoBack;
+  const showSplat = !explore && world === 'splat' && !!splatUrl && !photoBack && !svBack;
+  const showTiles = (!!explore || world === 'tiles' || (world === 'splat' && !splatState.loaded)) && !photoBack && !svBack;
+  const showClay = !explore && (world === 'clay' || world === 'clayPhoto') && !photoBack && !svBack;
   const atmo = takram && lightMode === 'live' && showTiles && (view === 'persp' || view === 'walk');
   // Clay + photo projects the user's photo from its solved pose (not Cam A's current one: the photo was taken there).
   const projector = useMemo((): Projector | null => {
@@ -841,6 +848,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   if (showTiles && attribution) credits.push(<img key="g" src="/studio/attribution/google-maps-logo.svg" alt="Google Maps" />, <span key="gc" className="gcred">{attribution}</span>);
   if (showSplat && splatState.loaded) credits.push(<span key="s" className="gcred">{SPLATS[session.spotId]?.credit}</span>);
   if (explore) credits.push(<span key="o" className="gcred">Place search © OpenStreetMap contributors</span>);
+  if (svBack && pano) credits.push(<img key="sv" src="/studio/attribution/google-maps-logo.svg" alt="Google" />, <span key="svc" className="gcred">Street View{pano.date ? ` ${pano.date}` : ''}{pano.copyright ? ` · ${pano.copyright}` : ''}</span>);
   if (showClay) credits.push(<span key="c" className="gcred">Clay massing from NYC building footprints (NYC Open Data){world === 'clayPhoto' ? ", with your photo projected from where it was taken" : ''}</span>);
   if (!credits.length) credits = [<span key="n" className="gcred">{photoBack ? 'Your photo as the backplate; no map content in this view' : 'World hidden'}</span>];
 
@@ -910,12 +918,13 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
             }}>
             <XR store={xrStore}>
               {photoBack && plateReady && <group userData={{ plate: true }}><Sky sunPosition={enuToThree({ x: sunDir[0], y: sunDir[1], z: sunDir[2] }).multiplyScalar(1000).toArray()} distance={4500} /></group>}
-              {!photoBack && !atmo && <group userData={{ helper: true }}><Sky sunPosition={enuToThree({ x: sunDir[0], y: sunDir[1], z: sunDir[2] }).multiplyScalar(1000).toArray()} distance={4500} /></group>}
+              {svBack && pano && <StreetViewSphere pano={pano} />}
+              {!photoBack && !svBack && !atmo && <group userData={{ helper: true }}><Sky sunPosition={enuToThree({ x: sunDir[0], y: sunDir[1], z: sunDir[2] }).multiplyScalar(1000).toArray()} distance={4500} /></group>}
               {!atmo && <hemisphereLight args={['#bcd3ff', '#3b342b', (photo ? 0.45 : 0.9) * lvl]} />}
               {atmo && here && <Atmosphere date={planTime} origin={here} groundOffset={groundOffset}
                 nightFill={day.tint.map(t => t * (0.009 * day.stars + 0.004 * (1 - day.stars))) as [number, number, number]} />}
               {photo && !atmo && <PhotoEnv url={photo.url || photo.thumb} intensity={0.55 * lvl} />}
-              {!photoBack && !atmo && day.stars > 0.05 && <group userData={{ helper: true }}><Stars radius={3000} depth={400} count={4000} factor={60 * day.stars} saturation={0} fade /></group>}
+              {!photoBack && !svBack && !atmo && day.stars > 0.05 && <group userData={{ helper: true }}><Stars radius={3000} depth={400} count={4000} factor={60 * day.stars} saturation={0} fade /></group>}
               {!atmo && <SunLight dir={sunDir} color={sunColor} strength={sunStrength(sun.altitude) * 3} />}
               <group rotation={ENU_TO_THREE} name="enu">
                 {here && view !== 'map' && ( // unmounted under the map: two big WebGL scenes at once lose the GPU on laptops
@@ -931,7 +940,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                 {origin && photoBack && projector && <Clay plate buildings={layers.data?.layers.buildings ?? null} geo={geo} origin={origin} gz={gz} projector={projector} grade={grade} level={lvl} skyDim={day.skyDim} onReady={setPlateReady} />}
                 {origin && photoBack && projector && <PlateFootprint camera={shotCam} projector={projector} onChange={setFootprint} />}
                 {origin && showClay && <Clay buildings={layers.data?.layers.buildings ?? null} geo={geo} origin={origin} gz={gz} projector={world === 'clayPhoto' ? projector : null} level={lvl} sky={skyLit} skyDim={day.skyDim} />}
-                {origin && <GeoScene geo={layers} origin={origin} groundAt={gz} labels={geoOpen && view !== 'shot'} overlays={!photoBack} />}
+                {origin && <GeoScene geo={layers} origin={origin} groundAt={gz} labels={geoOpen && view !== 'shot'} overlays={!photoBack && !svBack} />}
                 <Catchers geo={geo} occlude={view === 'shot'} shadowOpacity={showClay || (showTiles && lightMode === 'live') ? 0 : 0.5} ghost={atmo} onTeleport={p => setVrOrigin(p)}
                   onPointerMove={e => { if (ev) { const p = threeToEnu(e.point); ev.cursor({ x: p.x, y: p.y, z: p.z }); } }}
                   onClick={e => { e.stopPropagation(); pick(null, e.point, e.nativeEvent.altKey); }} />
@@ -1021,7 +1030,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
             {focusTarget && <p className="st-focuslabel" style={{ left: fit.rect.x + fit.rect.w / 2, top: fit.rect.y + fit.rect.h * 0.62 }}>Focus {shot.focusM.toFixed(1)} m{Math.abs(focusTarget.distance - shot.focusM) < 0.5 ? ` · ${focusTarget.name}` : ''}</p>}
             {photoBack && fit.rect.w >= 300 && <p className="st-photocredit" style={{ left: fit.rect.x + 10, top: fit.rect.y + fit.rect.h - 28 }}>Your photo · {frame.w} × {frame.h}</p>}
             <div className="st-caption" style={{ left: fit.rect.x, top: fit.rect.y + fit.rect.h + 12, width: fit.rect.w }}>
-              <b>{compare ? `B · ${settingsLabel}` : `Through ${shotName}: ${photoBack ? 'your photo with your objects and lights' : 'the 3D world with your objects'}`}</b>
+              <b>{compare ? `B · ${settingsLabel}` : `Through ${shotName}: ${photoBack ? 'your photo with your objects and lights' : svBack ? 'Street View with your objects' : 'the 3D world with your objects'}`}</b>
               <span>{photoBack && graded ? `Preview grade. Render relights the photo${cropNote ? ` · ${cropNote}` : ''}` : cropNote ?? 'Lens, aperture, shutter and ISO behave like the real camera'}</span>
             </div>
             {split && latestRender && (() => {
@@ -1041,7 +1050,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               {viewSwitch}
               <div className="st-camgroup st-float" role="toolbar" aria-label="Camera">
               {vp.w > 1100 && <span>Backplate</span>}
-              <Seg label="Backplate" value={backplate} onChange={setBackplate} options={[{ value: 'photo', label: 'Your photo' }, { value: 'world', label: WORLD_LABEL[world === 'off' ? 'tiles' : world] }]} />
+              <Seg label="Backplate" value={backplate === 'streetview' && !svBack ? 'world' : backplate} onChange={setBackplate} options={[{ value: 'photo', label: 'Your photo' }, { value: 'world', label: WORLD_LABEL[world === 'off' ? 'tiles' : world] }, ...(pano ? [{ value: 'streetview' as const, label: 'Street View' }] : [])]} />
               {vp.w > 1100 && <span>Aspect</span>}
               <Seg label="Aspect" value={shot.aspect} onChange={v => setShot({ aspect: v })} options={['4:3', '4:5', '3:2', '16:9'].map(a => ({ value: a, label: aspectLabel(a) }))} />
               <span style={{ position: 'relative' }}>
@@ -1204,7 +1213,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
           {(scene.error || toast) && <button className={`st-chip ${scene.error ? 'err' : 'toast'}`} onClick={() => { scene.clearError(); setToast(''); }}>{scene.error || toast}</button>}
           {/* Last in the corner, so the chips stack above the card instead of under it (ui-audit 42). */}
           {!focus && view !== 'map' && <BuildCard onShown={setBuildShown} spotName={spot?.name} solved={solved ? { f35: solved.pose.f35, heading: solved.pose.heading, inliers: solved.inliers, alt: solved.pose.alt, pitch: solved.pose.pitch, secs: solved.secs } : null}
-            hasCam={!!shotRow} worldReady={plateReady || (world === 'clay' || world === 'clayPhoto' ? !!layers.data?.layers.buildings : splatState.loaded || attribution !== '')}
+            hasCam={!!shotRow} worldReady={plateReady || svBack || (world === 'clay' || world === 'clayPhoto' ? !!layers.data?.layers.buildings : splatState.loaded || attribution !== '')}
             worldNote={world === 'clay' || world === 'clayPhoto' ? `Clay massing from ${layers.data?.layers.buildings?.features.length ?? 'the'} building footprints${world === 'clayPhoto' ? ', your photo projected on it' : ''}` : undefined}
             splat={world === 'splat' && !!splatUrl} progress={splatState.progress} />}
         </div>
