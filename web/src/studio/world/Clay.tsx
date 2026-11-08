@@ -53,11 +53,11 @@ function groundQuad(gz: Gz) {
 function projectedMaterial(color: string, lift: string, matte: boolean) {
   const u = {
     uProjTex: { value: null as Texture | null }, uProjDepth: { value: null as Texture | null }, uProjMat: { value: new Matrix4() },
-    uProjPos: { value: new Vector3() }, uProjOn: { value: 0 },
+    uProjPos: { value: new Vector3() }, uProjOn: { value: 0 }, uFade: { value: 1 },
   };
   // Lambert, not Standard: the scene's image light comes from the photo and tints standard clay purple-brown.
   const mat = matte ? new MeshBasicMaterial({ color: '#000', toneMapped: false })
-    : new MeshLambertMaterial({ color, emissive: lift, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    : new MeshLambertMaterial({ color, emissive: lift, side: 2, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }) // double-sided like the projector's depth map, or a wall facing away hides what the camera sees;
   mat.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, u);
     sh.vertexShader = sh.vertexShader
@@ -69,7 +69,7 @@ vWPos = wp.xyz;
 vWNrm = ${matte ? 'vec3(0.0, 1.0, 0.0)' : 'normalize(mat3(modelMatrix) * objectNormal)'};`); // MeshBasicMaterial has no objectNormal
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
-uniform sampler2D uProjTex; uniform sampler2D uProjDepth; uniform vec3 uProjPos; uniform float uProjOn;
+uniform sampler2D uProjTex; uniform sampler2D uProjDepth; uniform vec3 uProjPos; uniform float uProjOn; uniform float uFade;
 varying vec4 vProj; varying vec3 vWPos; varying vec3 vWNrm;
 float projLinear(float d) { float z = d * 2.0 - 1.0; return 2.0 * ${NEAR.toFixed(1)} * ${FAR.toFixed(1)} / (${FAR.toFixed(1)} + ${NEAR.toFixed(1)} - z * (${FAR.toFixed(1)} - ${NEAR.toFixed(1)})); }`)
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
@@ -78,13 +78,16 @@ float projLinear(float d) { float z = d * 2.0 - 1.0; return 2.0 * ${NEAR.toFixed
   vec2 puv = ndc.xy * 0.5 + 0.5;
   vec2 e = min(puv, 1.0 - puv);
   float inside = vProj.w > 0.0 ? smoothstep(0.0, 0.004, min(e.x, e.y)) : 0.0;
-  float stored = texture2D(uProjDepth, puv).r;
+  // The farthest of five depth samples: at a depth edge the 1024 px map would otherwise hide a sliver of a visible wall.
+  vec2 tx = vec2(1.5 / 1024.0, 1.5 / 1365.0);
+  float stored = max(max(texture2D(uProjDepth, puv).r, texture2D(uProjDepth, puv + vec2(tx.x, 0.0)).r),
+    max(max(texture2D(uProjDepth, puv - vec2(tx.x, 0.0)).r, texture2D(uProjDepth, puv + vec2(0.0, tx.y)).r), texture2D(uProjDepth, puv - vec2(0.0, tx.y)).r));
   ${matte
     ? 'float vis = inside * step(0.9999, stored);'
     : `float dz = projLinear(ndc.z * 0.5 + 0.5);
   float vis = inside * step(dz, projLinear(stored) * 1.01 + 0.15);
   vec3 toP = normalize(uProjPos - vWPos);
-  vis *= smoothstep(0.0, 0.04, dot(normalize(vWNrm), toP)); // the street is always grazing from 1 m up: keep it`}
+  vis *= mix(1.0, smoothstep(0.0, 0.04, dot(normalize(vWNrm), toP)), uFade); // the street is always grazing from 1 m up: keep it`}
   vis *= uProjOn;
   vec4 photo = linearToOutputTexel(vec4(texture2D(uProjTex, puv).rgb, 1.0));
   ${matte ? 'if (vis < 0.01) discard;\n  gl_FragColor = vec4(photo.rgb, 1.0);' : 'gl_FragColor.rgb = mix(gl_FragColor.rgb, photo.rgb, vis);'}
@@ -93,8 +96,12 @@ float projLinear(float d) { float z = d * 2.0 - 1.0; return 2.0 * ${NEAR.toFixed
   return { mat, u };
 }
 
-export default function Clay({ buildings, geo, origin, gz, projector }: {
+export default function Clay({ buildings, geo, origin, gz, projector, plate = false, onReady }: {
   buildings: FC | null; geo: StreetGeometry | null; origin: Origin; gz: Gz; projector: Projector | null;
+  /** The photo backplate of Through Cam A: the projection is the picture (every surface the photo saw shows it, however
+   *  grazing), so the camera chain (crop, depth of field, exposure) acts on the photo itself. Not a helper. */
+  plate?: boolean;
+  onReady?: (ready: boolean) => void; // the photo texture is loaded
 }) {
   const { gl } = useThree();
   const bGeom = useMemo(() => (buildings ? buildingGeometry(buildings, origin, gz) : null), [buildings, origin.lat, origin.lon, gz]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -148,7 +155,9 @@ export default function Clay({ buildings, geo, origin, gz, projector }: {
     u.uProjTex.value = tex; u.uProjDepth.value = rt.depthTexture; u.uProjMat.value = projMat;
     if (proj) u.uProjPos.value.copy(proj.position);
     u.uProjOn.value = proj && tex ? 1 : 0;
+    u.uFade.value = plate ? 0 : 1;
   }
+  useEffect(() => { onReady?.(!!(proj && tex)); }, [proj, tex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The far matte: a quad across the projector's frustum, MATTE_M out, carrying the sky and the bridge.
   const matte = useMemo(() => {
@@ -161,11 +170,11 @@ export default function Clay({ buildings, geo, origin, gz, projector }: {
   }, [projector?.pos.x, projector?.pos.y, projector?.pos.z, projector?.quat.w, projector?.vfovDeg, projector?.aspect]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <group userData={{ helper: true, clay: true }}>
+    <group userData={plate ? { plate: true } : { helper: true, clay: true }}>
       <mesh geometry={ground} material={mats.ground.mat} receiveShadow raycast={() => null} />
-      {bGeom && <mesh geometry={bGeom} material={mats.building.mat} castShadow receiveShadow raycast={() => null} />}
-      {facades && <mesh geometry={facades} material={mats.building.mat} castShadow receiveShadow raycast={() => null} />}
-      {edges && <lineSegments geometry={edges} raycast={() => null}><lineBasicMaterial color="#26231f" transparent opacity={0.6} /></lineSegments>}
+      {bGeom && <mesh geometry={bGeom} material={mats.building.mat} castShadow={!plate} receiveShadow raycast={() => null} />}
+      {facades && <mesh geometry={facades} material={mats.building.mat} castShadow={!plate} receiveShadow raycast={() => null} />}
+      {edges && !plate && <lineSegments geometry={edges} raycast={() => null}><lineBasicMaterial color="#26231f" transparent opacity={0.6} /></lineSegments>}
       {matte && tex && <mesh geometry={matte} material={mats.matte.mat} raycast={() => null} />}
     </group>
   );

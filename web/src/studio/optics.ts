@@ -145,3 +145,49 @@ export function whiteBalanceGains(lightK: number, cameraK: number): [number, num
   const y = 0.2126 * g[0] + 0.7152 * g[1] + 0.0722 * g[2]; // Rec. 709 luminance weights
   return [g[0] / y, g[1] / y, g[2] / y];
 }
+
+// ---- The physical camera in Through Cam A (each formula has a check in optics.check.ts) ----
+
+/** Megapixels of the photo left when a longer lens crops it from the same spot: the frame shrinks by f_photo / f on
+ *  each side, so the pixel count by its square. A wider lens keeps them all (and shows the world beyond the edges). */
+export const remainingMp = (photoW: number, photoH: number, photoF35: number, f35: number) =>
+  (photoW * photoH * Math.min(1, (photoF35 / f35) ** 2)) / 1e6;
+
+/** Subject-locked zoom: keep a subject the same size in the frame by standing back in proportion to the focal length
+ *  (image height = f x H / d, so d2 = d1 x f2 / f1). The background grows behind it: perspective compression. */
+export const subjectLockedDistance = (d1M: number, f1Mm: number, f2Mm: number) => (d1M * f2Mm) / f1Mm;
+
+/** Starburst spikes from a point light stopped down: each straight blade edge diffracts into two opposite spikes, which
+ *  coincide for an even blade count (N spikes) and don't for an odd one (2N). */
+export const starSpikes = (blades: number) => (blades <= 0 ? 0 : blades % 2 ? 2 * blades : blades);
+
+/** Visible sensor noise as a fraction of full scale at the same output size: shot noise grows with the gain (the square
+ *  root of ISO at a fixed exposure) and falls with the square root of sensor area, i.e. in proportion to the crop factor.
+ *  shortcut: one calibration constant (0.0035 at ISO 100 full frame); per-body read noise isn't modelled. */
+export const noiseSigma = (iso: number, crop: number) => 0.0035 * Math.sqrt(Math.max(iso, 25) / 100) * crop;
+
+/** Motion blur of a subject crossing the frame at `speedMps`, `distanceM` away, during the shutter: its image moves
+ *  f x v x t / d on the sensor, which is fpx x v x t / d in frame pixels. */
+export const motionBlurPx = (speedMps: number, shutterS: number, distanceM: number, fpx: number) =>
+  (fpx * speedMps * shutterS) / Math.max(distanceM, 0.1);
+
+/** Handheld shake: by the reciprocal rule the safe shutter blurs about one circle of confusion (the angle c / f), and the
+ *  blur grows in proportion to the shutter time beyond it. In frame pixels: fpx x (c / f) x (t / t_safe). */
+export function shakeBlurPx(shutterS: number, focalMm: number, crop: number, stabStops: number, cocMm: number, fpx: number) {
+  const safeS = Math.pow(2, stabStops) / (focalMm * crop);
+  return fpx * (cocMm / focalMm) * (shutterS / safeS);
+}
+
+/** Optical (mechanical) vignetting for lenses without a lensfun profile: strongest wide open, gone about three stops
+ *  down. Returns the corner darkening fraction (0 to 0.35). */
+export const opticalVignette = (n: number, nWideOpen: number) => 0.35 * Math.max(0, Math.min(1, 1 - (2 * Math.log2(n / nWideOpen)) / 3));
+
+/** Diffraction blur in frame pixels: the Airy disk diameter (2.44 lambda N) over the frame's size on the sensor. */
+export const airyFramePx = (n: number, sensorWmm: number, frameWpx: number, lambdaNm = 550) =>
+  (2.44 * (lambdaNm / 1e6) * n * frameWpx) / sensorWmm;
+
+/** Tint (green-magenta, -100 to 100, as in raw converters): a green gain below 1 for magenta, above 1 for green. */
+export const tintGains = (tint: number): [number, number, number] => {
+  const g = Math.pow(2, -tint / 150);
+  return [1, g, 1];
+};

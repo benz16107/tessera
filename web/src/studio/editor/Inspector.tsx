@@ -34,6 +34,10 @@ export interface InspectorProps {
   vignette: boolean; setVignette: (v: boolean) => void;
   focusTarget: { id: bigint; name: string; distance: number } | null; // the selection (or nearest person) seen from the shot camera
   onFocusOn?: (id: bigint) => void; // keep the focus on this object as it moves
+  // The physical camera: subject-locked zoom, tint, and what a longer lens leaves of the photo.
+  subjectLock?: boolean; onSubjectLock?: (v: boolean) => void;
+  tint?: number; onTint?: (v: number) => void;
+  cropNote?: string | null; shakePx?: number;
   shotStats: (row: SceneObject) => { distance: number; heightM: number } | null;
   sizeOf: (row: SceneObject) => [number, number, number] | null;
   onChange: (row: SceneObject, s: ObjState, tag: string) => void;
@@ -323,6 +327,9 @@ function CameraPage(p: InspectorProps) {
         <div className="st-focal"><b>{Math.round(shot.focalMm)} mm</b>
           <span className="st-meta">{body.crop !== 1 ? `${Math.round(o.f35)} equiv · ` : ''}{o.hfovDeg.toFixed(1)}° × {o.vfovDeg.toFixed(1)}°</span></div>
         {lens && lens.focal[0] !== lens.focal[1] && <LensRing min={lens.focal[0]} max={lens.focal[1]} value={shot.focalMm} onChange={v => setShot({ focalMm: v })} />}
+        {p.cropNote && <p className="st-summary">{p.cropNote}</p>}
+        {p.onSubjectLock && <Switch label="Keep the subject's size" on={!!p.subjectLock} onChange={p.onSubjectLock}
+          sub={`${p.camName} steps back as the lens gets longer, so the background grows behind the subject`} />}
       </section>
 
       <section className="st-sec">
@@ -353,7 +360,15 @@ function CameraPage(p: InspectorProps) {
               <input className="st-slider" type="range" min={2000} max={10000} step={100} value={shot.whiteBalanceK} onChange={e => setShot({ whiteBalanceK: +e.target.value })} aria-label="White balance" />
             </div>
           </Field>
-          <p className="st-note">Scene about EV {p.sceneEv.toFixed(1)} from the sun and sky. Handheld {hh.risk === 'ok' ? 'is fine' : `risk is ${hh.risk}`} down to {fmtShutter(hh.safeS)}.{dif.warn ? ` Diffraction softens past f/${dif.limitN.toFixed(1)}.` : ''}</p>
+          {p.onTint && (
+            <Field label="Tint">
+              <div className="st-row">
+                <NumField className="w80" value={p.tint ?? 0} digits={0} step={5} min={-100} max={100} onChange={v => p.onTint!(Math.round(v))} label="Tint" />
+                <input className="st-slider" type="range" min={-100} max={100} step={1} value={p.tint ?? 0} onChange={e => p.onTint!(+e.target.value)} aria-label="Tint, green to magenta" />
+              </div>
+            </Field>
+          )}
+          <p className="st-note">Scene about EV {p.sceneEv.toFixed(1)}. Handheld {hh.risk === 'ok' ? 'is fine' : `risk is ${hh.risk}, about ${(p.shakePx ?? 0).toFixed(1)} px of shake`} down to {fmtShutter(hh.safeS)}.{dif.warn ? ` Diffraction softens past f/${dif.limitN.toFixed(1)}.` : ''} Noise at ISO {shot.iso} on this sensor is {o.noise < 0.006 ? 'clean' : o.noise < 0.02 ? 'light grain' : o.noise < 0.05 ? 'visible grain' : 'heavy'}.</p>
         </Disclosure>
         <Disclosure title="Lens profile" meta={shot.distortion ? 'On' : 'Off'}>
           <Switch label="Distortion" on={shot.distortion} onChange={v => setShot({ distortion: v })} disabled={!prof?.distortion.length}

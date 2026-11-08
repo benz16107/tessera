@@ -15,6 +15,9 @@ export interface Layers {
   beauty: Blob; depth: Blob; mask: Blob; shadow: Blob;
   width: number; height: number;
   depthNearM: number; depthFarM: number;
+  /** Depth of the whole picture, the user's photo included, from our own clay and street geometry (never tiles):
+   *  8-bit inverse depth, white = sceneNearM, black = sceneFarM or beyond. For baking depth of field into the photo. */
+  sceneDepth?: Blob; sceneNearM?: number; sceneFarM?: number;
   legend: { id: string; name: string; kind: string; color: string }[];
 }
 
@@ -50,6 +53,10 @@ export async function renderLayers(inp: LayerInput): Promise<Layers> {
 
   const helpers: Object3D[] = [];
   scene.traverse(o => { if (o.userData.helper && o.visible) helpers.push(o); });
+  // The photo plate (Through Cam A over the photo) is the photo itself: never in beauty, shadow or mask, only scene depth.
+  const plates: Object3D[] = [];
+  scene.traverse(o => { if (o.userData.plate && o.visible) plates.push(o); });
+  helpers.push(...plates);
   const hidden = [...inp.hide.filter(o => o.visible), ...helpers];
   const bg = scene.background, tm = gl.toneMapping, rt0 = gl.getRenderTarget();
   const clear = gl.getClearColor(new Color()), clearA = gl.getClearAlpha();
@@ -114,6 +121,28 @@ export async function renderLayers(inp: LayerInput): Promise<Layers> {
     gl.setRenderTarget(rtQ); gl.clear(); gl.render(qs, new OrthographicCamera(-1, 1, 1, -1, 0, 1));
     const depthPx = read(rtQ);
 
+    // Scene depth: the plate back on, inverse depth so the street and the far bridge both keep resolution.
+    let sceneDepthPx: Uint8Array | null = null;
+    const SN = 0.5, SF = 500;
+    if (plates.length) {
+      plates.forEach(o => (o.visible = true));
+      gl.setRenderTarget(rtD); gl.clear(); gl.render(scene, cam);
+      plates.forEach(o => (o.visible = false));
+      const invMat = new ShaderMaterial({
+        uniforms: { tDepth: { value: depthTex }, cn: { value: cam.near }, cf: { value: cam.far } },
+        vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+        fragmentShader: `#include <packing>
+          varying vec2 vUv; uniform sampler2D tDepth; uniform float cn, cf;
+          void main(){ float d = texture2D(tDepth, vUv).x; if (d >= 1.0) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
+            float z = -perspectiveDepthToViewZ(d, cn, cf); float v = clamp((1.0 / z - ${(1 / SF).toFixed(4)}) / (${(1 / SN - 1 / SF).toFixed(4)}), 0.0, 1.0);
+            gl_FragColor = vec4(vec3(v), 1.0); }`,
+      });
+      dispose.push(invMat);
+      quad.material = invMat;
+      gl.setRenderTarget(rtQ); gl.clear(); gl.render(qs, new OrthographicCamera(-1, 1, 1, -1, 0, 1));
+      sceneDepthPx = read(rtQ);
+    }
+
     // Object-ID mask: flat colours, no lights, no shadows, no AA.
     const swapped: [Mesh, Material | Material[]][] = [];
     const legend: Layers['legend'] = [];
@@ -132,8 +161,9 @@ export async function renderLayers(inp: LayerInput): Promise<Layers> {
     swapped.forEach(([m, mat]) => (m.material = mat));
     for (let i = 3; i < maskPx.length; i += 4) { if (maskPx[i] === 0) { maskPx[i - 3] = maskPx[i - 2] = maskPx[i - 1] = 0; } maskPx[i] = 255; }
 
-    const [beauty, depth, mask, shadow] = await Promise.all([toPng(beautyPx, w, h), toPng(depthPx, w, h), toPng(maskPx, w, h), toPng(shadowPx, w, h)]);
-    return { beauty, depth, mask, shadow, width: w, height: h, depthNearM: nearM, depthFarM: farM, legend };
+    const [beauty, depth, mask, shadow, sceneDepth] = await Promise.all([toPng(beautyPx, w, h), toPng(depthPx, w, h), toPng(maskPx, w, h), toPng(shadowPx, w, h),
+      sceneDepthPx ? toPng(sceneDepthPx, w, h) : Promise.resolve(undefined)]);
+    return { beauty, depth, mask, shadow, width: w, height: h, depthNearM: nearM, depthFarM: farM, legend, ...(sceneDepth ? { sceneDepth, sceneNearM: SN, sceneFarM: SF } : {}) };
   } finally {
     hidden.forEach(o => (o.visible = true));
     occluders.forEach(o => (o.visible = false));
@@ -157,6 +187,7 @@ export async function postRender(l: Layers, fields: Record<string, string>) {
   fd.append('depthFarM', String(l.depthFarM));
   fd.append('width', String(l.width));
   fd.append('height', String(l.height));
+  if (l.sceneDepth) { fd.append('sceneDepth', l.sceneDepth, 'scene-depth.png'); fd.append('sceneNearM', String(l.sceneNearM)); fd.append('sceneFarM', String(l.sceneFarM)); }
   for (const [k, v] of Object.entries(fields)) fd.append(k, v);
   const r = await fetch('/api/render', { method: 'POST', body: fd });
   const text = await r.text();

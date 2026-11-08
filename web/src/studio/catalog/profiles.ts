@@ -7,7 +7,8 @@ import { DIAG_35 } from '../optics.ts';
 
 interface RawDistortion { model: 'ptlens' | 'poly3' | 'poly5'; focal: number; a?: number; b?: number; c?: number; k1?: number; k2?: number }
 interface RawVignetting { focal: number; aperture: number; distance: number; k1: number; k2: number; k3: number }
-export interface Profile { file: string; maker: string; model: string; mount: string; crop: number; aspect: number; distortion: RawDistortion[]; vignetting: RawVignetting[] }
+interface RawTca { model: 'linear' | 'poly3'; focal: number; kr?: number; kb?: number; vr?: number; vb?: number; cr?: number; cb?: number; br?: number; bb?: number }
+export interface Profile { file: string; maker: string; model: string; mount: string; crop: number; aspect: number; distortion: RawDistortion[]; vignetting: RawVignetting[]; tca?: RawTca[] }
 
 const data = JSON.parse(raw) as { source: string; license: string; dbTimestamp: number | string; fetched: string; profiles: Record<string, Profile> };
 const PROFILES = data.profiles;
@@ -99,4 +100,16 @@ export function outputToRender(poly: Poly, ux: number, uy: number, sensorW: numb
   const x = ux * sensorW, y = uy * sensorH, rd = Math.hypot(x, y) / unitMm;
   const s = rd > 1e-9 ? undistort(poly, rd) / rd : 1;
   return [(x * s) / (sensorW * overscan), (y * s) / (sensorH * overscan)];
+}
+
+/** Lateral chromatic aberration (lensfun TCA, radius unit as distortion): red and blue sample at r x (v + c r + b r^2)
+ *  relative to green. Linear profiles have only v (kr, kb). Blended between calibrated focals like the others. */
+export interface Tca { r: [number, number, number]; b: [number, number, number] }
+export function tcaAt(p: Profile | undefined, focal: number): Tca | undefined {
+  if (!p?.tca?.length) return undefined;
+  const rows = p.tca.map(t => ({ focal: t.focal, v: t.model === 'linear'
+    ? { r: [t.kr ?? 1, 0, 0], b: [t.kb ?? 1, 0, 0] } as Tca
+    : { r: [t.vr ?? 1, t.cr ?? 0, t.br ?? 0], b: [t.vb ?? 1, t.cb ?? 0, t.bb ?? 0] } as Tca }));
+  const mix = (a: [number, number, number], b: [number, number, number], t: number) => a.map((v, i) => v + (b[i] - v) * t) as [number, number, number];
+  return byFocal(rows, focal, (a, b, t) => ({ focal, v: { r: mix(a.v.r, b.v.r, t), b: mix(a.v.b, b.v.b, t) } }))?.v;
 }

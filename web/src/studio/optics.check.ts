@@ -90,3 +90,27 @@ assert.equal(maxApertureAt(kit, 28), 3.5); assert.equal(maxApertureAt(kit, 70), 
 assert.ok(maxApertureAt(kit, 50) > 3.5 && maxApertureAt(kit, 50) < 5.6);
 near(minFocusAt(kit, 70)!, 0.45, 1e-9);
 console.log(`optics ok (${BODIES.length} bodies, ${LENSES.length} lenses)`);
+
+// ---- Physical camera formulas ----
+{
+  const m = await import('./optics.ts');
+  // 1280 x 1707 photo at 51 mm: all 2.19 MP at 35 mm, (51/135)^2 of them at 135 mm.
+  near(m.remainingMp(1280, 1707, 51, 35), 2.185, 0.001, 'MP wider');
+  near(m.remainingMp(1280, 1707, 51, 135), 2.185 * (51 / 135) ** 2, 0.001, 'MP at 135');
+  // 5 m at 35 mm becomes 5 x 85 / 35 = 12.14 m at 85 mm.
+  near(m.subjectLockedDistance(5, 35, 85), 12.143, 0.001, 'subject locked');
+  assert.equal(m.starSpikes(9), 18); assert.equal(m.starSpikes(8), 8); assert.equal(m.starSpikes(11), 22); assert.equal(m.starSpikes(0), 0);
+  near(m.noiseSigma(6400, 1) / m.noiseSigma(100, 1), 8, 1e-9, 'noise grows with sqrt ISO');
+  near(m.noiseSigma(100, 7) / m.noiseSigma(100, 1), 7, 1e-9, 'noise grows with crop');
+  // Walking 1.4 m/s at 5 m, 1/15 s, fpx 2000: 2000 x 1.4 / 15 / 5 = 37.3 px.
+  near(m.motionBlurPx(1.4, 1 / 15, 5, 2000), 37.33, 0.01, 'motion blur');
+  // At the safe speed the shake is one circle of confusion: fpx x c / f.
+  near(m.shakeBlurPx(1 / 50, 50, 1, 0, 0.03, 2000), 2000 * 0.03 / 50, 1e-9, 'shake at safe speed');
+  near(m.shakeBlurPx(1 / 12.5, 50, 1, 0, 0.03, 2000), 4 * 2000 * 0.03 / 50, 1e-9, 'shake 2 stops slow');
+  near(m.shakeBlurPx(1 / 12.5, 50, 1, 2, 0.03, 2000), 2000 * 0.03 / 50, 1e-9, 'stabilisation');
+  near(m.opticalVignette(1.4, 1.4), 0.35, 1e-9, 'wide open'); near(m.opticalVignette(4, 1.4), 0, 1e-9, '3 stops down');
+  // f/16 on a 36 mm wide sensor, 6000 px frame: 2.44 x 0.00055 x 16 x 6000 / 36 = 3.58 px.
+  near(m.airyFramePx(16, 36, 6000), 3.579, 0.001, 'airy px');
+  near(m.tintGains(0)[1], 1, 1e-9); assert.ok(m.tintGains(30)[1] < 1 && m.tintGains(-30)[1] > 1, 'tint');
+  console.log('physical camera formulas ok');
+}

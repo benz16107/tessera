@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { label, setLastRender, sid, useAgentSteps, useElapsed, type RenderResult } from './api.ts';
 
-export type Layers = { beauty: Blob; depth: Blob; mask: Blob; shadow?: Blob; width: number; height: number; depthNearM: number; depthFarM: number; legend: unknown[] };
+export type Layers = { beauty: Blob; depth: Blob; mask: Blob; shadow?: Blob; sceneDepth?: Blob; sceneNearM?: number; sceneFarM?: number; width: number; height: number; depthNearM: number; depthFarM: number; legend: unknown[] };
 type Props = { sessionId: bigint; photoId?: bigint; getLayers: () => Promise<Layers>; settings?: Record<string, unknown>; onSunFix?: (azimuthDeg: number, altitudeDeg: number) => void };
 
 /** POST the layers; mode 'composite' returns the composite alone (no AI), for a quick look or a critique. */
@@ -13,6 +13,8 @@ export async function postLayers(l: Layers, f: { sessionId: bigint; photoId: big
   fd.append('depth', l.depth, 'depth.png');
   fd.append('mask', l.mask, 'mask.png');
   if (l.shadow) fd.append('shadow', l.shadow, 'shadow.png');
+  // Scene depth (studio massing, never tiles) for the camera bake's depth of field.
+  if (l.sceneDepth) { fd.append('sceneDepth', l.sceneDepth, 'scene-depth.png'); fd.append('sceneNearM', String(l.sceneNearM ?? 0.5)); fd.append('sceneFarM', String(l.sceneFarM ?? 500)); }
   fd.append('legend', JSON.stringify(l.legend));
   for (const [k, v] of Object.entries({ sessionId: sid(f.sessionId), photoId: sid(f.photoId), text: f.text ?? '', mode: f.mode ?? 'depth', settings: JSON.stringify(f.settings ?? {}), depthNearM: l.depthNearM, depthFarM: l.depthFarM }))
     fd.append(k, String(v));

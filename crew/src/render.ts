@@ -20,6 +20,7 @@ import { chat, editImage, parseJson, physicalCheck, thinking } from './models.ts
 import { genai } from './props3d.ts';
 import { sunAt } from './sun.ts';
 import { normBox, sessionLight, type LightRead } from './vision.ts';
+import { bakeCamera, type CameraBake, type Depth, type Optic } from './lens.ts';
 import { fluxSize, placeholderPrompt, renderPrompt, whenWords, type Placeholder } from './prompts.ts';
 export { fluxSize, lensWords, renderPrompt } from './prompts.ts';
 import { describeObjects, parseParams, setContext, sessionObjects } from './set.ts';
@@ -32,6 +33,7 @@ export type RenderIn = {
   sun?: { az: number; alt: number }; mode?: 'depth' | 'canny' | 'composite'; strength?: number;
   mask?: Buffer; legend?: { id: string; name: string; kind: string; color: string }[]; // the studio's object-ID layer
   id?: string; // request id (16 hex), chosen by the async HTTP route so a client can poll before the work ends
+  camera?: CameraBake; optic?: Optic; sceneDepth?: Depth; // the studio's physical camera, baked into the final image
 };
 export type Check = { round: number; pass: boolean; summary: string; objects: { name: string; light: boolean; shadow: boolean; scale: boolean; color: boolean; note: string }[]; placeholders: string[];
   strength: 'up' | 'down' | 'same'; promptAdd: string; sunFix?: { azimuth: number; altitude: number; why: string }; model: string; ms: number };
@@ -236,6 +238,16 @@ export async function render(inp: RenderIn): Promise<RenderOut> {
       }
     }
     sunFix = checks.map(c => c.sunFix).filter(Boolean).pop() ?? sunFix;
+    // The studio's physical camera last, on the chosen image only (the checks judge the frame before blur and grain).
+    if (inp.camera && inp.optic) {
+      const t1 = Date.now();
+      try {
+        const b = await bakeCamera(out.img, inp.camera, inp.optic, inp.sceneDepth);
+        await saveImage(`/preview/${id}k.jpg`, join(PREVIEWS_DIR, `${id}k.jpg`), b.jpeg);
+        out = { url: `/preview/${id}k.jpg`, img: b.jpeg };
+        await logStep(sid, 'camera', `${inp.optic.focalMm} mm f/${inp.optic.aperture}, focus ${inp.optic.focusM} m${inp.sceneDepth ? ', scene depth' : ''}`, b.applied.join('; ') || 'nothing to apply', Date.now() - t1);
+      } catch (e) { await logStep(sid, 'camera', 'bake', `error: ${(e as Error).message.slice(0, 200)}; kept the image without it`, Date.now() - t1); }
+    }
     const model = patchPath ? `${[...used].join(' + ') || 'none'} (crop edits per placeholder)` : gen && 'rgb' in gen ? gen.model : 'harmonized composite (no generator answered)';
     if (jobId !== undefined) await conn.reducers.finishPreview({ jobId, ok: true, imageUrl: out.url, error: '' }).catch(e => console.warn(`finishPreview: ${e.message}`));
     return { url: out.url, compositeUrl, model, fallback: patchPath ? (used.size ? undefined : 'no image-edit model answered; the placeholders are still mannequins') : gen && 'rgb' in gen ? gen.fallback : gen && 'error' in gen ? gen.error : undefined, prompt, label: 'AI interpretation', ms: Date.now() - t0, jobId: jobId?.toString(), strength, checks, sunFix, rerendered, placeholders: placeholders.length };

@@ -23,7 +23,7 @@ console.log('renderer', await page.evaluate(() => { const gl = document.createEl
 console.log('fps', await fps(), 'world', await page.evaluate(() => document.querySelector('.st-panel-head .st-meta')?.textContent));
 await page.keyboard.press('Escape');
 const S = n => page.screenshot({ path: `${out}${n}.png` });
-for (const step of stepsArg.split(',')) {
+for (const step of stepsArg.split(/,(?![^{]*})/)) {
   if (step === 'main') { await page.waitForTimeout(500); await S(''); }
   if (step === 'walk') { // Walk: the help card, then a few steps forward and a turn to the right
     await page.keyboard.press('5'); await page.waitForTimeout(800);
@@ -74,6 +74,18 @@ for (const step of stepsArg.split(',')) {
     for (let i = 0; i < 40; i++) { await page.mouse.wheel(0, 600); await page.waitForTimeout(120); }
     await page.waitForTimeout(8000); await S('-3dmap');
   }
+  if (step.startsWith('cam|')) { // cam|<name>|<json shot patch>[|lock], from Through Cam A
+    const [, name, json, lock] = step.split('|');
+    await page.evaluate(([j, l]) => { window.__cam.set(JSON.parse(j), l === 'lock'); }, [json, lock]);
+    await page.waitForTimeout(5000); await S(`-${name}`);
+  }
+  if (step === 'restore') { // end Compare (puts Cam A back) and return the shot settings to A9TVAN's originals
+    await page.evaluate(() => { window.__cam.endCompare(); });
+    await page.waitForTimeout(3000);
+    await page.evaluate(() => window.__cam.set({ bodyId: 'sony-a7iv', lensId: 'tamron-28-75-f28-g2', focalMm: 51, aperture: 2.8, shutterS: 1 / 640, iso: 100, focusM: 5.1, whiteBalanceK: 5500 }, false));
+    await page.waitForTimeout(3000);
+  }
+  if (step === 'preset') { await page.evaluate(() => window.__cam.preset()); await page.waitForTimeout(9000); await S('-compare'); }
   if (step === 'world') { await page.keyboard.press('5'); await page.waitForTimeout(3000); await S('-world'); }
   if (step.startsWith('style:')) { // style:<World style label>, from the World view's default camera
     const label = step.slice(6);

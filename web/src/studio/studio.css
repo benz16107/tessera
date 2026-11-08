@@ -447,3 +447,7 @@
 .st-explore { position: absolute; left: 50%; top: 60px; translate: -50% 0; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 14px; z-index: 22; max-width: calc(100% - 24px); font-size: 13px; color: var(--text); }
 .st-explore > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .st-sharper { position: absolute; left: 50%; top: 60px; translate: -50% 0; z-index: 22; }
+/* The physical camera's readouts on the frame: histogram (top right) and warnings under it. */
+.st-hist { position: absolute; pointer-events: none; }
+.st-camwarn { position: absolute; translate: -100% 0; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin: 0; pointer-events: none; }
+.st-camwarn span { padding: 2px 6px; border-radius: 4px; background: var(--glass); font: 11px var(--mono); color: var(--amber); white-space: nowrap; }

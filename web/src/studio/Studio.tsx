@@ -17,7 +17,8 @@ import { navigate } from '../App.tsx';
 import { sunAt, spotZone, fmtTime } from '../geo.ts';
 import { ENU_TO_THREE, enuToThree, threeToEnu, llhToEnu, enuToLlh, cameraQuat, cameraHpr, yawQuat, type Origin } from './frame.ts';
 import { useGeoLayers, GeoScene, GeoButton, GeoPanel, GeoBands, GeoOverview, GeoMapView, zoomForHeight, type MapCamera, type ShotTarget } from '../layers/index.ts';
-import { sceneEv100, meterStops, whiteBalanceGains, fmtShutter, kelvinToRgb } from './optics.ts';
+import { sceneEv100, meterStops, whiteBalanceGains, fmtShutter, kelvinToRgb, shutterForScene, remainingMp, subjectLockedDistance, shakeBlurPx, tintGains } from './optics.ts';
+import type { Histogram, PointLight, Walker } from './post/LookThrough.tsx';
 import { lightColorK, sunPath, sunStrength, sunVector } from './light/sun.ts';
 import { useScene } from './state/useScene.ts';
 import { useShotSettings, defaultShot } from './state/useShotSettings.ts';
@@ -498,15 +499,13 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+  const [compareOn, setCompareOn] = useState(false);
   const latestRender = [...previews].filter(p => p.state === 'done' && p.imageUrl).sort((a, b) => Number(b.id - a.id))[0];
   const split = view === 'shot' && renderOpen && !!latestRender;
   const fitFn = useCallback((vw: number, vh: number): Fit => fitFrame(o, vw, vh, {
-    top: 56, bottom: 72, left: 24, right: split ? vw / 2 + 8 : 24,
-  }), [o, split]);
+    top: 56, bottom: 72, left: compareOn ? vw / 2 + 8 : 24, right: split && !compareOn ? vw / 2 + 8 : 24,
+  }), [o, split, compareOn]);
   const fit = fitFn(vp.w, vp.h);
-  const meter = meterStops(sceneEv, shot.aperture, shot.shutterS, shot.iso);
-  const gain = Math.pow(2, Math.max(-6, Math.min(6, meter)));
-  const wb = whiteBalanceGains(5500, shot.whiteBalanceK);
   const portrait = frame.h > frame.w;
   const aspectLabel = (a: string) => { const [x, y] = a.split(':'); return portrait && +x > +y ? `${y}:${x}` : a; };
 
@@ -621,6 +620,30 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     }
     enter3D({ lat: t.lat, lon: t.lon }, t.heading); // a check-in or a scout: just the place
   };
+  // Subject-locked zoom: as the focal length changes, Cam A walks along its view axis so the subject keeps its size
+  // (optics.ts subjectLockedDistance), and the background really grows behind it.
+  const [subjectLock, setSubjectLock] = useState(false);
+  const setShotPhysical = (pt: Partial<typeof shot>, lock = subjectLock) => {
+    if (pt.focusM !== undefined) setFocusFollow(null);
+    if (lock && pt.focalMm !== undefined && shotRow && shotPose && focusTarget && Math.abs(pt.focalMm - shot.focalMm) > 0.01) {
+      const d1 = focusTarget.distance, d2 = subjectLockedDistance(d1, shot.focalMm, pt.focalMm);
+      const flat = new Vector3(shotPose.fwd.x, shotPose.fwd.y, 0).normalize();
+      const pos = shotPose.pos.clone().addScaledVector(flat, -(d2 - d1));
+      pos.z = gz(pos.x, pos.y) + (shotPose.pos.z - gz(shotPose.pos.x, shotPose.pos.y));
+      editRow(shotRow, { ...stateOf(shotRow), x: pos.x, y: pos.y, z: pos.z }, 'subject-locked zoom');
+      setShot({ ...pt, focusM: +d2.toFixed(2) });
+      setToast(`${shotName} ${d2 > d1 ? 'stepped back' : 'stepped in'} ${Math.abs(d2 - d1).toFixed(1)} m: ${focusTarget.name} stays the same size`);
+      return;
+    }
+    setShot(pt);
+  };
+  const walkers = useCallback((): Walker[] => scene.rows.filter(r => r.kind === 'person' && r.visible && (parseParams(r.params).pose ?? 'stand') === 'walk').flatMap(r => {
+    const g = groups.current.get(r.id);
+    if (!g) return [];
+    const f = new Vector3(0, 1, 0).applyQuaternion(new Quaternion(r.qx, r.qy, r.qz, r.qw).normalize()).setZ(0).normalize().multiplyScalar(1.4); // walking pace
+    return [{ root: g, velocity: enuToThree(f) }];
+  }), [scene.rows]);
+  const pointLights = useCallback((): PointLight[] => scene.rows.filter(r => r.kind === 'light' && r.visible).map(r => ({ pos: enuToThree({ x: r.x, y: r.y, z: r.z }), strength: 1 })), [scene.rows]);
   const cone = origin && shotPose ? { ...enuToLlh(origin, shotPose.pos), heading: shotPose.hpr.heading, hfovDeg: o.hfovDeg } : null;
   const sunDir = sunVector(sun.azimuth, sun.altitude);
   // Nemotron's read of the photo's light (docs/NVIDIA.md, GET /api/set/light): its sun drives the render layers' shadows,
@@ -659,6 +682,56 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const objectsForLayers = () => scene.rows.filter(r => r.visible && r.kind !== 'camera' && r.kind !== 'light' && groups.current.get(r.id))
     .map(r => ({ id: r.id, name: r.name, kind: r.kind, root: groups.current.get(r.id)! }));
   const photoBack = view === 'shot' && backplate === 'photo' && !!photo;
+  // The meter reads the planned time's light, which the default settings were metered for: at those settings the photo
+  // shows as shot, and every change of aperture, shutter or ISO moves it by real stops.
+  const meterEv = sceneEv;
+  const meter = meterStops(meterEv, shot.aperture, shot.shutterS, shot.iso);
+  const gain = Math.pow(2, Math.max(-6, Math.min(6, meter)));
+  const [tint, setTint] = useState(0);
+  const wb = (() => { const a = whiteBalanceGains(5500, shot.whiteBalanceK), t = tintGains(tint); return [a[0] * t[0], a[1] * t[1], a[2] * t[2]] as [number, number, number]; })();
+  // What a longer lens leaves of the photo from the same spot, and the handheld shake during the shutter.
+  const photoF35 = solved?.pose.f35 ?? null;
+  const mpLeft = photoF35 ? remainingMp(frame.w, frame.h, photoF35, o.f35) : null;
+  const cropNote = photoF35 && mpLeft !== null && o.f35 > photoF35 * 1.03 ? `${mpLeft.toFixed(1)} MP of your photo left at ${Math.round(shot.focalMm)} mm (it was ${Math.round(photoF35)} mm)`
+    : photoF35 && o.f35 < photoF35 * 0.97 ? `Wider than your photo (${Math.round(photoF35)} mm): the edges show the 3D world` : null;
+  const shakePx = shakeBlurPx(shot.shutterS, shot.focalMm, o.crop, Math.max(o.ibisStops, o.ois ? 4 : 0), o.cocMm, o.fpx);
+  const [hist, setHist] = useState<Histogram | null>(null);
+  const [plateReady, setPlateReady] = useState(false);
+  const [footprint, setFootprint] = useState<[number, number][] | null>(null);
+  // Compare: hold this frame as A, then change settings for B beside it. The preset is the classic lens choice:
+  // 24 mm at f/8 from close, against 85 mm at f/1.4 from further back with the subject the same size.
+  const latestCam = useRef<{ setShotPhysical: (pt: Partial<typeof shot>, lock?: boolean) => void } | null>(null);
+  const holdA = (label = settingsLabel) => new Promise<void>(res => { grabRef.current = url => { setCompare({ url, label }); setCompareOn(true); res(); }; });
+  const beforeCompare = useRef<{ shot: typeof shot; cam: ReturnType<typeof stateOf> | null } | null>(null);
+  const endCompare = () => {
+    setCompareOn(false); setCompare(null);
+    const b = beforeCompare.current;
+    beforeCompare.current = null;
+    if (!b) return;
+    setSubjectLock(false);
+    setShot(b.shot);
+    if (b.cam && shotRow) editRow(shotRow, b.cam, 'compare ended');
+  };
+  const comparePreset = async () => {
+    beforeCompare.current = { shot: { ...shot }, cam: shotRow ? stateOf(shotRow) : null };
+    setSubjectLock(true);
+    // Each side metered like a photographer would (aperture priority at ISO 100), so only the lens and aperture differ.
+    latestCam.current?.setShotPhysical({ bodyId: 'sony-a7iv', lensId: 'sony-fe-24-f14-gm', focalMm: 24, aperture: 8, iso: 100, shutterS: shutterForScene(sceneEv, 8, 100) }, true);
+    await new Promise(r => setTimeout(r, 2500));
+    await holdA('24 mm f/8, close');
+    latestCam.current?.setShotPhysical({ lensId: 'sony-fe-85-f14-gm', focalMm: 85, aperture: 1.4, iso: 100, shutterS: shutterForScene(sceneEv, 1.4, 100) }, true);
+  };
+  latestCam.current = { setShotPhysical };
+  if (import.meta.env.DEV) (window as unknown as { __cam: unknown }).__cam = { set: setShotPhysical, lock: setSubjectLock, shot, preset: comparePreset, endCompare, // test hook
+    restorePose: () => {
+      if (!shotRow || !solved || !origin) return 'no camera';
+      const p = llhToEnu(origin, solved.pose.lat, solved.pose.lon, 0), q = cameraQuat(solved.pose.heading, solved.pose.pitch, solved.pose.roll);
+      editRow(shotRow, { ...stateOf(shotRow), x: p.x, y: p.y, z: gz(p.x, p.y) + solved.pose.alt, qx: q.x, qy: q.y, qz: q.z, qw: q.w }, 'restored');
+      return [p.x, p.y, gz(p.x, p.y) + solved.pose.alt].map(v => +v.toFixed(2));
+    } };
+  const grabRef = useRef<((url: string) => void) | null>(null);
+  const [compare, setCompare] = useState<{ url: string; label: string } | null>(null);
+  const settingsLabel = `${Math.round(shot.focalMm)} mm f/${shot.aperture} ${fmtShutter(shot.shutterS)} ISO ${shot.iso}`;
   const showSplat = !explore && world === 'splat' && !!splatUrl && !photoBack;
   const showTiles = (!!explore || world === 'tiles' || (world === 'splat' && !splatState.loaded)) && !photoBack;
   const showClay = !explore && (world === 'clay' || world === 'clayPhoto') && !photoBack;
@@ -743,7 +816,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
           const at = pickRef.current?.(e.clientX, e.clientY) ?? null;
           setDropAsk({ file: f, x: e.clientX - r.left, y: e.clientY - r.top, at });
         }}>
-        {photoBack && photo && <img className="st-backplate" src={photo.url || photo.thumb} alt="" style={{ left: fit.rect.x, top: fit.rect.y, width: fit.rect.w, height: fit.rect.h }} />}
+        {photoBack && photo && !plateReady && <img className="st-backplate" src={photo.url || photo.thumb} alt="" style={{ left: fit.rect.x, top: fit.rect.y, width: fit.rect.w, height: fit.rect.h }} />}
         {view !== 'shot' && photo && shotRow && <img className="st-backplate" src={photo.thumb} alt="" style={{ left: pip.x, top: pip.y, width: pip.w, height: pip.h, borderRadius: 4 }} />}
         <div className="st-canvas">
           <Canvas shadows="percentage" gl={{ antialias: true, alpha: true }} frameloop={view === 'map' ? 'never' : 'always'} camera={{ fov: 50, near: 0.1, far: 20000, position: enuToThree(startCam.pos).toArray() }}
@@ -752,6 +825,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               if (view === 'walk') walkInput.current.lock?.(); else setSelected(null);
             }}>
             <XR store={xrStore}>
+              {photoBack && plateReady && <group userData={{ plate: true }}><Sky sunPosition={enuToThree({ x: sunDir[0], y: sunDir[1], z: sunDir[2] }).multiplyScalar(1000).toArray()} distance={4500} /></group>}
               {!photoBack && <group userData={{ helper: true }}><Sky sunPosition={enuToThree({ x: sunDir[0], y: sunDir[1], z: sunDir[2] }).multiplyScalar(1000).toArray()} distance={4500} /></group>}
               <hemisphereLight args={['#bcd3ff', '#3b342b', photo ? 0.45 : 0.9]} />
               {photo && <PhotoEnv url={photo.url || photo.thumb} />}
@@ -767,6 +841,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                     onProgress={f => setSplatState(s => ({ ...s, progress: f }))} onLoaded={() => setSplatState({ loaded: true, progress: 1 })}
                     onError={e => { console.warn('splat failed, trying the next file', splatUrl, e); setSplatState({ loaded: false, progress: 0 }); setSplatSkip(k => [...k, splatUrl]); }} />
                 )}
+                {origin && photoBack && projector && <Clay plate buildings={layers.data?.layers.buildings ?? null} geo={geo} origin={origin} gz={gz} projector={projector} onReady={setPlateReady} />}
+                {origin && photoBack && projector && <PlateFootprint camera={shotCam} projector={projector} onChange={setFootprint} />}
                 {origin && showClay && <Clay buildings={layers.data?.layers.buildings ?? null} geo={geo} origin={origin} gz={gz} projector={world === 'clayPhoto' ? projector : null} />}
                 {origin && <GeoScene geo={layers} origin={origin} groundAt={gz} labels={geoOpen && view !== 'shot'} overlays={!photoBack} />}
                 <Catchers geo={geo} occlude={view === 'shot'} shadowOpacity={showClay ? 0 : 0.5} onTeleport={p => setVrOrigin(p)}
@@ -799,7 +875,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               {view === 'top' && <TopView center={shotPose?.pos ?? new Vector3()} target={orbitTarget} />}
               {view === 'walk' && <WalkControls gz={walkGround} eye={walkEye} fly={walkFly} input={walkInput.current} obstacles={explore ? NO_WALLS : walkObstacles} editing={selected !== null}
                 pickables={() => [...groups.current.entries()]} onPick={id => setSelected(id)} onFly={() => setWalkFly(true)} />}
-              {view === 'shot' && shotRow && <LookThrough camera={shotCam} o={o} shot={shot} gain={gain} wb={wb} dofOn={dofOn} vignette={vignette} fit={fitFn} photoOnly={photoBack} />}
+              {view === 'shot' && shotRow && <LookThrough camera={shotCam} o={o} shot={shot} gain={gain} wb={wb} dofOn={dofOn} vignette={vignette} fit={fitFn} photoOnly={photoBack}
+                walkers={walkers} lights={pointLights} shakePx={shakePx} onHistogram={setHist} grab={grabRef} />}
               {view !== 'shot' && shotRow && <PipRenderer shotCam={shotCam} o={o} rect={pip} inset={vp.w >= 720 && !explore} overPhoto={!!photo} />}
               {view !== 'shot' && (
                 <GizmoHelper alignment="top-right" margin={[52, 52]} renderPriority={2}>
@@ -817,7 +894,31 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
         {view === 'shot' && shotPose && (
           <>
             <Overlays vw={vp.w} vh={vp.h} rect={fit.rect} aspect={shot.aspect} overlays={[overlay, ...extraOv]}
-              pitchDeg={shotPose.hpr.pitch} rollDeg={shotPose.hpr.roll} fpxView={o.fpx * fit.pxPerFramePx} />
+              pitchDeg={shotPose.hpr.pitch} rollDeg={shotPose.hpr.roll} fpxView={o.fpx * fit.pxPerFramePx}
+              footprint={photoBack && plateReady && footprint && photoF35 && (o.f35 < photoF35 * 0.97 || (projector && shotPose.pos.distanceTo(projector.pos) > 0.3)) ? footprint : null} />
+            {hist && (
+              <svg className="st-hist" style={{ left: fit.rect.x + fit.rect.w - 140, top: fit.rect.y + 12 }} width={128} height={44} viewBox="0 0 128 44" aria-label="Histogram">
+                <rect width={128} height={44} rx={4} fill="var(--glass)" />
+                <path d={`M4,40 ${hist.bins.map((b, i) => `L${4 + i * 3.87},${40 - Math.min(1, b * 9) * 34}`).join(' ')} L124,40Z`} fill="var(--text)" fillOpacity={0.7} />
+                {hist.clipHi > 0.01 && <rect x={120} y={4} width={4} height={36} fill="var(--red)" />}
+                {hist.clipLo > 0.03 && <rect x={4} y={4} width={4} height={36} fill="#5f9cf0" />}
+              </svg>
+            )}
+            {hist && (hist.clipHi > 0.01 || hist.clipLo > 0.03 || o.diffractionWarn || shakePx > 3) && (
+              <p className="st-camwarn" style={{ left: fit.rect.x + fit.rect.w - 12, top: fit.rect.y + 62 }}>
+                {[hist.clipHi > 0.01 && `Highlights clipped ${Math.round(hist.clipHi * 100)}%`, hist.clipLo > 0.03 && `Shadows crushed ${Math.round(hist.clipLo * 100)}%`,
+                  o.diffractionWarn && `Diffraction past f/${o.limitN.toFixed(1)}`, shakePx > 3 && `Handheld shake ${shakePx.toFixed(0)} px`].filter(Boolean).map(t => <span key={String(t)}>{t}</span>)}
+              </p>
+            )}
+            {compare && (() => {
+              const a = fitFrame(o, vp.w, vp.h, { top: 56, bottom: 72, left: 24, right: vp.w / 2 + 8 }).rect;
+              return (
+                <>
+                  <img className="st-render-img" src={compare.url} alt={`The same shot at ${compare.label}`} style={{ left: a.x, top: a.y, width: a.w, height: a.h }} />
+                  <div className="st-caption" style={{ left: a.x, top: a.y + a.h + 12, width: a.w }}><b>A · {compare.label}</b><span>Held for comparison</span></div>
+                </>
+              );
+            })()}
             <p className="st-readout" style={{ left: fit.rect.x + 12, top: fit.rect.y + 12 }}>
               <b>{shotName.toUpperCase()}</b><span>{Math.round(shot.focalMm)} mm</span><span>f/{shot.aperture}</span><span>{fmtShutter(shot.shutterS)}{shot.shutterS < 0.3 ? ' s' : ''}</span><span>ISO {shot.iso}</span>
               <span style={{ color: Math.abs(meter) > 1 ? 'var(--amber)' : undefined }}>{meter >= 0 ? '+' : ''}{meter.toFixed(1)} EV</span>
@@ -825,8 +926,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
             {focusTarget && <p className="st-focuslabel" style={{ left: fit.rect.x + fit.rect.w / 2, top: fit.rect.y + fit.rect.h * 0.62 }}>Focus {shot.focusM.toFixed(1)} m{Math.abs(focusTarget.distance - shot.focusM) < 0.5 ? ` · ${focusTarget.name}` : ''}</p>}
             {photoBack && <p className="st-photocredit" style={{ left: fit.rect.x + 10, top: fit.rect.y + fit.rect.h - 28 }}>Your photo · {frame.w} × {frame.h}</p>}
             <div className="st-caption" style={{ left: fit.rect.x, top: fit.rect.y + fit.rect.h + 12, width: fit.rect.w }}>
-              <b>Through {shotName}: {photoBack ? 'your photo with your objects and lights' : 'the 3D world with your objects'}</b>
-              <span>Lens distortion, vignetting and depth of field from the lens profile and optics</span>
+              <b>{compare ? `B · ${settingsLabel}` : `Through ${shotName}: ${photoBack ? 'your photo with your objects and lights' : 'the 3D world with your objects'}`}</b>
+              <span>{cropNote ?? 'Lens, aperture, shutter and ISO behave like the real camera'}</span>
             </div>
             {split && latestRender && (() => {
               const r = { x: vp.w / 2 + 8, y: fit.rect.y, w: Math.min(vp.w / 2 - 32, fit.rect.w), h: fit.rect.h };
@@ -857,6 +958,11 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                   </div>
                 )}
               </span>
+              <span style={{ position: 'relative' }}>
+                <button className="st-btn small" aria-pressed={compareOn} onClick={() => { if (compareOn) endCompare(); else void holdA(); }}
+                  title="Hold this frame as A, then change the camera for B beside it">{compareOn ? 'End compare' : 'Compare'}</button>
+              </span>
+              {!compareOn && <button className="st-btn small ghost" onClick={() => void comparePreset()} title="24 mm f/8 from close against 85 mm f/1.4 from further back, subject the same size">24 vs 85 mm</button>}
               {latestRender && <button className="st-btn small" aria-pressed={renderOpen} onClick={() => setRenderOpen(v => !v)}>{renderOpen ? 'Hide render' : 'Render'}</button>}
             </div>
           </>
@@ -986,7 +1092,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
         )}
         {addOpen && <AddDrawer onAdd={i => addItem(i)} sessionId={sid} onGenerated={onGenerated} genFile={genFile} onClose={() => setAddOpen(false)} startTab={genFile ? 'Generate' : undefined} />}
         {!focus && view !== 'map' && <BuildCard spotName={spot?.name} solved={solved ? { f35: solved.pose.f35, heading: solved.pose.heading, inliers: solved.inliers, alt: solved.pose.alt, pitch: solved.pose.pitch, secs: solved.secs } : null}
-          hasCam={!!shotRow} worldReady={world === 'clay' || world === 'clayPhoto' ? !!layers.data?.layers.buildings : splatState.loaded || attribution !== ''}
+          hasCam={!!shotRow} worldReady={plateReady || (world === 'clay' || world === 'clayPhoto' ? !!layers.data?.layers.buildings : splatState.loaded || attribution !== '')}
           worldNote={world === 'clay' || world === 'clayPhoto' ? `Clay massing from ${layers.data?.layers.buildings?.features.length ?? 'the'} building footprints${world === 'clayPhoto' ? ', your photo projected on it' : ''}` : undefined}
           splat={world === 'splat' && !!splatUrl} progress={splatState.progress} />}
         {page !== 'set' && (
@@ -1021,14 +1127,18 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
           <div className="st-insp" style={{ paddingBottom: 0, gap: 16 }}>
             <RenderSection getLayers={getLayers} sessionId={sid} photoId={photo?.id} shot={shot} f35={o.f35}
               time={`${fmtTime(planTime, zone)} (${sun.altitude.toFixed(0)}° sun)`} sun={photoSun ?? sun}
-              sunMatch={sunMatch} sunSource={sunSource} onSunSource={setSunSource} onSunFix={applySunFix} fixNote={fixNote} onFixDone={() => setFixNote('')} />
+              sunMatch={sunMatch} sunSource={sunSource} onSunSource={setSunSource} onSunFix={applySunFix} fixNote={fixNote} onFixDone={() => setFixNote('')}
+              camera={{ exposureStops: +meter.toFixed(2), wbGains: wb.map(v => +v.toFixed(4)), tint, noiseSigma: +o.noise.toFixed(4), sensorMm: o.sensorMm.map(v => +v.toFixed(2)),
+                cocMm: o.cocMm, blades: o.blades, airyPx: +o.airyPx.toFixed(2), vignette, tca: o.tca ?? null, distortionPoly: o.poly, unitMm: o.unitMm,
+                shakePx: +shakePx.toFixed(2), photoF35, note: 'apply exposureStops, wbGains, depth of field (sceneDepth), vignetting and noise to the composite so it matches the viewport' }} />
             <NvidiaSlot name="ArtDirector" props={{ sessionId: sid, photoId: photo?.id, getLayers }} fallbackText="" />
             <div className="st-div" />
           </div>
         )}
         <Inspector row={selRow} isShot={!selRow || selRow.id === shotRow?.id} camName={shotName} lockedBy={selRow ? lockOwner(selRow)?.name ?? null : null}
           placedBy={selRow ? (isMe(selRow.updatedBy) ? 'you' : nameOf(selRow.updatedBy)) : ''}
-          shot={shot} setShot={pt => { if (pt.focusM !== undefined) setFocusFollow(null); setShot(pt); }} shotError={shotError} optics={o} sceneEv={sceneEv} vignette={vignette} setVignette={setVignette}
+          shot={shot} setShot={setShotPhysical} shotError={shotError} optics={o} sceneEv={meterEv} vignette={vignette} setVignette={setVignette}
+          subjectLock={subjectLock} onSubjectLock={setSubjectLock} tint={tint} onTint={setTint} cropNote={view === 'shot' ? cropNote : null} shakePx={shakePx}
           focusTarget={focusTarget} onFocusOn={setFocusFollow} shotStats={shotStats} sizeOf={r => objectSizes.get(r.id) ?? null}
           onChange={editRow} onMakeShot={makeShot} onRegenerate={(r, f) => void regenerate(r, f)}
           groundAt={gz}
@@ -1317,6 +1427,28 @@ function Capture({ capture, camera, vfovDeg, frame, objects, renderSun }: {
       try { return await renderLayers({ gl, scene, camera, vfovDeg, width: frame.w, height: frame.h, hide, objects: objects() }); }
       finally { if (sun && was) { sun.position.copy(was); sun.updateMatrixWorld(); } }
     };
+  });
+  return null;
+}
+
+/** Where the user's photo lands in the viewport: the projector's frustum corners (on the far matte) seen by the shot
+ *  camera. Outside it the frame shows the 3D world, outlined as "beyond your photo". */
+function PlateFootprint({ camera, projector, onChange }: { camera: PerspectiveCamera; projector: Projector; onChange: (p: [number, number][] | null) => void }) {
+  const { size } = useThree();
+  const corners = useMemo(() => {
+    const h = Math.tan((projector.vfovDeg * Math.PI) / 360) * 900, w = h * projector.aspect;
+    return [[-w, h], [w, h], [w, -h], [-w, -h]].map(([x, y]) => enuToThree(new Vector3(x, y, -900).applyQuaternion(projector.quat).add(projector.pos)));
+  }, [projector]);
+  const last = useRef({ t: 0, key: '' });
+  useFrame(() => {
+    const now = performance.now();
+    if (now - last.current.t < 150) return;
+    last.current.t = now;
+    camera.updateMatrixWorld();
+    const pts = corners.map(c => c.clone().project(camera));
+    const out = pts.some(p => p.z > 1) ? null : pts.map(p => [((p.x + 1) / 2) * size.width, ((1 - p.y) / 2) * size.height] as [number, number]);
+    const key = out ? out.map(p => p.map(Math.round).join(',')).join(';') : '';
+    if (key !== last.current.key) { last.current.key = key; onChange(out); }
   });
   return null;
 }

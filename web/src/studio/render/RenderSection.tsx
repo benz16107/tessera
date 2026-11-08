@@ -11,6 +11,8 @@ interface Props {
   sessionId: bigint; photoId?: bigint;
   shot: Shot; f35: number; time: string;
   sun: { azimuth: number; altitude: number };
+  /** The physical camera, so the render bakes the same picture the viewport shows (docs/NVIDIA.md render fields). */
+  camera?: Record<string, unknown>;
   sunMatch: string | null; sunSource: 'photo' | 'plan'; onSunSource: (s: 'photo' | 'plan') => void;
   onSunFix: (azimuth: number, altitude: number) => void; fixNote: string; onFixDone: () => void;
 }
@@ -21,7 +23,7 @@ export default function RenderSection(p: Props) {
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState('');
   useEffect(() => () => layers?.urls.forEach(URL.revokeObjectURL), [layers]);
-  const settings = JSON.stringify({ ...p.shot, f35: p.f35, time: p.time, sunAzimuth: p.sun.azimuth, sunAltitude: p.sun.altitude });
+  const settings = JSON.stringify({ ...p.shot, f35: p.f35, time: p.time, sunAzimuth: p.sun.azimuth, sunAltitude: p.sun.altitude, camera: p.camera });
 
   const make = async () => {
     setBusy('Rendering layers'); setMsg('');

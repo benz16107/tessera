@@ -201,9 +201,23 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
     const text = String(form.get('text') ?? settings.text ?? '').slice(0, 500);
     if (text) { const s = await screenText(text); if (!s.safe) { json(res, 422, { error: 'that instruction was refused by the safety check' }); return true; } }
     const mode = raw('mode') === 'canny' ? 'canny' : raw('mode') === 'composite' ? 'composite' : 'depth';
+    // The studio's physical camera (settings.camera) and scene depth, baked into the final image; numbers clamped here.
+    const c = (settings.camera && typeof settings.camera === 'object' ? settings.camera : null) as Record<string, any> | null;
+    const fin = (v: unknown, lo: number, hi: number) => { const n = Number(v); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : undefined; };
+    const nums = (v: unknown, n: number, lo: number, hi: number) => Array.isArray(v) && v.length === n && v.every(x => Number.isFinite(Number(x))) ? v.map(x => Math.max(lo, Math.min(hi, Number(x)))) : undefined;
+    const camera = c ? {
+      exposureStops: fin(c.exposureStops, -6, 6), wbGains: nums(c.wbGains, 3, 0.2, 5) as [number, number, number] | undefined, noiseSigma: fin(c.noiseSigma, 0, 0.2),
+      sensorMm: nums(c.sensorMm, 2, 1, 100) as [number, number] | undefined, blades: fin(c.blades, 0, 20), airyPx: fin(c.airyPx, 0, 50), vignette: c.vignette === true,
+      distortionPoly: (nums(c.distortionPoly, 5, -5, 5) as [number, number, number, number, number] | undefined) ?? null, unitMm: fin(c.unitMm, 1, 100),
+      tca: c.tca && nums(c.tca.r, 3, 0.9, 1.1) && nums(c.tca.b, 3, 0.9, 1.1) ? { r: nums(c.tca.r, 3, 0.9, 1.1) as [number, number, number], b: nums(c.tca.b, 3, 0.9, 1.1) as [number, number, number] } : null,
+      shakePx: fin(c.shakePx, 0, 40), photoF35: fin(c.photoF35, 5, 2000) ?? null,
+    } : undefined;
+    const focalMm = num('focalMm'), sd = form.get('sceneDepth');
+    const optic = camera && focalMm ? { focalMm, aperture: num('aperture') ?? 4, focusM: num('focusM') ?? 10, f35: num('f35') } : undefined;
+    const sceneDepth = sd instanceof Blob && optic ? { png: Buffer.from(await sd.arrayBuffer()), nearM: fin(raw('sceneNearM'), 0.05, 100) ?? 0.5, farM: fin(raw('sceneFarM'), 1, 100000) ?? 500 } : undefined;
     const input = { sessionId: sid, photoId: BigInt(photoId), beauty: Buffer.from(await beauty.arrayBuffer()), shadow: shadow instanceof Blob ? Buffer.from(await shadow.arrayBuffer()) : undefined,
       mask: mask instanceof Blob ? Buffer.from(await mask.arrayBuffer()) : undefined, legend,
-      text, f35: num('f35'), aperture: num('aperture'), focusM: num('focusM'), iso: num('iso'), strength: num('strength'), sun, mode } as const;
+      text, f35: num('f35'), aperture: num('aperture'), focusM: num('focusM'), iso: num('iso'), strength: num('strength'), sun, mode, camera, optic, sceneDepth } as const;
     // The composite alone takes under a second, so it answers directly. A render takes 30 to 90 s (placeholder edits, checks,
     // a second round), longer than browsers and proxies keep a request open: it answers 202 at once and runs in the background.
     // Poll GET /api/render/<requestId>; the preview_job row (kind 'render') gets the image too.

@@ -6,6 +6,8 @@ interface Props {
   aspect: string; overlays: string[];
   pitchDeg: number; rollDeg: number; fpxView: number; // focal length in viewport pixels, for the horizon
   readout?: string;
+  /** The photo's footprint in the viewport (px): outside it the frame shows the 3D world, "beyond your photo". */
+  footprint?: [number, number][] | null;
 }
 
 const PHI = 0.6180339887;
@@ -37,7 +39,7 @@ function spiral(r: Rect): string {
   return d;
 }
 
-export default function Overlays({ vw, vh, rect, aspect, overlays, pitchDeg, rollDeg, fpxView, readout }: Props) {
+export default function Overlays({ vw, vh, rect, aspect, overlays, pitchDeg, rollDeg, fpxView, readout, footprint }: Props) {
   const c = crop(rect, aspect);
   const on = (k: string) => overlays.includes(k);
   const outside = (r: Rect) => `M0,0H${vw}V${vh}H0Z M${r.x},${r.y}V${r.y + r.h}H${r.x + r.w}V${r.y}Z`;
@@ -55,6 +57,19 @@ export default function Overlays({ vw, vh, rect, aspect, overlays, pitchDeg, rol
         <defs><clipPath id="st-frame"><rect x={c.x} y={c.y} width={c.w} height={c.h} /></clipPath></defs>
         <path d={outside(rect)} fill="var(--bg)" fillOpacity={0.86} fillRule="evenodd" />
         {(c.w < rect.w - 1 || c.h < rect.h - 1) && <path d={`M${rect.x},${rect.y}H${rect.x + rect.w}V${rect.y + rect.h}H${rect.x}Z M${c.x},${c.y}V${c.y + c.h}H${c.x + c.w}V${c.y}Z`} fill="var(--bg)" fillOpacity={0.6} fillRule="evenodd" />}
+        {footprint && footprint.length === 4 && (() => {
+          const poly = `M${footprint.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join('L')}Z`;
+          // Label inside the frame where the world shows: the widest band between the frame edge and the footprint.
+          const top = Math.min(...footprint.map(p => p[1])), left = Math.min(...footprint.map(p => p[0]));
+          const lx = left - rect.x > 120 ? rect.x + 8 : rect.x + 8, ly = top - rect.y > 30 ? rect.y + (top - rect.y) / 2 + 4 : rect.y + rect.h - 40;
+          return (
+            <g clipPath="url(#st-frame)">
+              <path d={`M${rect.x},${rect.y}H${rect.x + rect.w}V${rect.y + rect.h}H${rect.x}Z ${poly}`} fill="var(--bg)" fillOpacity={0.28} fillRule="evenodd" />
+              <path d={poly} fill="none" stroke="var(--text)" strokeOpacity={0.85} strokeDasharray="6 4" />
+              {(top - rect.y > 20 || left - rect.x > 20) && <text x={lx} y={ly} className="st-ov-label" style={{ fill: 'var(--text)', paintOrder: 'stroke', stroke: 'var(--bg)', strokeWidth: 3 }}>Beyond your photo: the 3D world</text>}
+            </g>
+          );
+        })()}
         <rect x={c.x} y={c.y} width={c.w} height={c.h} fill="none" stroke="var(--text)" strokeOpacity={0.5} />
         {lines.map((l, i) => <line key={i} x1={l[0]} y1={l[1]} x2={l[2]} y2={l[3]} stroke="var(--text)" strokeOpacity={0.45} />)}
         {gold.map((l, i) => <line key={`g${i}`} x1={l[0]} y1={l[1]} x2={l[2]} y2={l[3]} stroke="var(--amber)" strokeOpacity={0.55} strokeDasharray="4 4" />)}
