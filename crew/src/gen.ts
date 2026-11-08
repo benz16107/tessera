@@ -178,11 +178,23 @@ export async function generateProp(inp: GenIn): Promise<GenOut> {
     } catch (e) {
       // TRELLIS is flaky tonight (HTTP 500s). A photo or a concept image still becomes a prop: a flat cut-out at real size.
       await log('trellis', text.slice(0, 200), `error: ${(e as Error).message.slice(0, 160)}`, Date.now() - s);
+      // Words only (no photo, no concept image): make a product-style image of the object (Qwen-Image on Vultr when FLUX is
+      // down) and stand it up flat at real size, rather than failing after minutes.
+      if (!conceptUrl) {
+        const s2 = Date.now();
+        try {
+          const c = await conceptImage(`${text}, a single object, the whole object in view, plain light grey background, product photo`, false);
+          const file = `${randomUUID().replace(/-/g, '').slice(0, 16)}.jpg`;
+          await saveImage(`/preview/${file}`, join(PREVIEWS_DIR, file), c.jpeg);
+          conceptUrl = `/preview/${file}`;
+          await log('concept_image', text.slice(0, 200), `${c.model}: ${conceptUrl} (for a flat stand-in)`, Date.now() - s2);
+        } catch (e2) { await log('concept_image', text.slice(0, 200), `error: ${(e2 as Error).message.slice(0, 160)}`, Date.now() - s2); }
+      }
       const img = conceptUrl ? await ensureLocal(conceptUrl) : null;
       if (!img) throw e;
       const d = dims ?? await realDims(description ? `${name}: ${description}` : name).catch(() => undefined);
       const out = await generateProp({ ...inp, mode: 'flat', prompt: name, image: undefined, imageUrl: conceptUrl, label: undefined, mount: 'stand', height_m: d?.height_m ?? inp.height_m });
-      return { ...out, name, description, conceptUrl, ran: [...ran, ...out.ran], fallback: `TRELLIS failed (${(e as Error).message.slice(0, 100)}); placed the ${mode === 'photo3d' ? 'photo' : 'concept image'} as a flat cut-out at real size`, ms: Date.now() - t0 };
+      return { ...out, name, description, conceptUrl, ran: [...ran, ...out.ran], fallback: `TRELLIS failed (${(e as Error).message.slice(0, 100)}); placed ${mode === 'photo3d' ? 'the photo' : 'an image of it'} as a flat cut-out at real size`, ms: Date.now() - t0 };
     }
   }
 

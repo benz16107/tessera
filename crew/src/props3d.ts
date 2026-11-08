@@ -47,6 +47,8 @@ export async function genai(model: string, body: object, role: string, attempts 
   throw new Error(`${model} failed ${attempts} times: ${last}`);
 }
 
+let trellisDownUntil = 0;
+
 export type Prop3d = { id: string; url: string; bytes: number; ms: number; cached: boolean; model: string };
 
 /** TRELLIS text-to-3D (mode text) or image-to-3D (mode image, a data URL). Same prompt and seed = same cached GLB. */
@@ -59,7 +61,11 @@ export async function trellis(input: { prompt?: string; image?: string }, seed =
   if (hit) return { id, url: `/asset/${id}.glb`, bytes: readFileSync(hit).length, ms: 0, cached: true, model: MODELS.trellis };
   const t0 = Date.now();
   const body = mode === 'text' ? { prompt: input.prompt, mode, seed } : { image: input.image, mode, seed };
-  const j = await genai(MODELS.trellis, body, mode === 'text' ? 'text to 3D prop' : 'photo to 3D prop', 2, 100_000);
+  // TRELLIS answers in about 10 s, or fails with a 500 after 60 to 90 s (often tonight). One attempt, and after a failure it
+  // is skipped for 5 minutes, so the next requests fall back at once instead of each waiting minutes for another 500.
+  if (Date.now() < trellisDownUntil) throw new Error(`TRELLIS is down (it failed ${Math.round((Date.now() - trellisDownUntil + 300_000) / 1000)} s ago); skipped for now`);
+  const j = await genai(MODELS.trellis, body, mode === 'text' ? 'text to 3D prop' : 'photo to 3D prop', 1, 100_000)
+    .catch(e => { trellisDownUntil = Date.now() + 300_000; throw e; });
   const b64 = j.artifacts?.[0]?.base64 ?? j.artifacts?.[0]?.glb ?? j.glb;
   if (!b64) throw new Error(`TRELLIS returned no model: ${JSON.stringify(j).slice(0, 160)}`);
   const glb = Buffer.from(String(b64).replace(/^data:[^,]+,/, ''), 'base64');
