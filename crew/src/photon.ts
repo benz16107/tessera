@@ -211,7 +211,7 @@ async function handle(m: Inbound) {
 
 /** In groups, answer photos, replies to us and messages that name Tessera; in direct chats, everything. */
 export const shouldAnswer = (m: Inbound) =>
-  m.spaceKind === 'direct' || m.attachmentIds.length > 0 || !!m.parentId || /shot\s?match/i.test(m.text) || !!parseCommand(m.text);
+  m.spaceKind === 'direct' || m.attachmentIds.length > 0 || !!m.parentId || /tessera|shot\s?match/i.test(m.text) || !!parseCommand(m.text);
 
 export function startPhoton() {
   const c = creds();
