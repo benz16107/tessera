@@ -120,9 +120,11 @@ async function verify(sid: bigint, img: Buffer, round: number, light: LightRead 
     model: MODELS.agent, ...thinking(think), temperature: 0, max_tokens: think ? 8000 : 1500,
     messages: [{ role: 'user', content: [{ type: 'text', text: CHECK(objs, lightWordsRead, sunWords) }, { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${small.toString('base64')}` } }] }],
   }, 120_000, think ? 'render physics check (reasoning on)' : 'render physics check');
-  // Reasoning first; when it runs out of budget with no JSON, the same check again without reasoning.
-  let j = parseJson(String((await ask(true).catch(() => ({}) as any)).content ?? ''));
-  if (!j) j = parseJson(String((await ask(false)).content ?? ''));
+  // Reasoning off answers in about 3 s with the same verdicts on our test frames (reasoning on took 25 to 60 s and once ran out
+  // of budget mid-JSON); reasoning on is the retry when the quick answer is unusable. A verdict must carry "pass".
+  const verdict = (m: any) => { const v = parseJson(String(m?.content ?? '')); return v && typeof v === 'object' && 'pass' in v ? v : null; };
+  let j = verdict(await ask(false).catch(() => null));
+  if (!j) j = verdict(await ask(true).catch(() => null));
   if (!j) { await logStep(sid, 'render_check', `round ${round}, ${MODELS.agent}`, 'no verdict: the model returned no JSON', Date.now() - t0); return null; }
   const objects = (Array.isArray(j.objects) ? j.objects : []).slice(0, 14).map((o: any) => ({ name: String(o.name ?? ''), light: o.light !== false, shadow: o.shadow !== false, scale: o.scale !== false, color: o.color !== false, note: String(o.note ?? '').slice(0, 160) }));
   const sf = j.sun_fix && Number.isFinite(Number(j.sun_fix.azimuth)) ? { azimuth: Math.round(Number(j.sun_fix.azimuth)), altitude: Math.round(Number(j.sun_fix.altitude) || 20), why: String(j.sun_fix.why ?? '').slice(0, 160) } : undefined;
