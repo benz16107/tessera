@@ -74,7 +74,7 @@ export function conditionsLine(c: ShotConditions | null | undefined): string {
   const sky = w ? (w.rainPct >= 50 ? 'rain likely' : w.cloud < 20 ? 'clear sky' : w.cloud < 60 ? 'partly cloudy' : w.cloud < 85 ? 'mostly cloudy' : 'overcast') : '';
   const head = [sky, c.colorChance && `${c.colorChance.label} colour chance (${c.colorChance.score}/100)`,
     w && `wind ${Math.round(w.windMph)} mph${w.gustMph >= w.windMph + 8 ? ` gusting ${Math.round(w.gustMph)}` : ''}`].filter(Boolean).join(', ');
-  const tide = c.tide?.note ? c.tide.note.split(':')[0].replace(/^(Low|High)/, m => m.toLowerCase()) : '';
+  const tide = c.tide?.note ? c.tide.note.split(': ')[0].replace(/^(Low|High)/, m => m.toLowerCase()) : '';
   const first = [head, tide].filter(Boolean).join('; ');
   const near = c.blockers.slice(0, 2).map(b => `${b.label.charAt(0).toLowerCase()}${b.label.slice(1)} ${Math.round(b.m)} m away`);
   return [first && `${first[0].toUpperCase()}${first.slice(1)}.`, near.length && `Watch for ${near.join(' and ')}.`].filter(Boolean).join(' ');

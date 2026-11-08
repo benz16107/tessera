@@ -108,12 +108,17 @@ Request: `{ "sessionId": "18", "mode": "auto | text3d | image3d | photo3d | flat
 Give a prompt, an image or an imageUrl. `auto` picks `photo3d` for an image and `image3d` for words. `place: false` returns the asset without adding a row (the studio places it itself).
 Response: `{ "mode", "name", "asset": { "id", "url": "/asset/<id>.glb", "bytes", "cached" }, "dims": { "length_m", "width_m", "height_m", "source" }, "conceptUrl", "description", "object": { "id", "name" }, "fallback", "ran": [...], "ms" }`. It takes 1 s (flat from a photo) to about 3 minutes (TRELLIS retrying).
 
-### `POST /api/render` (multipart)
-Fields: `beauty` (PNG RGBA, required), `shadow` (PNG, alpha = shadow; or greyscale, black = shadow), `depth`, `mask`, `sessionId`, `photoId`, `text`, `mode` (`depth | canny | composite`), `strength` (0.1 to 0.9), `iso`, and either flat `f35`, `aperture`, `focusM`, `sunAzimuth`, `sunAltitude` or a `settings` JSON holding them.
-Response: `{ "url", "compositeUrl", "model", "fallback", "prompt", "label": "AI interpretation", "strength", "rerendered", "checks": [{ "round", "pass", "summary", "objects": [{ "name", "light", "shadow", "scale", "color", "note" }] }], "sunFix": { "azimuth", "altitude", "why" }, "jobId", "ms" }`. The result is also a `preview_job` row with `kind = 'render'`.
+### `POST /api/render` (multipart, asynchronous)
+Fields: `beauty` (PNG RGBA, required), `shadow` (PNG, alpha = shadow; or greyscale, black = shadow), `mask` (object-ID layer, flat colours) and `legend` (JSON `[{id, name, kind, color}]`, which turns placeholders into real subjects), `depth`, `sessionId`, `photoId`, `text`, `mode` (`depth | canny | composite`), `strength` (0.1 to 0.9), `iso`, and either flat `f35`, `aperture`, `focusM`, `sunAzimuth`, `sunAltitude` or a `settings` JSON holding them.
+- `mode=composite` answers 200 at once with the result (under a second).
+- Any other mode answers **202** at once: `{ "requestId": "<16 hex>", "state": "running", "poll": "/api/render/<requestId>" }`. The render runs in the background (about 20 s for one person, 35 to 45 s for two, up to about 2 minutes for a busy set), so no request stays open.
+- `GET /api/render/<requestId>` returns `{ "state": "running" | "done" | "failed", "seconds", "result", "error" }` and keeps answering after a crew restart (the finished state is saved in `data/renders/`). `web/src/nvidia/RenderPanel.tsx` `postLayers()` polls every 2.5 s and resolves with `result`, so its callers (RenderPanel, ArtDirector, Simple mode) did not change.
+- `result`: `{ "url", "compositeUrl", "model", "fallback", "prompt", "label": "AI interpretation", "strength", "rerendered", "placeholders", "checks": [{ "round", "pass", "summary", "placeholders", "objects": [{ "name", "light", "shadow", "scale", "color", "note" }] }], "sunFix": { "azimuth", "altitude", "why" }, "jobId", "ms" }`. The `preview_job` row (`kind = 'render'`) gets the image too, and every step is an agent_step row.
+- At most 4 placeholders are edited per render (people first, then the largest); the edits run in parallel; a second round runs only for the objects the check flagged, and only when the first round took under 60 s.
 
 ### Others
 - `GET /api/set/light?session=` returns Nemotron's light read, the 3D sun that matches it (`sun.azimuth`, `sun.altitude`, null for overcast) and shadow softness.
+- Plan time words (`set_time`): "sunset", "dusk", "golden hour this evening" and "blue hour after sunset" pick the evening window; "sunrise", "dawn" and "morning" the morning one; a bare "golden hour" or "blue hour" the next one from now. The time set is the middle of that window.
 - `POST /api/set/read {sessionId, force}` reads the photo again (objects and light); `POST /api/set/rebuild {sessionId, replace}` places stand-ins.
 - `POST /api/set/critique {sessionId, imageUrl}` returns `{ summary, strengths, fixes: [{ title, why, steps: [{ tool, args }] }] }`; `POST /api/set/apply {sessionId, steps}` runs them.
 - `POST /api/set/callsheet {sessionId}`; `POST /api/set/check {sessionId, imageUrl}` (physics only).

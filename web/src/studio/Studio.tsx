@@ -594,6 +594,9 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     t.z = gz(t.x, t.y);
     const b = (heading * Math.PI) / 180, el = (55 * Math.PI) / 180, d = 400 / Math.sin(el);
     const pos = t.clone().add(new Vector3(-Math.sin(b), -Math.cos(b), 0).multiplyScalar(d * Math.cos(el))).add(new Vector3(0, 0, 400));
+    // Coming back to the Map (the view switch) opens where it was, just below the hand-off zoom.
+    const m = mapCamRef.current;
+    setMapCam(m ? { ...m, zoom: Math.min(m.zoom, 17.5) } : null);
     setView('persp');
     setCmd({ n: Date.now(), kind: 'place', point: t, pos });
   };
@@ -958,7 +961,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
         {view === 'persp' && origin && <GeoOverview geo={layers} center={origin} camera={cone} heightM={camHeight} widthPx={vp.w} from={1400} to={2000} />}
         {view === 'map' && origin && (
           <Suspense fallback={null}>
-            <GeoMapView geo={layers} sessionId={sid} origin={origin} at={planTime} zone={zone} camera={mapCam ?? mapCamRef.current}
+            <GeoMapView geo={layers} sessionId={sid} origin={origin} at={planTime} zone={zone} camera={mapCam}
               onCamera={c => { mapCamRef.current = c; }} onEnter3D={(c, heading) => enter3D(c, heading)} onOpenShot={openShot} />
           </Suspense>
         )}
