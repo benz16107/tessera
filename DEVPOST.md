@@ -64,7 +64,7 @@ General Track is automatic.
 <!-- DEVPOST SHORT START -->
 **Try it live: https://app.tesseraphoto.com/p/A9TVAN**
 
-- Demo shoot in [Simple](https://app.tesseraphoto.com/p/A9TVAN) or [Studio](https://app.tesseraphoto.com/studio/A9TVAN). Drop your own photo of that view, or text one to @ShotMatchSetBot on Telegram.
+- Two example scenes on the start page: the Manhattan Bridge from Washington St (solved) and the Empire State Building from Top of the Rock (a far city shot on Google's 3D city). Or open the shared demo shoot in [Simple](https://app.tesseraphoto.com/p/A9TVAN) or [Studio](https://app.tesseraphoto.com/studio/A9TVAN), drop your own photo, or text one to @ShotMatchSetBot on Telegram.
 - Product and docs: https://tesseraphoto.com
 - Code: https://github.com/benz16107/tessera
 - Video (2:57): https://www.youtube.com/watch?v=SvSqGH4IKKk
@@ -95,7 +95,7 @@ Google Lens names the place in a photo. It doesn't say where the photographer st
 ### How it works
 
 - **Find the spot.** Our solver matches the photo against our own 3D model of the place, built from 155 Creative Commons photos, and returns where the photographer stood, the heading and the lens. It answers "2.2x on your iPhone", not just a focal length. If it isn't sure, it says "Couldn't place" instead of guessing.
-- **Build the set.** The place in 3D: Google Photorealistic 3D Tiles for the view (display only, never in a render), plus our clay model of the block with your photo projected from where it was taken.
+- **Build the set.** The place in 3D: Google Photorealistic 3D Tiles for the view, Google Street View through the camera where a panorama exists, and our clay model of the block with your photo projected from where it was taken. Google imagery is display only and never enters a render.
 - **Plan the shot.** A physical camera with 19 real bodies and 67 lenses, with depth of field, distortion and exposure. Scrub the sun to any hour and the city's light changes with it. Say "two friends walking toward camera" and Nemotron places them in metres through the shot camera.
 - **Preview it.** An AI render puts your people and props into your own photo. Nemotron checks each object's light, shadow and scale and renders again on a fail. Every render is labelled "AI interpretation".
 - **Plan together.** Every person, prop, light and camera is a SpacetimeDB row that every screen shares live, so the director's drag shows up in the scout's window. Texts, photo check-ins, renders and golden-hour alerts arrive in the chat through Photon.
