@@ -41,7 +41,7 @@ The generator is FLUX.1-dev on NVIDIA's API in depth or canny mode. On November 
 
 ## 4. Verify and fix
 
-Nemotron 3.5 Super VL, with reasoning on, looks at the render and checks each placed object: the light direction, the shadow direction and softness, the scale next to doors, cars and people, and the colour and grain. Nemotron 3 Nano Omni gives a second physics opinion while Cosmos Reason2 is unavailable to our key.
+Nemotron 3.5 Super VL, with reasoning off (on only for a retry when that answer is unusable), looks at the render and checks each placed object: the light direction, the shadow direction and softness, the scale next to doors, cars and people, and the colour and grain. Nemotron 3 Nano Omni gives a second physics opinion while Cosmos Reason2 is unavailable to our key.
 
 On a fail, the crew raises the blend strength (objects still look pasted on) or lowers it (the scene changed too much), or adds words to the prompt, and renders once more. If the 3D sun is more than 60 degrees from the light in the photo, the result carries a `sunFix` with the azimuth and altitude to use.
 

@@ -28,7 +28,7 @@ export default {
     { title: 'Beyond a chatbot', body: 'Every Nemotron call ends as something in the set: placed objects, a checked render, a call sheet, a lens read. Each step writes an agent_step row, so the studio shows the trace while it works.' },
     { title: 'Open weights we could tune and run', body: 'We fine-tuned Nemotron Nano 12B v2 VL with LoRA and serve it with vLLM on our own GPU. Bolt runs on our VM\'s CPU. The open model license allows a derivative like our LoRA.' },
     { title: 'One family from CPU to datacenter', body: 'Bolt E4B, Lightning 30B-A3B and Super VL 120B-A12B take the same messages and tool definitions. Moving a job between them, or falling back when one is down, is a one-line change.' },
-    { title: 'Vision, reasoning and speech in one stack', body: 'Reasoning switches on per call for plans and checks, off for routing. Super VL reads photos and renders. Parakeet and Magpie handle voice.' },
+    { title: 'Vision, reasoning and speech in one stack', body: 'Reasoning switches on per call for plans and the art director, off for routing and the first render check. Super VL reads photos and renders. Parakeet and Magpie handle voice.' },
   ],
   uses: [
     {
@@ -63,12 +63,12 @@ export default {
       status: 'live',
       img: renderPeople,
       alt: 'Before and after on the DUMBO photo: two grey mannequins in the street, then the same spots with two photoreal people walking',
-      detail: 'The studio renders only your objects: beauty, depth, mask and a shadow pass. The crew multiplies the shadows into the photo at its softness, matches exposure, colour and grain, and blends a generator in only around the objects. Super VL (reasoning on) checks light, shadow, scale and colour per object. On the public URL: composite 0.6 s, check 1 failed in 3.9 s ("lit from a low side angle while the real scene is flat overcast"), strength raised to 0.70, check 2 in 5.5 s, 29 s in total. The generator that ran is Qwen-Image 2.1 on Vultr (FLUX was blocked), and every result names it.',
+      detail: 'The studio renders only your objects: beauty, depth, mask and a shadow pass. The crew multiplies the shadows into the photo at its softness, matches exposure, colour and grain, and blends a generator in only around the objects. Super VL checks light, shadow, scale and colour per object with reasoning off, in about 3 s; reasoning comes on only for a retry when that answer is unusable. On the public URL: composite 0.6 s, check 1 failed in 3.9 s ("lit from a low side angle while the real scene is flat overcast"), strength raised to 0.70, check 2 in 5.5 s, 29 s in total. The generator that ran is Qwen-Image 2.1 on Vultr (FLUX was blocked), and every result names it.',
     },
     {
       name: 'Second physics opinion',
       line: 'Nemotron 3 Nano Omni checks the render alongside Super, standing in for Cosmos Reason2.',
-      where: 'crew/src/render.ts; Vultr Serverless Inference and NVIDIA API Catalog',
+      where: 'crew/src/models.ts (physicalCheck), called from crew/src/render.ts; NVIDIA API Catalog',
       status: 'live',
       detail: '1.2 s on a render check with reasoning off. It called our crude test object "disproportionately large compared to the surrounding buildings". Cosmos Reason2 is listed but returns 404 for our key; the crew retries it every 10 minutes. Nano Omni also transcribes voice notes when Parakeet fails.',
     },

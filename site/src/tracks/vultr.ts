@@ -66,11 +66,11 @@ export default {
       detail: '0.51 s on text and 1.9 s with an image. The same id is listed on build.nvidia.com but returns 404 for our key, so the NVIDIA copy is only retried every 10 minutes.',
     },
     {
-      name: 'Nemotron 3 Nano Omni: second opinion and speech fallback',
-      line: 'Nano Omni checks each render\'s physics next to Nemotron Super VL, and transcribes voice notes when Parakeet fails; Whisper large v3 turbo on Vultr is the last speech fallback.',
-      where: 'crew/src/render.ts, crew/src/speech.ts (vultrOmni, transcribe)',
+      name: 'Nemotron 3 Nano Omni: speech fallback',
+      line: 'Nano Omni on Vultr transcribes voice notes when Parakeet fails; Whisper large v3 turbo on Vultr is the last speech fallback.',
+      where: 'crew/src/speech.ts (vultrOmni, transcribe)',
       status: 'live',
-      detail: 'Nano Omni answered a render check in 1.2 s with reasoning off, and called our crude test object "disproportionately large compared to the surrounding buildings" (docs/NVIDIA.md). Whisper\'s latency was not measured.',
+      detail: 'The render physics check also uses Nano Omni, but it calls NVIDIA\'s API (crew/src/models.ts), so it is on the NVIDIA page. Whisper\'s latency was not measured.',
     },
     {
       name: 'Qwen-Image 2.1: the render generator',
@@ -106,7 +106,6 @@ export default {
     { value: 'AS20473', label: 'the VM\'s IP belongs to The Constant Company, the company behind Vultr', check: 'curl -s ipinfo.io/104.238.146.229/org' },
     { value: 'Caddy', label: 'serves the site at tesseraphoto.com and the app at app.tesseraphoto.com, with valid certificates', check: 'curl -sI https://tesseraphoto.com | grep -i server; open https://app.tesseraphoto.com' },
     { value: '0.51 s', label: 'Content Safety per text on Vultr (1.9 s with an image)', check: 'docs/NVIDIA.md; live ledger GET https://app.tesseraphoto.com/api/nvidia/models' },
-    { value: '1.2 s', label: 'Nano Omni\'s render physics check on Vultr, reasoning off', check: 'docs/NVIDIA.md, workflow 3' },
     { value: '29 s', label: 'a physics-checked render with Qwen-Image 2.1 on Vultr as the generator', check: 'docs/NVIDIA.md, workflow 3' },
     { value: '30.8 s', label: 'a full offline set command with Nemotron Bolt on the VM\'s CPU (routing 1.67 s)', check: 'Studio command bar, Offline (Bolt); docs/NVIDIA.md, workflow 8' },
     { value: '900 of 900', label: 'live edits committed from the VM, round trip p50 50 ms, p95 199 ms', check: 'node module/scripts/loadtest.ts shotmatch 3 10 30; docs/SPACETIME.md' },
