@@ -667,8 +667,18 @@ export const joinSession = spacetimedb.reducer(
   }
 );
 
-// Members may name a shoot while it still has a default title or the last automatic place name (the place= on the shot
-// camera; Simple renames before it moves the camera); a title someone typed is the owner's or the crew's to change. Photon thread sessions keep their title: the crew finds them by it.
+// True when a title came from the machine: a place name the shot camera once carried (scene history keeps it after an
+// Exact spot nudge clears place=) or Nemotron's title. A title a person typed is in neither.
+const autoTitle = (ctx: Ctx, sessionId: bigint, title: string) => {
+  const cams = new Set(shotCams(ctx, sessionId).map(c => c.id));
+  const had = (j: string) => !!j && String(JSON.parse(j).params ?? '').split(';').includes(`place=${title}`);
+  for (const c of ctx.db.sceneChange.sessionId.filter(sessionId)) if (cams.has(c.objectId) && (had(c.before) || had(c.after))) return true;
+  return [...ctx.db.agentStep.sessionId.filter(sessionId)].some(a => a.tool === 'nemotron_lightning.title_session' && a.result === `"${title}"`);
+};
+
+// Members may name a shoot while it has a default title or the last automatic place name (the place= on the shot camera;
+// Simple renames before it moves the camera), or, when the camera records no place, a title that was automatic. As in
+// web/src/simple/place.ts. A title someone typed is the owner's or the crew's to change. Photon thread sessions keep their title: the crew finds them by it.
 export const renameSession = spacetimedb.reducer({ sessionId: t.u64(), title: t.string() }, (ctx, { sessionId, title }) => {
   requireMember(ctx, sessionId);
   const s = ctx.db.session.id.find(sessionId)!;
@@ -676,7 +686,8 @@ export const renameSession = spacetimedb.reducer({ sessionId: t.u64(), title: t.
   if (!next) throw new SenderError('title required');
   if (s.title.startsWith('photon:')) throw new SenderError('this shoot is named by its text thread');
   const autoPlace = shotCams(ctx, sessionId).map(c => /(?:^|;)place=([^;]*)/.exec(c.params)?.[1]).find(Boolean);
-  if (!UNTITLED.has(s.title) && s.title !== autoPlace && !s.owner.equals(ctx.sender) && !isCrew(ctx))
+  const memberMay = UNTITLED.has(s.title) || s.title === autoPlace || (!autoPlace && autoTitle(ctx, sessionId, s.title));
+  if (!memberMay && !s.owner.equals(ctx.sender) && !isCrew(ctx))
     throw new SenderError('only the owner can rename this shoot');
   ctx.db.session.id.update({ ...s, title: next });
   trace(ctx, sessionId, 'renameSession', next);
@@ -854,13 +865,19 @@ const MAX_OBJECTS = 300;
 const SNAP_KEYS = ['kind', 'assetId', 'name', 'x', 'y', 'z', 'qx', 'qy', 'qz', 'qw', 'scale', 'color', 'intensity', 'lightType', 'params', 'visible'] as const;
 const snap = (o: Omit<ObjArgs, 'sessionId'>) => JSON.stringify(Object.fromEntries(SNAP_KEYS.map(k => [k, o[k]])));
 const FOLD_US = 2_000_000n; // edits by one person to one object less than 2 s apart are one history entry (a drag)
+const MOVE_KEYS = new Set(['x', 'y', 'z', 'qx', 'qy', 'qz', 'qw', 'scale']);
+/** True when two snapshots differ only in where the object is: a drag, which may fold into one history entry. */
+const onlyMoved = (a: string, b: string) => {
+  const x = JSON.parse(a), y = JSON.parse(b);
+  return Object.keys(y).every(k => MOVE_KEYS.has(k) || x[k] === y[k]);
+};
 
 const recordChange = (ctx: Ctx, sessionId: bigint, objectId: bigint, action: string, before: string, after: string) => {
   if (before === after) return;
   const lc = ctx.db.lastChange.objectId.find(objectId);
   const prev = lc && ctx.db.sceneChange.id.find(lc.changeId);
   if (action === 'update' && prev && prev.action === 'update' && prev.by.equals(ctx.sender)
-      && ctx.timestamp.microsSinceUnixEpoch - prev.at.microsSinceUnixEpoch < FOLD_US) {
+      && ctx.timestamp.microsSinceUnixEpoch - prev.at.microsSinceUnixEpoch < FOLD_US && onlyMoved(prev.after, after)) {
     ctx.db.sceneChange.id.update({ ...prev, after, at: ctx.timestamp });
     return;
   }

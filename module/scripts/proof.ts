@@ -155,6 +155,20 @@ await jun.reducers.renameSession({ sessionId: s.id, title: 'Somewhere else' }).c
 check('renameSession: a member may replace the automatic place title, not a typed one', !!moved && !autoErr && /only the owner/.test(typedErr), autoErr || typedErr);
 await maya.reducers.renameSession({ sessionId: s.id, title: 'New shoot' }); // back to a default for the Nemotron check
 
+// 4d. After an Exact spot nudge clears place= on Cam A, an automatic title is still a member's to replace; a typed one isn't.
+await maya.reducers.renameSession({ sessionId: s.id, title: 'Eiffel Tower, Paris' });
+const camNow = cams()[0];
+await maya.reducers.updateSceneObject({ id: camNow.id, sessionId: s.id, ...CAM, params: camNow.params.split(';').filter(x => !x.startsWith('place=')).concat('placed=pin').join(';') });
+await sleep(300);
+let nudgeErr = '';
+await jun.reducers.renameSession({ sessionId: s.id, title: 'Arc de Triomphe, Paris' }).catch(e => { nudgeErr = String(e?.message ?? e); });
+const afterNudge = await until(() => maya.db.session.id.find(s.id)?.title === 'Arc de Triomphe, Paris' || undefined, 5000);
+await maya.reducers.renameSession({ sessionId: s.id, title: 'Our anniversary shoot' });
+let typed2Err = '';
+await jun.reducers.renameSession({ sessionId: s.id, title: 'Somewhere else' }).catch(e => { typed2Err = String(e?.message ?? e); });
+check('after an exact-spot nudge (no place= on Cam A): a member renames an automatic title, not a typed one', !!afterNudge && !nudgeErr && /only the owner/.test(typed2Err), nudgeErr || typed2Err);
+await maya.reducers.renameSession({ sessionId: s.id, title: 'New shoot' });
+
 // 5. Live sun: a per-session schedule moves session.planTime.
 await maya.reducers.setSunClock({ sessionId: s.id, rate: 600 });
 const t0 = maya.db.session.id.find(s.id)?.planTime?.microsSinceUnixEpoch ?? 0n;
