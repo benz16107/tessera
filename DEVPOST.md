@@ -71,7 +71,7 @@ General Track is automatic.
 
 ## A film set for the photo you want to take
 
-Drop a photo of a place. Tessera finds where the photographer stood, which way they faced and the lens, then rebuilds the place as a live 3D set your crew plans in.
+Drop a photo of a place. Tessera finds where the photographer stood, which way they faced and the lens, then rebuilds the place as a live 3D set your crew plans in. It is for photographers planning a shot, location scouts and film crews, and anyone recreating a photo they love.
 
 ### Sponsor tracks: a detailed page for each
 
@@ -79,8 +79,8 @@ Drop a photo of a place. Tessera finds where the photographer stood, which way t
 
 | Track | What we built | Strongest proof | Page |
 |---|---|---|---|
-| NVIDIA | Nemotron runs the set: words to objects, the photo rebuilt as stand-ins, a render that checks its own physics, props at real size, call sheet, voice, offline on CPU; plus our LoRA lens reader | 16 objects from one sentence in 6.6 s; 72.4% long-lens recall on unseen landmarks | [Detailed page](https://tesseraphoto.com/tracks/nvidia/) |
-| SpacetimeDB | The whole shared set is one module: every object, job, version and message is a row; no other backend | 900 of 900 edits at 10 Hz, median 42 to 50 ms; an outsider sees 0 rows until they join | [Detailed page](https://tesseraphoto.com/tracks/spacetime/) |
+| NVIDIA | Nemotron runs the set: words to objects, the photo rebuilt as stand-ins, a render that checks its own physics, props at real size, call sheet, voice, offline on CPU; plus our LoRA lens reader | 16 objects from one sentence in 6.6 s; 72.4% long-lens recall on unseen landmarks | [Detailed page](https://tesseraphoto.com/tracks/nvidia/) · [Video](https://youtu.be/-thSL8iYLlU) |
+| SpacetimeDB | The whole shared set is one module: every object, job, version and message is a row; no other backend | 900 of 900 edits at 10 Hz, median 42 to 50 ms; an outsider sees 0 rows until they join | [Detailed page](https://tesseraphoto.com/tracks/spacetime/) · [Video](https://youtu.be/CyivsP2lXpc) |
 | Photon | The set on the apps people already use: a photo located by text, versions as reply threads, check-ins, props, alerts; a phone call that guides you | 9 live round trips on Telegram; the other channels 29 of 29 against a stand-in | [Detailed page](https://tesseraphoto.com/tracks/photon/) |
 | HackUTD Virality | Built on what people already post: "where was this photo taken?" threads and recreate-the-photo posts. Every shoot is a share link that opens on a phone, and the set answers in Telegram, so a recreation spreads the way the original photo did | 103 of 1,949 Reddit posts asked where a photo was taken from, which lens, or how to recreate it; the top one has 858 points | [Research page](https://tesseraphoto.com/docs/research/) |
 | MLH Vultr | Production on a Vultr VM in Dallas, Object Storage for photos and props, Serverless Inference for safety, speech and the render | Content Safety on Vultr in 0.51 s per text; the app and the site on one VM with automatic HTTPS | [Detailed page](https://tesseraphoto.com/tracks/vultr/) · [Video](https://youtu.be/fsq3ry87EZ8) |
@@ -93,11 +93,12 @@ Google Lens names the place in a photo. It doesn't say where the photographer st
 
 ### How it works
 
-- **Find the spot.** Our solver matches the photo to a 3D model of the place and returns the position, the heading and the lens.
-- **Build the set.** Google Photorealistic 3D Tiles for the view, plus our clay model of the block with your photo projected from where it was taken.
-- **Plan the shot.** A real camera (19 bodies, 67 lenses), the sun at any hour, and people placed from one sentence by Nemotron.
-- **Preview it.** An AI render puts your people into your photo, and Nemotron checks the light, shadow and scale. Every render is labelled "AI interpretation".
-- **Plan together.** Every object is a live SpacetimeDB row on every screen. Texts, check-ins and alerts arrive through Photon.
+- **Find the spot.** Our solver matches the photo against our own 3D model of the place, built from 155 Creative Commons photos, and returns where the photographer stood, the heading and the lens. It answers "2.2x on your iPhone", not just a focal length. If it isn't sure, it says "Couldn't place" instead of guessing.
+- **Build the set.** The place in 3D: Google Photorealistic 3D Tiles for the view (display only, never in a render), plus our clay model of the block with your photo projected from where it was taken.
+- **Plan the shot.** A physical camera with 19 real bodies and 67 lenses, with depth of field, distortion and exposure. Scrub the sun to any hour and the city's light changes with it. Say "two friends walking toward camera" and Nemotron places them in metres through the shot camera.
+- **Preview it.** An AI render puts your people and props into your own photo. Nemotron checks each object's light, shadow and scale and renders again on a fail. Every render is labelled "AI interpretation".
+- **Plan together.** Every person, prop, light and camera is a SpacetimeDB row that every screen shares live, so the director's drag shows up in the scout's window. Texts, photo check-ins, renders and golden-hour alerts arrive in the chat through Photon.
+- **Go shoot.** The call sheet puts golden hour, conditions and the walk between shots on one plan. On the day, the scout screen walks you to the mark: "You're there. Facing the right way. Take it."
 
 ![Studio's World view: the 3D city, Cam A at its mark, and the photo](https://tesseraphoto.com/devpost/1-studio-camera.jpg)
 
@@ -113,11 +114,15 @@ Google Lens names the place in a photo. It doesn't say where the photographer st
 
 ### Limits
 
-- One spot is mapped exactly today (DUMBO). Anywhere else, Tessera marks the place as approximate.
+- One spot is mapped exactly today (DUMBO). A new spot takes about 150 photos and 23 minutes on a CPU. Anywhere else, Nemotron names the place, OpenStreetMap pins it, and Tessera marks it approximate.
 - Renders are AI interpretations, not photos.
 - iMessage, SMS, voice, email and WhatsApp are tested against a stand-in, not live.
 
 ![Two people on one set, with the live SpacetimeDB feed](https://tesseraphoto.com/devpost/5-live-data.jpg)
+
+### What's next
+
+More mapped spots, starting with one we shoot ourselves at UTD; a side-by-side export of the original photo and your recreation; the lens reader on the phone; and the other Photon lines live.
 
 <!-- DEVPOST SHORT END -->
 
