@@ -2,9 +2,9 @@
 // with mapType streetview, the nearest pano id, its metadata, then equirect tiles stitched onto an inside-out sphere that
 // follows the camera, drawn first with no depth, so placed objects and any lens draw over it.
 // Display only, like the 3D tiles: userData.helper keeps it out of every render layer, and nothing here goes to a model.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { CanvasTexture, DoubleSide, SRGBColorSpace, type Mesh } from 'three';
+import { CanvasTexture, DoubleSide, MeshBasicMaterial, SRGBColorSpace, Vector3, type Mesh } from 'three';
 
 const API = 'https://tile.googleapis.com/v1';
 const json = (r: Response) => (r.ok ? r.json() : Promise.reject(new Error(`Street View ${r.status}`)));
@@ -52,7 +52,21 @@ async function stitch(p: Pano, z: number, zmax: number) {
   return c;
 }
 
-export default function StreetViewSphere({ pano }: { pano: Pano }) {
+/** `grade` and `level` are what the "Your photo" plate gets (world/Clay.tsx: gradeIt(c) x uLevel x uSkyDim), so the time of day
+ *  changes Street View the same way; the meter's gain then applies to both alike in Through Cam A. */
+export default function StreetViewSphere({ pano, grade, level }: { pano: Pano; grade: { rgb: [number, number, number]; desat: number }; level: number }) {
+  const u = useMemo(() => ({ uGrade: { value: new Vector3(1, 1, 1) }, uDesat: { value: 0 }, uLevel: { value: 1 } }), []);
+  const mat = useMemo(() => {
+    const m = new MeshBasicMaterial({ side: DoubleSide, depthWrite: false, depthTest: false, toneMapped: false });
+    m.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, u);
+      sh.fragmentShader = 'uniform vec3 uGrade; uniform float uDesat; uniform float uLevel;\n' + sh.fragmentShader.replace('#include <map_fragment>',
+        '#include <map_fragment>\n  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722))), uDesat) * uGrade * uLevel;');
+    };
+    return m;
+  }, [u]);
+  useEffect(() => () => mat.dispose(), [mat]);
+  u.uGrade.value.set(...grade.rgb); u.uDesat.value = grade.desat; u.uLevel.value = level;
   const [tex, setTex] = useState<CanvasTexture | null>(null);
   useEffect(() => {
     let live = true, cur: CanvasTexture | null = null;
@@ -71,11 +85,11 @@ export default function StreetViewSphere({ pano }: { pano: Pano }) {
   const ref = useRef<Mesh>(null);
   useFrame(({ camera }) => { ref.current?.position.copy(camera.position); }); // a skybox: always centred on the eye
   if (!tex) return null;
+  if (mat.map !== tex) { mat.map = tex; mat.needsUpdate = true; }
   // Mirrored so u runs clockwise (heading 90 + 360u), then turned so the image centre faces the pano's heading.
   return (
-    <mesh ref={ref} renderOrder={-1000} frustumCulled={false} scale={[-1, 1, 1]} rotation={[0, ((270 - pano.heading) * Math.PI) / 180, 0]} userData={{ helper: true }}>
+    <mesh ref={ref} material={mat} renderOrder={-1000} frustumCulled={false} scale={[-1, 1, 1]} rotation={[0, ((270 - pano.heading) * Math.PI) / 180, 0]} userData={{ helper: true }}>
       <sphereGeometry args={[1000, 64, 32]} />
-      <meshBasicMaterial map={tex} side={DoubleSide} depthWrite={false} depthTest={false} toneMapped={false} />
     </mesh>
   );
 }

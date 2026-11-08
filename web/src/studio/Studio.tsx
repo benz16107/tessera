@@ -252,7 +252,9 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const [snap, setSnap] = useState(true);
   const [gridOn, setGridOn] = useState(false);
   const [dofOn] = useState(true);
-  const [backplate, setBackplate] = useState<'photo' | 'world' | 'streetview'>('photo');
+  // The Through Cam A backplate, remembered per browser like the world style. Street View is only ever picked by hand.
+  const [backplate, setBackplateState] = useState<'photo' | 'world' | 'streetview'>(() => { try { const b = localStorage.getItem('studio/backplate'); return b === 'photo' || b === 'streetview' ? b : 'world'; } catch { return 'world'; } });
+  const setBackplate = (b: 'photo' | 'world' | 'streetview') => { setBackplateState(b); try { localStorage.setItem('studio/backplate', b); } catch { /* private mode */ } };
   const [overlay, setOverlay] = useState<'thirds' | 'golden' | 'spiral' | 'off'>('thirds');
   const [extraOv, setExtraOv] = useState<string[]>(['horizon']);
   const [addOpen, setAddOpen] = useState(false);
@@ -325,11 +327,9 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     const fwd = new Vector3(0, 0, -1).applyQuaternion(q);
     return { pos: new Vector3(shotRow.x, shotRow.y, shotRow.z), q, fwd, hpr: cameraHpr(q) };
   }, [shotRow?.x, shotRow?.y, shotRow?.z, shotRow?.qx, shotRow?.qy, shotRow?.qz, shotRow?.qw]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Street View near Cam A (within 15 m) is a Through Cam A backplate, and the default there when it exists.
+  // Street View near Cam A (within 15 m) is a Through Cam A backplate option (it shows passers-by, so never the default).
   const camLL = useMemo(() => (shotPose && origin ? enuToLlh(origin, shotPose.pos) : null), [shotPose, origin]);
   const pano = usePano(cfg.mapsKey, camLL);
-  const svAuto = useRef(false);
-  useEffect(() => { if (pano && !svAuto.current) { svAuto.current = true; setBackplate('streetview'); } }, [pano]);
 
   /** Where new things go: where the user last pointed, else on the ground in front of the shot camera at the focus distance. */
   const orbitTarget = useRef(new Vector3());
@@ -918,7 +918,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
             }}>
             <XR store={xrStore}>
               {photoBack && plateReady && <group userData={{ plate: true }}><Sky sunPosition={enuToThree({ x: sunDir[0], y: sunDir[1], z: sunDir[2] }).multiplyScalar(1000).toArray()} distance={4500} /></group>}
-              {svBack && pano && <StreetViewSphere pano={pano} />}
+              {svBack && pano && <StreetViewSphere pano={pano} grade={grade} level={lvl * day.skyDim} />}
               {!photoBack && !svBack && !atmo && <group userData={{ helper: true }}><Sky sunPosition={enuToThree({ x: sunDir[0], y: sunDir[1], z: sunDir[2] }).multiplyScalar(1000).toArray()} distance={4500} /></group>}
               {!atmo && <hemisphereLight args={['#bcd3ff', '#3b342b', (photo ? 0.45 : 0.9) * lvl]} />}
               {atmo && here && <Atmosphere date={planTime} origin={here} groundOffset={groundOffset}
