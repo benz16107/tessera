@@ -5,7 +5,7 @@
 // `tileGroundAt`, which keeps a walking eye above the ground.
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { BufferAttribute, Color, CompressedTexture, LinearMipmapLinearFilter, Matrix4, Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshStandardMaterial, Raycaster, Vector3, type Camera, type Material } from 'three';
+import { Color, CompressedTexture, LinearMipmapLinearFilter, Matrix4, Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshStandardMaterial, Raycaster, Vector3, type Camera, type Material } from 'three';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { TilesRenderer } from '3d-tiles-renderer';
 import { GoogleCloudAuthPlugin, GLTFExtensionsPlugin, TileCompressionPlugin, TilesFadePlugin } from '3d-tiles-renderer/plugins';
@@ -31,7 +31,8 @@ interface Props {
  *  each one gets a flat-shaded Lambert copy: the face normal comes from screen-space derivatives (three's flatShading), and
  *  the light is texture x (sky + sun x N.L x shadow), with the sky term the floor that keeps the photo texture readable.
  *  The studio sets the sky colour and the sun's weight each frame (light/sun.ts daylight). */
-export const TILE_LIGHT = { tileSky: { value: new Color(0.62, 0.62, 0.62) }, tileSunK: { value: 0.6 } };
+// The sun must outweigh the sky floor or the time of day only changes overall level (feature-test, Nov 8): sky 0.35, sun 1.4.
+export const TILE_LIGHT = { tileSky: { value: new Color(0.35, 0.35, 0.35) }, tileSunK: { value: 1.4 } };
 
 function litMaterial(base: MeshBasicMaterial): MeshLambertMaterial {
   const m = new MeshLambertMaterial({ map: base.map, color: base.color, transparent: base.transparent, opacity: base.opacity, side: base.side, alphaTest: base.alphaTest, flatShading: true });
@@ -59,8 +60,8 @@ function applyLight(root: { traverse: (f: (o: unknown) => void) => void }, live:
     }
     if (live && !u.lit) {
       const g = mesh.geometry;
-      // Shadow bias reads a vertex normal; the lighting itself uses face normals, so a constant one is enough.
-      if (!g.getAttribute('normal')) { const n = new Float32Array(g.getAttribute('position').count * 3); for (let i = 2; i < n.length; i += 3) n[i] = 1; g.setAttribute('normal', new BufferAttribute(n, 3)); }
+      // Shadow lookups offset along the vertex normal (normalBias), so give it real normals; the lighting uses face normals (flatShading).
+      if (!g.getAttribute('normal')) g.computeVertexNormals();
       u.lit = litMaterial(u.captured as MeshBasicMaterial);
     }
     mesh.material = (live ? u.lit : u.captured)!;

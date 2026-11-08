@@ -748,7 +748,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const day = daylight(sun.altitude);
   const lvl = day.level;
   const skyLit: [number, number, number] = [day.tint[0] * lvl, day.tint[1] * lvl, day.tint[2] * lvl];
-  TILE_LIGHT.tileSky.value.setRGB(0.62 * skyLit[0], 0.62 * skyLit[1], 0.62 * skyLit[2]);
+  TILE_LIGHT.tileSky.value.setRGB(0.35 * skyLit[0], 0.35 * skyLit[1], 0.35 * skyLit[2]);
   const grade = previewGrade(sun.altitude);
   // Takram's atmosphere (world/Atmosphere.tsx): switched off until it beats the interim relight; ?atmosphere=1 tries it.
   const takram = useMemo(() => new URLSearchParams(location.search).has('atmosphere'), []);
