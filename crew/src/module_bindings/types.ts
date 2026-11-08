@@ -153,6 +153,7 @@ export const SolveJob = __t.object("SolveJob", {
   leaseUntil: __t.option(__t.timestamp()),
   attempts: __t.u32(),
   error: __t.string(),
+  lensHintF35: __t.option(__t.f64()),
   createdAt: __t.timestamp(),
 });
 export type SolveJob = __Infer<typeof SolveJob>;

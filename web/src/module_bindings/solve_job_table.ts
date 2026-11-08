@@ -21,5 +21,6 @@ export default __t.row({
   leaseUntil: __t.option(__t.timestamp()).name("lease_until"),
   attempts: __t.u32(),
   error: __t.string(),
+  lensHintF35: __t.option(__t.f64()).name("lens_hint_f_35"),
   createdAt: __t.timestamp().name("created_at"),
 });

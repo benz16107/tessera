@@ -13,4 +13,5 @@ import {
 export default {
   photoId: __t.u64(),
   spotId: __t.string(),
+  lensHintF35: __t.option(__t.f64()),
 };

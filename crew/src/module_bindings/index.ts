@@ -38,6 +38,7 @@ import AddPhotoReducer from "./add_photo_reducer";
 import ClaimJobReducer from "./claim_job_reducer";
 import ClaimPreviewReducer from "./claim_preview_reducer";
 import CreateSessionReducer from "./create_session_reducer";
+import DeletePhotoReducer from "./delete_photo_reducer";
 import EnqueueSolveReducer from "./enqueue_solve_reducer";
 import FinishJobReducer from "./finish_job_reducer";
 import FinishPreviewReducer from "./finish_preview_reducer";
@@ -49,6 +50,7 @@ import PostMessageReducer from "./post_message_reducer";
 import PushDevicePoseReducer from "./push_device_pose_reducer";
 import RegisterCrewReducer from "./register_crew_reducer";
 import RemovePersonReducer from "./remove_person_reducer";
+import RenewPreviewReducer from "./renew_preview_reducer";
 import ReportProgressReducer from "./report_progress_reducer";
 import RequestPreviewReducer from "./request_preview_reducer";
 import SetCrewCodeReducer from "./set_crew_code_reducer";
@@ -272,6 +274,7 @@ const reducersSchema = __reducers(
   __reducerSchema("claim_job", ClaimJobReducer),
   __reducerSchema("claim_preview", ClaimPreviewReducer),
   __reducerSchema("create_session", CreateSessionReducer),
+  __reducerSchema("delete_photo", DeletePhotoReducer),
   __reducerSchema("enqueue_solve", EnqueueSolveReducer),
   __reducerSchema("finish_job", FinishJobReducer),
   __reducerSchema("finish_preview", FinishPreviewReducer),
@@ -283,6 +286,7 @@ const reducersSchema = __reducers(
   __reducerSchema("push_device_pose", PushDevicePoseReducer),
   __reducerSchema("register_crew", RegisterCrewReducer),
   __reducerSchema("remove_person", RemovePersonReducer),
+  __reducerSchema("renew_preview", RenewPreviewReducer),
   __reducerSchema("report_progress", ReportProgressReducer),
   __reducerSchema("request_preview", RequestPreviewReducer),
   __reducerSchema("set_crew_code", SetCrewCodeReducer),

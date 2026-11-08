@@ -69,6 +69,7 @@ const solveJob = table({ name: 'solve_job', public: true }, {
   leaseUntil: t.option(t.timestamp()),
   attempts: t.u32(),
   error: t.string(),
+  lensHintF35: t.option(t.f64()), // a user's "it was about 85 mm" on a re-run; the solver treats it as a range
   createdAt: t.timestamp(),
 });
 
@@ -296,17 +297,32 @@ export const addPhoto = spacetimedb.reducer(
   }
 );
 
-const enqueue = (ctx: Ctx, photoId: bigint, sessionId: bigint, spotId: string) =>
+const enqueue = (ctx: Ctx, photoId: bigint, sessionId: bigint, spotId: string, lensHintF35?: number) =>
   ctx.db.solveJob.insert({
     id: 0n, photoId, sessionId, spotId: text(spotId, 64), state: 'queued', progress: 'waiting for a worker',
-    worker: undefined, leaseUntil: undefined, attempts: 0, error: '', createdAt: ctx.timestamp,
+    worker: undefined, leaseUntil: undefined, attempts: 0, error: '', lensHintF35, createdAt: ctx.timestamp,
   });
 
-export const enqueueSolve = spacetimedb.reducer({ photoId: t.u64(), spotId: t.string() }, (ctx, { photoId, spotId }) => {
+export const enqueueSolve = spacetimedb.reducer(
+  { photoId: t.u64(), spotId: t.string(), lensHintF35: t.option(t.f64()) },
+  (ctx, { photoId, spotId, lensHintF35 }) => {
+    const p = ctx.db.photo.id.find(photoId);
+    if (!p) throw new SenderError('no such photo');
+    requireMember(ctx, p.sessionId);
+    if (lensHintF35 !== undefined && !(lensHintF35 >= 8 && lensHintF35 <= 1200)) throw new SenderError('lens hint out of range');
+    enqueue(ctx, photoId, p.sessionId, spotId, lensHintF35);
+  }
+);
+
+// Refused uploads keep no location (BUILD.md, Safety), and owners can withdraw a photo.
+export const deletePhoto = spacetimedb.reducer({ photoId: t.u64() }, (ctx, { photoId }) => {
   const p = ctx.db.photo.id.find(photoId);
-  if (!p) throw new SenderError('no such photo');
-  requireMember(ctx, p.sessionId);
-  enqueue(ctx, photoId, p.sessionId, spotId);
+  if (!p) return;
+  if (!p.owner.equals(ctx.sender) && !isCrew(ctx)) throw new SenderError('not your photo');
+  for (const j of [...ctx.db.solveJob.photoId.filter(photoId)]) ctx.db.solveJob.id.delete(j.id);
+  for (const j of [...ctx.db.previewJob.sessionId.filter(p.sessionId)]) if (j.photoId === photoId) ctx.db.previewJob.id.delete(j.id);
+  ctx.db.solveResult.photoId.delete(photoId);
+  ctx.db.photo.id.delete(photoId);
 });
 
 export const claimJob = spacetimedb.reducer({ jobId: t.u64() }, (ctx, { jobId }) => {
@@ -422,6 +438,13 @@ export const claimPreview = spacetimedb.reducer({ jobId: t.u64() }, (ctx, { jobI
   const j = ctx.db.previewJob.id.find(jobId);
   if (!j || j.state !== 'queued') throw new SenderError('job not claimable');
   ctx.db.previewJob.id.update({ ...j, state: 'running', worker: ctx.sender, leaseUntil: later(ctx, LEASE_US * 3n), attempts: j.attempts + 1 });
+});
+
+export const renewPreview = spacetimedb.reducer({ jobId: t.u64() }, (ctx, { jobId }) => {
+  requireCrew(ctx);
+  const j = ctx.db.previewJob.id.find(jobId);
+  if (!j || j.state !== 'running' || !j.worker?.equals(ctx.sender)) throw new SenderError('not your job');
+  ctx.db.previewJob.id.update({ ...j, leaseUntil: later(ctx, LEASE_US * 3n) });
 });
 
 export const finishPreview = spacetimedb.reducer(
