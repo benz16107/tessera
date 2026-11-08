@@ -48,6 +48,12 @@ The number must be an SMS number, a WhatsApp number or a dedicated iMessage line
 
 **How the caller is matched.** The tools send `system__caller_id`, the caller's number, and the crew looks up that number's latest iMessage or SMS thread in `data/photon.json`. So a caller must have texted ShotMatch from the same phone first. After the call, the post-call webhook texts the final framing into that thread.
 
+## Golden-hour reminders
+
+"Remind me before golden hour" in a thread calls `scheduleReminder` 30 minutes before the window starts. When the module's schedule fires, it writes an `outbox` row. The crew sends that row's text into the session's thread and calls `markOutbox` with `sent`, or `failed` when Photon is off or the session has no thread.
+
+Booth caveat: the reminder is a message the agent sends hours after the user last texted. On a shared iMessage line Photon may refuse a late send into an open thread (watch for `403 SHARED_LINE_INBOUND_REQUIRED` or `409 SPACE_NOT_SENDABLE` in the crew log). Ask the Photon booth whether a shared or dedicated line allows it. Telegram has no such limit.
+
 ## Run and check
 
 - Logs: `journalctl --user -u shotmatch-crew -f`. Look for `Photon subscribed from seq N`.

@@ -76,6 +76,26 @@ export async function readLens(image: string): Promise<{ f35: number; source: st
   return { f35, source };
 }
 
+let physicalMissing = false;
+/** Cosmos Reason verdict on whether placed people look physically plausible; null when the model is not available. */
+export async function physicalCheck(image: string): Promise<{ ok: boolean; verdict: string } | null> {
+  const key = secret('nvidia_key');
+  if (!key || physicalMissing) return null;
+  try {
+    const m = await chat(NVIDIA_BASE, key, {
+      model: MODELS.physical, max_tokens: 200, temperature: 0,
+      messages: [userImage('Do the people in this photo look physically plausible: standing on the ground, not floating, not in water, not inside a wall, at a realistic scale? Answer in one line starting with PLAUSIBLE or IMPLAUSIBLE, then the reason.', image)],
+    });
+    const verdict = String(m.content ?? '').trim().split('\n').pop()!.slice(0, 200);
+    return { ok: !/IMPLAUSIBLE/i.test(verdict), verdict };
+  } catch (e) {
+    if (!/HTTP 404/.test((e as Error).message)) throw e;
+    physicalMissing = true;
+    console.log(`${MODELS.physical} is not available on this key (404); physical_check is off`);
+    return null;
+  }
+}
+
 let nvidiaEditModel: string | null | undefined; // undefined = not probed yet, null = none accepted on this key
 
 async function nvidiaEdit(key: string, jpeg: Buffer, prompt: string): Promise<Buffer | null> {

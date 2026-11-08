@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { conn, step, logStep } from './stdb.ts';
 import { PREVIEWS_DIR, SOLVER_URL, loadSpots } from './config.ts';
 import { dataUrl, localPath } from './images.ts';
-import { safetyCheck, readLens, editImage, solverRange, FINE_TUNED } from './models.ts';
+import { safetyCheck, readLens, editImage, solverRange, physicalCheck, FINE_TUNED } from './models.ts';
 import { sunWindows, windowWords } from './sun.ts';
 import { cropForF35, lightWords, placementWords } from './geo.ts';
 import type { SolveJob, PreviewJob } from './module_bindings/types.ts';
@@ -63,6 +63,9 @@ export async function callSolver(body: object, onProgress: (p: string) => void):
   if (last?.result) return last.result;
   throw new SolverDown('solver closed the stream without a result');
 }
+
+/** Cosmos Reason warnings per preview job, read by the agent when it sends the preview into a text thread. */
+export const previewWarnings = new Map<bigint, string>();
 
 let solving = false, previewing = false, solverDownLogged = false;
 
@@ -221,6 +224,14 @@ async function runPreview(j: PreviewJob) {
     await logStep(j.sessionId, 'make_preview',
       JSON.stringify({ f35: j.f35, people: j.people, sun: j.sunAzimuth !== undefined ? [Math.round(j.sunAzimuth), Math.round(j.sunAltitude ?? 0)] : null, text: j.instruction.slice(0, 80) }),
       `${crop ? `cropped ${Math.round(baseF35!)} to ${Math.round(j.f35!)} mm; ` : ''}${model}`, Date.now() - t0);
+    if (j.people > 0 && model !== 'crop only') {
+      const t1 = Date.now();
+      const v = await physicalCheck(await dataUrl(join(PREVIEWS_DIR, file), 768)).catch(e => ({ ok: true, verdict: `error: ${e.message}` }));
+      if (v) {
+        await logStep(j.sessionId, 'physical_check', `preview ${jobId}`, v.verdict, Date.now() - t1);
+        if (!v.ok) previewWarnings.set(jobId, `Heads up: the people in this preview may look off (${v.verdict.replace(/^IMPLAUSIBLE[:.,\s-]*/i, '')}).`);
+      }
+    }
     await conn.reducers.finishPreview({ jobId, ok: true, imageUrl: `/preview/${basename(file)}`, error: '' });
   } catch (e) {
     console.error(`preview ${jobId} failed:`, e);

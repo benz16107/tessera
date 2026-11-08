@@ -49,7 +49,7 @@ export const conn: DbConnection = DbConnection.builder()
 conn.subscriptionBuilder()
   .onApplied(() => { applied = true; check(); })
   .onError(ctx => console.error(`subscription error: ${(ctx as any).event?.message ?? 'unknown'}`))
-  .subscribe([tables.solveJob, tables.previewJob, tables.solveResult, tables.spot, tables.photo, tables.session, tables.devicePose, tables.camera, tables.person]);
+  .subscribe([tables.solveJob, tables.previewJob, tables.solveResult, tables.spot, tables.photo, tables.session, tables.devicePose, tables.camera, tables.person, tables.outbox, tables.reminder]);
 
 /** Polls the client cache until fn returns a value, or throws after timeoutMs. */
 export async function until<T>(fn: () => T | undefined | null | false, timeoutMs: number, what: string): Promise<T> {

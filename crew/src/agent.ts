@@ -5,6 +5,8 @@ import { conn, step, until } from './stdb.ts';
 import { MODELS, NVIDIA_BASE, secret } from './config.ts';
 import { dataUrl, ingest, localPath, type Ingested } from './images.ts';
 import { chat, readLens, type ChatMsg } from './models.ts';
+import { similar } from './similar.ts';
+import { previewWarnings } from './jobs.ts';
 import { sunAt, sunWindows, windowWords } from './sun.ts';
 import { bearing, compassWord, metres, nearestSpot, zoomWords } from './geo.ts';
 import { answerText, matchSpotByName, parseFollowUp } from './words.ts';
@@ -13,7 +15,7 @@ import type { Photo } from './module_bindings/types.ts';
 export type Inbound = { sessionId: bigint; channel: string; threadId: string; text: string; imageUrl?: string; imagePath?: string; upload?: Ingested };
 export type Reply = { text: string; imagePath?: string };
 
-type Ctx = Inbound & { photo?: Photo; upload?: Ingested; previewPath?: string };
+type Ctx = Inbound & { photo?: Photo; upload?: Ingested; previewPath?: string; warning?: string };
 
 const spots = () => [...conn.db.spot.iter()];
 const spotRow = (id: string) => conn.db.spot.id.find(id) ?? undefined;
@@ -138,7 +140,33 @@ const TOOLS: Record<string, Tool> = {
         .find(j => Number(j.id) > before && j.photoId === p.id && (j.state === 'done' || j.state === 'failed')), 5 * 60_000, 'the preview');
       if (job.state === 'failed') return { ok: false, error: job.error };
       c.previewPath = localPath(job.imageUrl) ?? undefined;
-      return { ok: true, url: job.imageUrl, note: 'sent with the reply; call it an AI interpretation' };
+      c.warning = previewWarnings.get(job.id);
+      return { ok: true, url: job.imageUrl, note: 'sent with the reply; call it an AI interpretation', ...(c.warning && { warning: c.warning }) };
+    },
+  },
+  set_reminder: {
+    description: 'Remind the user in this thread before the next good light for their solved shot (30 minutes before golden or blue hour starts).',
+    parameters: { type: 'object', properties: { light: { type: 'string', enum: ['golden hour', 'blue hour'] } } },
+    async run(c, a) {
+      const p = currentPhoto(c), r = p && conn.db.solveResult.photoId.find(p.id);
+      if (!r || r.confidence === 'none') return { error: 'no solved photo yet' };
+      const kind = a.light === 'blue hour' ? 'blue' : 'golden';
+      const w = sunWindows(r.pose.lat, r.pose.lon, r.pose.heading)[kind];
+      if (!w) return { error: `no ${kind} hour in the next days` };
+      const spot = conn.db.spot.id.find(conn.db.solveJob.id.find(r.jobId)?.spotId ?? '');
+      const at = Math.max(w.start.getTime() - 30 * 60_000, Date.now() + 60_000);
+      const text = `In 30 minutes: ${windowWords(w, r.pose.lat, r.pose.lon)}${spot ? ` at ${spot.name}` : ''}. Face ${compassWord(r.pose.heading)}, zoom ${zoomWords(r.pose.f35)}.`;
+      await conn.reducers.scheduleReminder({ sessionId: c.sessionId, atMicros: BigInt(at) * 1000n, text: text.slice(0, 300) });
+      return { ok: true, remind_at: new Date(at).toISOString(), text };
+    },
+  },
+  find_similar_spots: {
+    description: 'Find mapped photos that look like the current photo, or match a description like "moody bridge at sunset", with where each was taken from.',
+    parameters: { type: 'object', properties: { query: { type: 'string', description: 'a description; leave out to use the current photo' } } },
+    async run(c, a) {
+      const p = currentPhoto(c), path = c.upload?.path ?? (p && localPath(p.url)) ?? undefined;
+      const hits = await similar(a.query ? { text: String(a.query), k: 4 } : { imagePath: path, k: 4 });
+      return { results: hits.map(h => ({ spot: h.spot, score: h.score, heading: h.pose.heading, f35: h.pose.f35, lat: h.pose.lat, lon: h.pose.lon, credit: h.credit })) };
     },
   },
   scout_status: {
@@ -170,6 +198,7 @@ async function callTool(c: Ctx, name: string, args: any) {
 
 const SYSTEM = `You are ShotMatch, texting with someone about a photo of a place. You find where the photographer stood, which way they faced and the lens, then help them plan their own version.
 Use the tools. With a new photo: pick_spot, then solve with that spot (solve also reads the lens and checks safety). If pick_spot finds nothing, ask where the photo was taken and name the mapped spots.
+If they ask to be reminded before good light, call set_reminder. For "show me shots like this" or a described mood, call find_similar_spots.
 Follow-ups like "make it 85mm", "add two people" or "what about sunset" mean: call make_preview right away on the session's photo (it works before the photo is solved too). Do not ask where it was taken for these.
 When solve returns an "answer", send that answer text as written, adding at most one short line. Write plainly, no markdown, no emojis. Previews are an AI interpretation; say so.
 If a photo is refused or cannot be placed, say why in one sentence.`;
@@ -208,6 +237,10 @@ async function fallback(c: Ctx): Promise<string> {
     const r = await callTool(c, 'solve', { spot_id: pick.spot_id });
     return r.answer ?? r.note ?? `Couldn't solve it: ${r.error}`;
   }
+  if (photo && /\bremind\b/i.test(c.text)) {
+    const r = await callTool(c, 'set_reminder', { light: /blue/i.test(c.text) ? 'blue hour' : 'golden hour' });
+    return r.ok ? `Done. I'll text you 30 minutes before: ${r.text}` : `Couldn't set it: ${r.error}`;
+  }
   const f = parseFollowUp(c.text);
   if (photo && (f.f35 || f.people || f.light)) {
     const r = await callTool(c, 'make_preview', { ...f, instruction: '' });
@@ -230,5 +263,6 @@ export async function handleInbound(msg: Inbound): Promise<Reply> {
     catch (e) { console.warn(`agent model failed, using the fixed path: ${(e as Error).message}`); }
   }
   text ||= await fallback(c);
+  if (c.warning && !text.includes(c.warning)) text += `\n${c.warning}`;
   return { text, imagePath: c.previewPath };
 }

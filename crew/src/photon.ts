@@ -169,3 +169,26 @@ export function startPhoton() {
   });
   socket.connect();
 }
+
+/** Delivers reminder rows the module's schedule wrote to the outbox into the session's text thread. */
+export function startOutbox() {
+  const busy = new Set<bigint>();
+  const deliver = async () => {
+    for (const o of [...conn.db.outbox.iter()].filter(o => o.state === 'pending' && !busy.has(o.id))) {
+      busy.add(o.id);
+      const t = sharedStore().bySession(String(o.sessionId));
+      let state: 'sent' | 'failed' = 'failed';
+      if (!photonEnabled()) console.log(`reminder ${o.id}: Photon is off, marking failed`);
+      else if (!t?.senderId) console.log(`reminder ${o.id}: session ${o.sessionId} has no text thread, marking failed`);
+      else {
+        try { await sendToThread(t, o.text); state = 'sent'; console.log(`reminder ${o.id} sent to ${t.channel} ${t.chatId}`); }
+        catch (e) { console.warn(`reminder ${o.id}: ${(e as Error).message}`); }
+      }
+      await conn.reducers.markOutbox({ id: o.id, state }).catch(e => console.warn(`markOutbox: ${e.message}`));
+      busy.delete(o.id);
+    }
+  };
+  conn.db.outbox.onInsert(() => void deliver());
+  setInterval(() => void deliver(), 30_000);
+  void deliver();
+}

@@ -27,6 +27,8 @@ test('one thread maps to one session, survives a restart, and a caller finds the
   b.setThread({ sessionId: '9', channel: 'imessage', chatId: 'chat2', handle: '4695550101' });
   assert.equal(new Store(path).byHandle('+14695550101')?.sessionId, '9');
   assert.equal(b.byHandle('+15550000000'), undefined);
+  assert.equal(b.bySession('8')?.chatId, '-100200');
+  assert.equal(b.bySession('99'), undefined);
 });
 
 import { createHmac } from 'node:crypto';

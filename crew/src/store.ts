@@ -36,6 +36,8 @@ export class Store {
     if (t.handle) this.s.handles[normHandle(t.handle)] = key; // the caller's latest thread wins
     this.save();
   }
+  /** The text thread for a session, if the session came from Photon. */
+  bySession(sessionId: string): ThreadInfo | undefined { return Object.values(this.s.threads).find(t => t.sessionId === sessionId); }
   /** The latest thread for a phone number or email, so a voice call finds the caller's session. */
   byHandle(handle: string): ThreadInfo | undefined {
     const key = this.s.handles[normHandle(handle)];

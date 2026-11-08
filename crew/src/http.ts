@@ -1,9 +1,10 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
-import { DB_NAME, MAX_UPLOAD, PORT, PUBLIC_URL, SPACETIME_HOST, WEB_DIST, secret } from './config.ts';
+import { DB_NAME, MAX_UPLOAD, PORT, PUBLIC_URL, SPACETIME_HOST, SPOTS_DIR, WEB_DIST, secret } from './config.ts';
 import { IMAGE_TYPES, ingest, localPath } from './images.ts';
 import { VOICE_TOOLS, toolAuthorized, voiceEnded } from './voice.ts';
+import { similar } from './similar.ts';
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
@@ -54,6 +55,15 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     catch (e) { return json(res, 400, { error: `could not read that image: ${(e as Error).message}` }); }
   }
 
+  if (p === '/api/similar' && req.method === 'GET') {
+    const photo = url.searchParams.get('photo'), q = url.searchParams.get('q')?.slice(0, 300), k = Number(url.searchParams.get('k') ?? 6);
+    const path = photo ? localPath(photo) : null;
+    if (photo && (!path || !existsSync(path))) return json(res, 404, { error: 'photo must be a /photo/ or /preview/ URL on this server' });
+    if (!path && !q) return json(res, 400, { error: 'give ?photo=/photo/<file> or ?q=<words>' });
+    try { return json(res, 200, { results: await similar({ imagePath: path ?? undefined, text: q, k, spot: url.searchParams.get('spot') ?? undefined }) }); }
+    catch (e) { return json(res, 503, { error: (e as Error).message }); }
+  }
+
   const tool = /^\/api\/tools\/([a-z_]+)$/.exec(p);
   if (tool && req.method === 'POST') {
     if (!toolAuthorized(req.headers['x-shotmatch-tool-secret'])) return json(res, 401, { error: 'bad tool secret' });
@@ -80,6 +90,14 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     const f = localPath(p);
     if (!f || !existsSync(f)) return json(res, 404, { error: 'not found' });
     return sendFile(res, f, 'public, max-age=31536000, immutable');
+  }
+
+  // Spot training photos for the similar-photo results (credited on /credits and in each result).
+  const sp = /^\/spot-photo\/([a-z0-9_]+)\/([A-Za-z0-9_.-]+\.(?:jpg|jpeg|png))$/i.exec(p);
+  if (sp) {
+    const f = join(SPOTS_DIR, sp[1], 'images', sp[2]);
+    if (!existsSync(f)) return json(res, 404, { error: 'not found' });
+    return sendFile(res, f, 'public, max-age=86400');
   }
 
   if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'method not allowed' });

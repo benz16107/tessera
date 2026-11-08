@@ -28,6 +28,10 @@ export const MODELS = {
   // free kontext-dev and klein endpoints answer 422 "Expected: example_id" for user images, qwen-image-edit is 404, so OpenAI runs.
   nvidiaEdit: ['black-forest-labs/flux.1-kontext-dev', 'qwen/qwen-image-edit', 'black-forest-labs/flux.2-klein-4b'],
   openaiEdit: 'gpt-image-2',
+  // Text and images share one vector space (checked 2026-11-07: both return 2048-d vectors).
+  embed: 'nvidia/llama-nemotron-embed-vl-1b-v2',
+  // Listed on the key but 404 "function not found" on 2026-11-07; physical_check skips itself while it 404s.
+  physical: 'nvidia/cosmos-reason2-8b',
 };
 
 /** Reads a secret at use time; null when the file does not exist yet. Never log the value. */
