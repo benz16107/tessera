@@ -3,10 +3,11 @@
 // else becomes a free-location shoot at its GPS or at Nemotron's guess (POST /api/locate).
 import { useEffect, useRef, useState } from 'react';
 import { useSpacetimeDB, useTable, useReducer } from 'spacetimedb/react';
+import { Timestamp } from 'spacetimedb';
 import { tables, reducers } from '../module_bindings/index.ts';
 import { NAME_KEY } from '../config.ts';
 import { navigate } from '../App.tsx';
-import { decidePlace, fetchLinkedPhoto, geoSpotId, groundHeight, locate, placeLabel, uploadPhoto, type Upload } from './lib.ts';
+import { decidePlace, fetchLinkedPhoto, geoSpotId, groundHeight, localTimeOn, locate, placeLabel, uploadPhoto, type Upload } from './lib.ts';
 import { preferredView, viewPath } from './view.ts';
 import { Link as LinkIcon, Photo, Viewfinder, Close } from './icons.tsx';
 import './simple.css';
@@ -15,9 +16,10 @@ import './simple.css';
  *  the pin). Values from demo shoot 7PL6L6 (docs/DEMO-SHOOTS.md). The pin is the street beside the tower, because Earth sets
  *  its ground from the lowest surface under the pin. Quaternion = cameraQuat(205.3, -0.5, 0), precomputed to keep three.js
  *  out of this page. */
-interface Preset { spotId: string; title: string; deck: { lat: number; lon: number }; cam: { x: number; y: number; z: number; qx: number; qy: number; qz: number; qw: number } }
+interface Preset { spotId: string; title: string; zone: string; planAt: [number, number]; aimNote: string; deck: { lat: number; lon: number }; cam: { x: number; y: number; z: number; qx: number; qy: number; qz: number; qw: number } }
 const TOP_OF_THE_ROCK: Preset = {
   spotId: 'geo:40.758764,-73.978650,90.0', title: 'Empire State Building from Top of the Rock', deck: { lat: 40.75904, lon: -73.97939 },
+  zone: 'America/New_York', planAt: [16, 20], aimNote: 'Set on the Top of the Rock deck', // opens in golden hour, like 7PL6L6
   cam: { x: -62.486, y: 30.65, z: 259, qx: -0.154176, qy: -0.686925, qz: -0.692946, qw: -0.155527 }, // the 70th-floor deck, 850 ft up
 };
 
@@ -50,6 +52,7 @@ export default function Home() {
   const createSession = useReducer(reducers.createSession);
   const addPhoto = useReducer(reducers.addPhoto);
   const addSceneObject = useReducer(reducers.addSceneObject);
+  const setPlanTime = useReducer(reducers.setPlanTime);
   const [phase, setPhase] = useState<Phase>('idle');
   const [err, setErr] = useState('');
   const [over, setOver] = useState(false);
@@ -73,10 +76,11 @@ export default function Home() {
       pinLat: pin?.lat ?? u.gpsLat ?? undefined, pinLon: pin?.lon ?? u.gpsLon ?? undefined, exifF35: u.exifF35 ?? undefined, source,
     }).then(() => preset && addSceneObject({ // Cam A before the shoot opens, so Simple doesn't make its own at 1.6 m
       sessionId: s.id, kind: 'camera', assetId: '', name: 'Cam A', ...preset.cam, scale: 1, color: '', intensity: 0, lightType: '', visible: true,
-      params: `uid=${Math.random().toString(36).slice(2, 10)};shot=1;alt=${preset.cam.z};approx=1;placed=pin;place=${preset.title}`,
-    })).then(() => navigate(viewPath(preferredView(false), s.code)))
+      params: `uid=${Math.random().toString(36).slice(2, 10)};shot=1;alt=${preset.cam.z};approx=1;placed=pin;place=${preset.title};aimnote=${preset.aimNote}`,
+    }).then(() => setPlanTime({ sessionId: s.id, at: Timestamp.fromDate(localTimeOn(preset.zone, ...preset.planAt)) })))
+      .then(() => navigate(viewPath(preferredView(false), s.code)))
       .catch(x => { setPhase('idle'); setErr(String(x?.message ?? x)); });
-  }, [mine, phase, addPhoto, addSceneObject, identity]);
+  }, [mine, phase, addPhoto, addSceneObject, setPlanTime, identity]);
 
   const start = async (file: Blob, name = '', knownSpot = '', preset?: Preset) => {
     if (phase !== 'idle') return;

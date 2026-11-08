@@ -1,6 +1,6 @@
 // Self-check for decidePlace (anywhere.md cases 1 to 3, anywhere2.md rule 1): npx tsx src/simple/place.check.ts (from web/).
 import assert from 'node:assert/strict';
-import { decidePlace, evidenceLine, placeLabel, type Located } from './lib.ts';
+import { decidePlace, evidenceLine, localTimeOn, placeLabel, type Located } from './lib.ts';
 
 const loc = (o: Partial<Located>): Located => ({ place: '', lat: null, lon: null, confidence: 'low', reason: '', headingDeg: null, source: 'nemotron', nearestSpot: null, ...o });
 const noGps = { nearestSpot: null, gpsLat: null, gpsLon: null };
@@ -36,4 +36,9 @@ assert.equal(placeLabel('12-14, Rue de Rivoli, Paris'), 'Rue de Rivoli, Paris');
 assert.equal(placeLabel(placeLabel('Eiffel Tower, Paris, France')), 'Eiffel Tower, Paris');
 assert.equal(placeLabel('a=b;c'), 'a b c');
 assert.equal(placeLabel(''), undefined);
-console.log('place.check: 20 of 20 pass');
+// 4:20 PM at the spot on the date it is there: EST in November, EDT in July, and the spot's date, not UTC's.
+assert.equal(localTimeOn('America/New_York', 16, 20, new Date('2026-11-08T17:00:00Z')).toISOString(), '2026-11-08T21:20:00.000Z');
+assert.equal(localTimeOn('America/New_York', 16, 20, new Date('2026-07-04T12:00:00Z')).toISOString(), '2026-07-04T20:20:00.000Z');
+assert.equal(localTimeOn('America/New_York', 16, 20, new Date('2026-11-09T03:00:00Z')).toISOString(), '2026-11-08T21:20:00.000Z');
+assert.equal(localTimeOn('Asia/Tokyo', 16, 20, new Date('2026-11-08T17:00:00Z')).toISOString(), '2026-11-09T07:20:00.000Z');
+console.log('place.check: 24 of 24 pass');

@@ -144,5 +144,18 @@ export const placeLabel = (name?: string) => {
   return parts.slice(0, 2).join(', ').slice(0, 80) || undefined;
 };
 
+/** The instant when the clock in `zone` reads hh:mm on the date it shows at `now` (for example 4:20 PM in New York today). */
+export function localTimeOn(zone: string, hh: number, mm: number, now = new Date()) {
+  const [y, m, d] = new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(now).split('-').map(Number);
+  const clock = (t: number) => {
+    const p = new Intl.DateTimeFormat('en-US', { timeZone: zone, hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(new Date(t));
+    return +p.find(x => x.type === 'hour')!.value * 60 + +p.find(x => x.type === 'minute')!.value;
+  };
+  const guess = Date.UTC(y, m - 1, d, hh, mm);
+  let diff = hh * 60 + mm - clock(guess);
+  if (diff > 720) diff -= 1440; else if (diff < -720) diff += 1440; // the zone's clock wrapped past midnight from the guess
+  return new Date(guess + diff * 60_000);
+}
+
 /** How a free-location shoot's pin was set; Cam A's params carry it (placed=...), so every viewer gets the same label. */
 export type PlacedBy = 'gps' | 'guess' | 'search' | 'pin' | 'area';

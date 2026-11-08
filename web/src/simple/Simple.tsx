@@ -228,7 +228,7 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
   else if (!pose) panel = <Solving photo={photo} job={job} result={result} spots={spots} onPlace={placeAt} />;
   else if (step === 'found') panel = solved ? <Found result={solved} photo={photo} spot={spot} zone={zone} credit={owner} onGo={() => setStep('there')} />
     : <PinFound sessionId={sid} photo={photo} geo={pose!} aimed={aimed} title={session.title} zone={zone} credit={owner} onPlace={placeAt} onGo={() => setStep('there')}
-      placed={placedBy} areaM={placedArea} placeName={placedName} />;
+      placed={placedBy} areaM={placedArea} placeName={placedName} aimNote={camPrm.aimnote} />;
   else if (step === 'yours') panel = (
     <Yours sessionId={sid} photo={photo} spotId={spotId} pose={pose} shot={shot} setShot={setShot} o={o} planTime={planTime} zone={zone}
       changeTime={changeTime} people={scene.rows.filter(r => r.kind === 'person').length} capture={capture} sun={sun} credit={owner} />

@@ -27,7 +27,7 @@ export async function placeShoot(c: PlaceShootCtx, lat: number, lon: number, by:
   if (place && place !== c.title && (UNTITLED.includes(c.title) || !prev || c.title === prev))
     c.renameSession({ sessionId: c.sessionId, title: place }).catch(() => {}); // the module refuses non-owners once the shoot is named
   // Cam A's label and name go before the pin moves, so no screen pairs the new mark with the old place's name.
-  const patch = { placed: by, area: by === 'area' && radiusM ? Math.round(radiusM) : '', approx: 1, place: place ?? '' };
+  const patch = { placed: by, area: by === 'area' && radiusM ? Math.round(radiusM) : '', approx: 1, place: place ?? '', aimnote: '' }; // a moved pin drops the example's facing note
   if (c.shotRow) c.setObject(c.shotRow, withParams({ ...stateOf(c.shotRow), x: 0, y: 0, z: 1.6 }, patch));
   await c.setSessionSpot({ sessionId: c.sessionId, spotId: geoSpotId(lat, lon, await groundHeight(lat, lon)) });
   return place;
