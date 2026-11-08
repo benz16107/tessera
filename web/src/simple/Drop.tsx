@@ -11,6 +11,16 @@ import { preferredView, viewPath } from './view.ts';
 import { Link as LinkIcon, Photo, Viewfinder, Close } from './icons.tsx';
 import './simple.css';
 
+/** An example shoot that starts already placed: a free location, and its Cam A as a scene_object (east/north/up metres from
+ *  the pin). Values from demo shoot 7PL6L6 (docs/DEMO-SHOOTS.md). The pin is the street beside the tower, because Earth sets
+ *  its ground from the lowest surface under the pin. Quaternion = cameraQuat(205.3, -0.5, 0), precomputed to keep three.js
+ *  out of this page. */
+interface Preset { spotId: string; title: string; deck: { lat: number; lon: number }; cam: { x: number; y: number; z: number; qx: number; qy: number; qz: number; qw: number } }
+const TOP_OF_THE_ROCK: Preset = {
+  spotId: 'geo:40.758764,-73.978650,90.0', title: 'Empire State Building from Top of the Rock', deck: { lat: 40.75904, lon: -73.97939 },
+  cam: { x: -62.486, y: 30.65, z: 259, qx: -0.154176, qy: -0.686925, qz: -0.692946, qw: -0.155527 }, // the 70th-floor deck, 850 ft up
+};
+
 type Phase = 'idle' | 'uploading' | 'locating' | 'creating' | 'adding';
 const PHASE_TEXT: Record<Phase, string> = { idle: '', uploading: 'Uploading your photo', locating: 'Finding the place', creating: 'Setting up your shoot', adding: 'Starting the search' };
 
@@ -39,13 +49,14 @@ export default function Home() {
   latest.current = { mine, mineReady };
   const createSession = useReducer(reducers.createSession);
   const addPhoto = useReducer(reducers.addPhoto);
+  const addSceneObject = useReducer(reducers.addSceneObject);
   const [phase, setPhase] = useState<Phase>('idle');
   const [err, setErr] = useState('');
   const [over, setOver] = useState(false);
   const [link, setLink] = useState('');
   const [joinOpen, setJoinOpen] = useState(false);
   const input = useRef<HTMLInputElement>(null);
-  const pending = useRef<{ u: Upload; spotId: string; pin?: { lat: number; lon: number }; source: string; before: Set<string> } | null>(null);
+  const pending = useRef<{ u: Upload; spotId: string; pin?: { lat: number; lon: number }; source: string; preset?: Preset; before: Set<string> } | null>(null);
 
   // createSession returns nothing: the new shoot is the one I own in my_sessions that was not there before. The snapshot
   // is taken only once my_sessions has loaded, so an older shoot arriving late is never mistaken for the new one.
@@ -56,15 +67,18 @@ export default function Home() {
     if (!s) return;
     pending.current = null;
     setPhase('adding');
-    const { u, spotId, pin, source } = p;
+    const { u, spotId, pin, source, preset } = p;
     addPhoto({
       sessionId: s.id, spotId, url: u.url, thumb: u.thumb, width: u.width, height: u.height,
       pinLat: pin?.lat ?? u.gpsLat ?? undefined, pinLon: pin?.lon ?? u.gpsLon ?? undefined, exifF35: u.exifF35 ?? undefined, source,
-    }).then(() => navigate(viewPath(preferredView(false), s.code)))
+    }).then(() => preset && addSceneObject({ // Cam A before the shoot opens, so Simple doesn't make its own at 1.6 m
+      sessionId: s.id, kind: 'camera', assetId: '', name: 'Cam A', ...preset.cam, scale: 1, color: '', intensity: 0, lightType: '', visible: true,
+      params: `uid=${Math.random().toString(36).slice(2, 10)};shot=1;alt=${preset.cam.z};approx=1;placed=pin;place=${preset.title}`,
+    })).then(() => navigate(viewPath(preferredView(false), s.code)))
       .catch(x => { setPhase('idle'); setErr(String(x?.message ?? x)); });
-  }, [mine, phase, addPhoto, identity]);
+  }, [mine, phase, addPhoto, addSceneObject, identity]);
 
-  const start = async (file: Blob, name = '', knownSpot = '') => {
+  const start = async (file: Blob, name = '', knownSpot = '', preset?: Preset) => {
     if (phase !== 'idle') return;
     setErr(''); setPhase('uploading');
     try {
@@ -72,16 +86,16 @@ export default function Home() {
       // Only a mapped spot can be solved. Anywhere else becomes a free-location shoot at the photo's GPS or Nemotron's guess.
       const gps = u.gpsLat != null && u.gpsLon != null ? { lat: u.gpsLat, lon: u.gpsLon } : undefined;
       let loc = null;
-      if (!knownSpot && !u.nearestSpot) { setPhase('locating'); loc = await locate(u.url, gps); }
-      const at = decidePlace(u, loc, knownSpot);
+      if (!knownSpot && !u.nearestSpot && !preset) { setPhase('locating'); loc = await locate(u.url, gps); }
+      const at = preset ? { kind: 'pin' as const, ...preset.deck, place: preset.title, guessed: false } : decidePlace(u, loc, knownSpot);
       const pin = at.kind === 'pin' ? { lat: at.lat, lon: at.lon } : undefined;
       // A pin shoot's session spot is 'geo:...' (Studio reads it); its photo has no spot, so no solve is queued. A clue shoot has
       // neither yet: it opens on the clue panel.
-      const sessionSpot = at.kind === 'pin' ? geoSpotId(at.lat, at.lon, await groundHeight(at.lat, at.lon)) : at.kind === 'spot' ? at.spotId : '';
-      const title = (at.kind === 'pin' && placeLabel(at.place)) || 'Untitled shoot';
+      const sessionSpot = preset?.spotId ?? (at.kind === 'pin' ? geoSpotId(at.lat, at.lon, await groundHeight(at.lat, at.lon)) : at.kind === 'spot' ? at.spotId : '');
+      const title = preset?.title ?? ((at.kind === 'pin' && placeLabel(at.place)) || 'Untitled shoot');
       for (let i = 0; !latest.current.mineReady && i < 100; i++) await new Promise(r => setTimeout(r, 100));
       if (!latest.current.mineReady) throw new Error('Still connecting to Tessera. Try again in a moment.');
-      pending.current = { u, spotId: at.kind === 'spot' ? at.spotId : '', pin, source: at.kind === 'pin' && at.guessed ? 'locate' : 'web', before: new Set(latest.current.mine.map(s => String(s.id))) };
+      pending.current = { u, spotId: at.kind === 'spot' ? at.spotId : '', pin, source: at.kind === 'pin' && at.guessed ? 'locate' : 'web', preset, before: new Set(latest.current.mine.map(s => String(s.id))) };
       setPhase('creating');
       const nm = localStorage.getItem(NAME_KEY) || 'Guest';
       await createSession({ spotId: sessionSpot, title, name: nm }); // an 'Untitled shoot' gets the module's Nemotron title after the solve
@@ -96,8 +110,8 @@ export default function Home() {
     if (!link.trim()) return;
     try { await start(await fetchLinkedPhoto(link)); } catch (x) { setErr((x as Error).message); }
   };
-  const example = async () => {
-    try { const r = await fetch('/simple/example-dumbo.jpg'); await start(await r.blob(), 'example.jpg', 'nyc_dumbo'); }
+  const example = async (file: string, spot = '', preset?: Preset) => {
+    try { const r = await fetch(`/simple/${file}`); await start(await r.blob(), file, spot, preset); }
     catch { setErr('Could not load the example photo.'); }
   };
 
@@ -150,11 +164,18 @@ export default function Home() {
           {link.trim() ? <button className="s-pill small" disabled={busy}>Use link</button> : <kbd>⌘V</kbd>}
         </form>
         {err && <p className="s-error" role="alert">{err}</p>}
+        <p className="s-example-head">No photo handy?</p>
+        <div className="s-examples">
         <div className="s-example">
           <img src="/simple/example-dumbo-thumb.jpg" alt="" width={36} height={48} />
-          <p>No photo handy?<br /><button className="s-textbtn" onClick={example} disabled={busy}>Try Manhattan Bridge from Washington St</button></p>
+          <button className="s-textbtn" onClick={() => void example('example-dumbo.jpg', 'nyc_dumbo')} disabled={busy}>Try Manhattan Bridge from Washington St</button>
         </div>
-        <p className="s-example-credit">Example photo: Shah Ronak S, CC BY-SA 4.0</p>
+        <div className="s-example">
+          <img src="/simple/example-esb-thumb.jpg" alt="" width={36} height={48} />
+          <button className="s-textbtn" onClick={() => void example('example-esb.jpg', '', TOP_OF_THE_ROCK)} disabled={busy}>Try Empire State Building from Top of the Rock</button>
+        </div>
+        </div>
+        <p className="s-example-credit">Example photos: Shah Ronak S; Daniel Schwen, CC BY-SA 4.0</p>
       </main>
       <footer className="s-foot"><LegalLinks /></footer>
       {joinOpen && <JoinDialog onClose={() => setJoinOpen(false)} />}
