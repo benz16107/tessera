@@ -78,3 +78,37 @@ test('answer text names the spot, mark, heading, lens and zoom', () => {
   assert.match(t, /Next good light: .*golden hour/);
   assert.match(answerText(spot, { ...r, confidence: 'none', reason: '78 matches' }), /Couldn't place this photo at DUMBO\. 78 matches\..*30 mm/);
 });
+
+import { placementWords } from '../src/geo.ts';
+test('placed people become thirds and distances relative to the camera', () => {
+  const cam = { lat: 40.7, lon: -74, heading: 0, f35: 26 }; // facing north
+  const dLat = (m: number) => m / 111_195, dLon = (m: number) => m / (111_195 * Math.cos((40.7 * Math.PI) / 180));
+  const words = placementWords([
+    { lat: 40.7 + dLat(10), lon: -74 - dLon(4) },   // 10 m ahead, 4 m left
+    { lat: 40.7 + dLat(30), lon: -74 },             // straight ahead
+    { lat: 40.7 + dLat(60), lon: -74 + dLon(20) },  // far right
+    { lat: 40.7 - dLat(10), lon: -74 },             // behind the camera
+  ], cam, 4000, 3000);
+  assert.equal(words.length, 3);
+  assert.match(words[0], /left third, near the camera, about 11 m/);
+  assert.match(words[1], /centre, in the middle distance/);
+  assert.match(words[2], /right third, far away/);
+});
+
+import { solverRange, FINE_TUNED } from '../src/models.ts';
+test('only a user hint or the fine-tuned lens model narrows the solver', () => {
+  assert.deepEqual(solverRange(80, null), [60, 106.4]);
+  assert.deepEqual(solverRange(undefined, { f35: 50, source: FINE_TUNED }), [30, 80]);
+  assert.equal(solverRange(undefined, { f35: 28, source: 'nvidia/nemotron-3.5-super-vl-120b-a12b' }), undefined);
+});
+
+import { walkWords, spokenPlan } from '../src/words.ts';
+test('walk and spoken words', () => {
+  const dLat = (m: number) => m / 111_195;
+  assert.equal(walkWords(40.7, -74, 0, 40.7 + dLat(3), -74, 300), "You're on the mark. Now face northwest.");
+  assert.match(walkWords(40.7, -74, 90, 40.7 + dLat(30), -74, 0), /^Walk about 30 metres north\. Turn left about 90 degrees\.$/);
+  assert.match(walkWords(40.7, -74, 5, 40.7 + dLat(120), -74, 0), /120 metres north\. It is straight ahead\./);
+  const spot = { id: 's', name: 'DUMBO', lat: 40.7, lon: -74, radiusM: 100, cameras: 1, modelVersion: '' };
+  const r: any = { confidence: 'solid', reason: '', pose: { lat: 40.7 - dLat(40), lon: -74, alt: 0, heading: 0, pitch: 0, roll: 0, f35: 50 } };
+  assert.equal(spokenPlan(spot, r), 'The mark is about 40 metres south of the centre of DUMBO. Face north and zoom to 2.1x.');
+});

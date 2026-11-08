@@ -10,7 +10,7 @@ import { bearing, compassWord, metres, nearestSpot, zoomWords } from './geo.ts';
 import { answerText, matchSpotByName, parseFollowUp } from './words.ts';
 import type { Photo } from './module_bindings/types.ts';
 
-export type Inbound = { sessionId: bigint; channel: string; threadId: string; text: string; imageUrl?: string; imagePath?: string };
+export type Inbound = { sessionId: bigint; channel: string; threadId: string; text: string; imageUrl?: string; imagePath?: string; upload?: Ingested };
 export type Reply = { text: string; imagePath?: string };
 
 type Ctx = Inbound & { photo?: Photo; upload?: Ingested; previewPath?: string };
@@ -23,6 +23,7 @@ const round = (x: number, d: number) => Math.round(x * 10 ** d) / 10 ** d;
 
 /** Brings an inbound image into data/photos (or finds it there) so the solver and preview edits can read it. */
 async function ensureImage(c: Ctx) {
+  if (c.upload) return; // the caller already ingested it (Photon does, to mirror the message with its URL)
   const local = c.imageUrl ? localPath(c.imageUrl) : null;
   if (local && existsSync(local)) {
     c.photo = sessionPhotos(c.sessionId).find(p => p.url === c.imageUrl);
@@ -83,7 +84,7 @@ const TOOLS: Record<string, Tool> = {
         });
         photo = c.photo = await until(() => sessionPhotos(c.sessionId).find(p => p.url === u.url), 15_000, 'the photo row');
       } else if (photo && !latestJob(photo.id)) {
-        await conn.reducers.enqueueSolve({ photoId: photo.id, spotId: a.spot_id });
+        await conn.reducers.enqueueSolve({ photoId: photo.id, spotId: a.spot_id, lensHintF35: undefined });
       }
       if (!photo) return { error: 'no photo to solve' };
       const id = photo.id;

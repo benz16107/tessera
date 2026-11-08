@@ -55,3 +55,21 @@ export function lightWords(sunAz: number, sunAlt: number, heading: number): stri
   const tone = sunAlt < 8 ? 'warm low golden sun' : sunAlt < 25 ? 'low afternoon sun with long shadows' : 'bright high sun';
   return `${tone} ${side}`;
 }
+
+type PoseLike = { lat: number; lon: number; heading: number; f35: number };
+
+/** People placed in the scene, described relative to the camera: which third of the frame, and how near. Out-of-frame people are skipped. */
+export function placementWords(people: { lat: number; lon: number }[], cam: PoseLike, w: number, h: number): string[] {
+  const fpx = (cam.f35 * Math.hypot(w, h)) / 43.2666, halfH = Math.atan(w / (2 * fpx));
+  const out: string[] = [];
+  for (const p of people) {
+    const d = metres(cam.lat, cam.lon, p.lat, p.lon);
+    const rel = (relativeAngle(bearing(cam.lat, cam.lon, p.lat, p.lon), cam.heading) * Math.PI) / 180;
+    if (Math.abs(rel) >= halfH || d < 0.5) continue;
+    const x = Math.tan(rel) / Math.tan(halfH); // -1 left edge .. 1 right edge
+    const third = x < -1 / 3 ? 'in the left third' : x > 1 / 3 ? 'in the right third' : 'in the centre';
+    const near = d < 12 ? `near the camera, about ${Math.round(d)} m away` : d < 40 ? `in the middle distance, about ${Math.round(d)} m away` : `far away, about ${Math.round(d / 5) * 5} m`;
+    out.push(`one person ${third}, ${near}`);
+  }
+  return out;
+}

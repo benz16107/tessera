@@ -3,6 +3,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { DB_NAME, MAX_UPLOAD, PORT, PUBLIC_URL, SPACETIME_HOST, WEB_DIST, secret } from './config.ts';
 import { IMAGE_TYPES, ingest, localPath } from './images.ts';
+import { VOICE_TOOLS, toolAuthorized, voiceEnded } from './voice.ts';
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
@@ -51,6 +52,26 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     if (!body.length) return json(res, 400, { error: 'empty body' });
     try { return json(res, 200, await ingest(body)); }
     catch (e) { return json(res, 400, { error: `could not read that image: ${(e as Error).message}` }); }
+  }
+
+  const tool = /^\/api\/tools\/([a-z_]+)$/.exec(p);
+  if (tool && req.method === 'POST') {
+    if (!toolAuthorized(req.headers['x-shotmatch-tool-secret'])) return json(res, 401, { error: 'bad tool secret' });
+    const fn = VOICE_TOOLS[tool[1]];
+    if (!fn) return json(res, 404, { error: 'no such tool' });
+    const body = await readBody(req, 64_000);
+    let args: any = {};
+    try { args = body?.length ? JSON.parse(body.toString('utf8')) : {}; } catch { return json(res, 400, { error: 'bad JSON' }); }
+    const out = fn(args);
+    console.log(`voice tool ${tool[1]} -> ${JSON.stringify(out).slice(0, 160)}`);
+    return json(res, 200, out);
+  }
+
+  if (p === '/api/voice/ended' && req.method === 'POST') {
+    const body = await readBody(req, 5_000_000);
+    if (!body) return json(res, 413, { error: 'too large' });
+    const sig = req.headers['elevenlabs-signature'];
+    return json(res, await voiceEnded(body.toString('utf8'), typeof sig === 'string' ? sig : undefined), {});
   }
 
   if (p.startsWith('/api/')) return json(res, 404, { error: 'no such endpoint' });

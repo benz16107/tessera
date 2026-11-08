@@ -42,3 +42,32 @@ export function parseFollowUp(text: string) {
   return { f35: mm ? Number(mm[1]) : undefined, people: ppl ? (NUM[ppl[1]] ?? Number(ppl[1])) : 0, light };
 }
 
+
+/** A short version for a phone call: no coordinates, just walk, face, zoom. */
+export function spokenPlan(spot: Spot | undefined, r: SolveResult): string {
+  if (r.confidence === 'none') return `I couldn't place that photo at ${spot?.name ?? 'the spot'}.`;
+  const p = r.pose, walk = spot ? metres(spot.lat, spot.lon, p.lat, p.lon) : 0;
+  const where = spot && walk >= 10 ? `about ${Math.round(walk / 5) * 5} metres ${compassWord(bearing(spot.lat, spot.lon, p.lat, p.lon))} of the centre of ${spot.name}` : `at ${spot?.name ?? 'the spot'}`;
+  return `The mark is ${where}. Face ${compassWord(p.heading)} and zoom to ${zoomWords(p.f35).replace(' (ultrawide)', ', the ultrawide')}.`;
+}
+
+/** Walking directions for a scout: distance, which way to walk, and how far to turn from where their phone points. */
+export function walkWords(fromLat: number, fromLon: number, phoneHeading: number | undefined, markLat: number, markLon: number, markHeading: number): string {
+  const d = metres(fromLat, fromLon, markLat, markLon);
+  if (d < 6) return `You're on the mark. Now face ${compassWord(markHeading)}.`;
+  const b = bearing(fromLat, fromLon, markLat, markLon);
+  let turn = '';
+  if (phoneHeading !== undefined) {
+    const rel = ((b - phoneHeading + 540) % 360) - 180;
+    turn = Math.abs(rel) < 20 ? ' It is straight ahead.' : Math.abs(rel) > 160 ? ' Turn around.' : ` Turn ${rel < 0 ? 'left' : 'right'} about ${Math.round(Math.abs(rel) / 10) * 10} degrees.`;
+  }
+  return `Walk about ${d < 50 ? Math.round(d) : Math.round(d / 10) * 10} metres ${compassWord(b)}.${turn}`;
+}
+
+/** Chat platforms show plain text: drop markdown the model may add, cap the length, and label previews. */
+export function replyText(text: string, opts: { hasPreview: boolean; links?: { plan: string; scout: string } }): string {
+  let t = text.replace(/\*\*(.+?)\*\*/g, '$1').replace(/^#+\s*/gm, '').replace(/`([^`]+)`/g, '$1').trim();
+  if (opts.hasPreview && !/ai interpretation/i.test(t)) t += '\nThe picture is an AI interpretation of your version, made from your photo.';
+  if (opts.links) t += `\nLive plan: ${opts.links.plan}\nScout at the spot: ${opts.links.scout}`;
+  return t.length > 1900 ? `${t.slice(0, 1890)}…` : t;
+}

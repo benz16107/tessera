@@ -7,9 +7,9 @@ import { randomUUID } from 'node:crypto';
 import { conn, step, logStep } from './stdb.ts';
 import { PREVIEWS_DIR, SOLVER_URL, loadSpots } from './config.ts';
 import { dataUrl, localPath } from './images.ts';
-import { safetyCheck, readLens, editImage } from './models.ts';
+import { safetyCheck, readLens, editImage, solverRange, FINE_TUNED } from './models.ts';
 import { sunWindows, windowWords } from './sun.ts';
-import { cropForF35, lightWords } from './geo.ts';
+import { cropForF35, lightWords, placementWords } from './geo.ts';
 import type { SolveJob, PreviewJob } from './module_bindings/types.ts';
 
 const warn = (what: string) => (e: unknown) => console.warn(`${what}: ${(e as Error).message ?? e}`);
@@ -118,17 +118,20 @@ async function runSolve(j: SolveJob, spotLoaded: boolean) {
     const safety = await step(sid, 'safety_check', `photo ${j.photoId}`, () => safetyCheck(img),
       v => (v === null ? 'skipped: NVIDIA key not set yet' : `${v.safe ? 'safe' : 'refused'} (${v.model}): ${v.detail}`));
     if (safety && !safety.safe) {
-      rmSync(path, { force: true }); // keep no exact location for refused uploads
-      return await finish(false, 'Refused by the safety check. ShotMatch only places photos of public places, not homes or photos aimed at a person.');
+      // Keep no exact location for refused uploads: fail the job (so clients get the toast), then drop the file and every row.
+      await finish(false, 'Refused by the safety check. ShotMatch only places photos of public places, not homes or photos aimed at a person.');
+      rmSync(path, { force: true });
+      await conn.reducers.deletePhoto({ photoId: j.photoId }).catch(warn('deletePhoto'));
+      return;
     }
 
     report('reading the lens', true);
     let lens: Awaited<ReturnType<typeof readLens>> = null;
     try {
       lens = await step(sid, 'read_lens', `photo ${j.photoId}`, () => readLens(img),
-        v => (v ? `about ${Math.round(v.f35)} mm (${v.source})` : 'skipped: no lens model (LENS_URL or NVIDIA key)'));
+        v => (v ? `about ${Math.round(v.f35)} mm (${v.source}${v.source === FINE_TUNED ? '' : ', advisory only'})` : 'skipped: no lens model (LENS_URL or NVIDIA key)'));
     } catch { /* logged by step; the solver runs without a focal range */ }
-    const f35Range = lens ? [Math.round(lens.f35 * 0.6 * 10) / 10, Math.round(lens.f35 * 1.6 * 10) / 10] : undefined;
+    const f35Range = solverRange(j.lensHintF35, lens);
 
     report('solving', true);
     const body = { photo_path: path, spot_id: j.spotId, ...(f35Range && { f35_range: f35Range }), ...(photo!.exifF35 !== undefined && { exif_f35: photo!.exifF35 }) };
@@ -173,9 +176,10 @@ async function pumpPreview() {
   } finally { previewing = false; }
 }
 
-export function previewInstruction(j: Pick<PreviewJob, 'people' | 'sunAzimuth' | 'sunAltitude' | 'instruction'>, heading?: number): string {
+export function previewInstruction(j: Pick<PreviewJob, 'people' | 'sunAzimuth' | 'sunAltitude' | 'instruction'>, heading?: number, placed: string[] = []): string {
   const parts: string[] = [];
-  if (j.people > 0) parts.push(`Add ${j.people === 1 ? 'one person' : `${j.people} people`} standing naturally in the scene at a realistic scale, posing for the photo`);
+  if (placed.length) parts.push(`Add ${placed.length === 1 ? 'one person' : `${placed.length} people`} standing naturally at a realistic scale, posing for the photo: ${placed.join('; ')}`);
+  else if (j.people > 0) parts.push(`Add ${j.people === 1 ? 'one person' : `${j.people} people`} standing naturally in the scene at a realistic scale, posing for the photo`);
   if (j.sunAzimuth !== undefined && j.sunAltitude !== undefined && heading !== undefined) parts.push(`Relight the scene: ${lightWords(j.sunAzimuth, j.sunAltitude, heading)}`);
   if (j.instruction.trim()) parts.push(j.instruction.trim());
   return parts.join('. ');
@@ -199,11 +203,15 @@ async function runPreview(j: PreviewJob) {
     let out = await img.jpeg({ quality: 90 }).toBuffer();
     const w = crop?.width ?? width, h = crop?.height ?? height;
 
-    const ask = previewInstruction(j, heading);
+    // People placed in the 3D scene become words relative to the solved camera, so the edit puts them roughly there.
+    const placed = solved && solved.confidence !== 'none' && j.people > 0
+      ? placementWords([...conn.db.person.sessionId.filter(j.sessionId)], solved.pose, width, height) : [];
+    const ask = previewInstruction(j, heading, placed);
     let model = 'crop only';
     if (ask) {
       const prompt = `Edit this photo. Keep the same camera position, framing, perspective, lens and buildings exactly; change only what is asked. ${ask}. Photorealistic, no text or watermark.`;
-      const r = await editImage(out, prompt, editSize(w, h));
+      const renew = setInterval(() => conn.reducers.renewPreview({ jobId }).catch(warn('renewPreview')), 60_000);
+      const r = await editImage(out, prompt, editSize(w, h)).finally(() => clearInterval(renew));
       model = r.model;
       out = await sharp(r.image).resize({ width: w, height: h, fit: 'fill' }).jpeg({ quality: 88 }).toBuffer();
     }

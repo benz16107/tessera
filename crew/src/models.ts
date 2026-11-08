@@ -49,6 +49,16 @@ export async function safetyCheck(image: string, text = ''): Promise<{ safe: boo
   return { safe: !/"refuse"\s*:\s*true/.test(out), detail: out.replace(/\s+/g, ' ').slice(0, 200), model: MODELS.agent };
 }
 
+export const FINE_TUNED = 'fine-tuned lens model';
+
+const r1 = (x: number) => Math.round(x * 10) / 10;
+/** The focal range the solver may search: a user's hint first, then the fine-tuned lens model. The base VL read is advisory only. */
+export function solverRange(hint: number | undefined, lens: { f35: number; source: string } | null): [number, number] | undefined {
+  if (hint !== undefined) return [r1(hint * 0.75), r1(hint * 1.33)];
+  if (lens?.source === FINE_TUNED) return [r1(lens.f35 * 0.6), r1(lens.f35 * 1.6)];
+  return undefined;
+}
+
 const firstNumber = (s: string) => { const m = /"?f35"?\s*:\s*([\d.]+)/.exec(s) ?? /([\d.]+)/.exec(s); return m ? Number(m[1]) : NaN; };
 
 /** 35 mm-equivalent focal estimate from the fine-tuned lens model, else Nemotron VL, else null. */
@@ -56,7 +66,7 @@ export async function readLens(image: string): Promise<{ f35: number; source: st
   const prompt = 'Estimate the 35 mm-equivalent focal length (diagonal) this photo was taken with. Reply with strict JSON only: {"f35": <number>}';
   let base: string, key: string | null, model: string, source: string;
   if (process.env.LENS_URL) {
-    base = process.env.LENS_URL.replace(/\/$/, ''); key = null; model = process.env.LENS_MODEL ?? 'lens'; source = 'fine-tuned lens model';
+    base = process.env.LENS_URL.replace(/\/$/, ''); key = null; model = process.env.LENS_MODEL ?? 'lens'; source = FINE_TUNED;
   } else if ((key = secret('nvidia_key'))) {
     base = NVIDIA_BASE; model = MODELS.lens; source = model;
   } else return null;
