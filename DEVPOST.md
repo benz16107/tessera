@@ -127,9 +127,8 @@ More mapped spots, starting with one we shoot ourselves at UTD; a side-by-side e
 
 <!-- DEVPOST SHORT END -->
 
-## Open TODOs (Ben)
+## Open items after submission
 
-- Team members (up to 4) on the Devpost form.
-- The main video link, and each track video (shot lists on the track pages).
-- A licence for the code (the README says none is chosen yet).
 - Photon dashboard lines (`crew/PHOTON.md`), so the iMessage, SMS, voice, email and WhatsApp beats can go live.
+- A licence for the code (the README says none is chosen yet).
+- Deploy the crew fix that makes group chats answer "Tessera" (committed, not deployed during judging).
