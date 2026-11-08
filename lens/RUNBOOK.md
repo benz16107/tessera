@@ -94,3 +94,18 @@ Budget $5 on either and destroy the box as soon as the adapter and merged checkp
 - CUDA out of memory on an A40: `GRAD_CKPT=1 MAX_TILES=2 bash lens/train.sh`.
 - vLLM cannot load `merged`: compare the file list in `checkpoints/lens/merged` with the base repo. `preprocessor_config.json` there carries `max_num_tiles`.
 - Fine-tuned model answers without JSON: check `train_log.jsonl`; the supervised text is `{"f35": N, "bin": "..."}` followed by the end token, and `eval.py` counts an unparseable answer as wrong.
+
+## Create and tear down the box (Vultr API)
+
+```sh
+set -a; . ~/.config/calhacks13/env; set +a      # VULTR_API_KEY; the API accepts linuxbox's IP only
+V(){ curl -s -H "Authorization: Bearer $VULTR_API_KEY" -H "Content-Type: application/json" "$@"; }
+# create (A40, lax, Ubuntu 24.04, linuxbox ssh key, firewall group allowing ssh and 8000 from linuxbox only)
+V -X POST https://api.vultr.com/v2/instances -d '{"region":"lax","plan":"vcg-a40-24c-120g-48vram","os_id":2284,"label":"shotmatch-gpu","hostname":"shotmatch-gpu","sshkey_id":["c798cc9a-7287-44d7-a708-95856e72c460"],"firewall_group_id":"1e1555f1-e275-4f73-90e3-2e70ec9578ed","enable_ipv6":false}'
+# find the id and ip
+V https://api.vultr.com/v2/instances | python3 -c "import json,sys;[print(i['id'],i['main_ip'],i['status']) for i in json.load(sys.stdin)['instances']]"
+# TEARDOWN (the lead runs this after judging on Sunday): stops all billing for the box
+V -X DELETE https://api.vultr.com/v2/instances/<instance-id>
+V -X DELETE https://api.vultr.com/v2/firewalls/1e1555f1-e275-4f73-90e3-2e70ec9578ed   # after the instance is gone
+```
+A stopped instance still bills, so delete it. The A40 plan is `vcg-a40-24c-120g-48vram` ($1250 per month, about $1.71/h); the A100 is `vcg-a100-12c-120g-80vram` in ewr.

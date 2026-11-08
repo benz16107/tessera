@@ -8,6 +8,7 @@ Test split: whole landmarks the model never saw (london_bigben, nyc_dumbo, toron
 | Typical at landmark (leave-one-out on test, optimistic) | 55.2% | 16.7% | 55.4% | 68.7% (n=268) | 480/480 |
 | Always 'wide' | 57.5% | 16.7% | 60.4% | 68.7% (n=268) | 480/480 |
 | OpenAI gpt-6.1-sol (zero-shot) | 68.3% | 13.8% | 67.7% | 75.7% (n=268) | 480/480 |
+| Base nvidia/nemotron-3.5-super-vl-120b-a12b (zero-shot, hosted) | 54.8% | 22.6% | 54.2% | 66.8% (n=268) | 480/480 |
 
 ## Dataset
 
