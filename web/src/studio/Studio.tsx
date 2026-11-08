@@ -1050,7 +1050,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
           </>
         )}
         {!focus && !liveOpen && !geoOpen && view !== 'map' && (view !== 'shot' || cmdOpen) && (
-          <div className={`st-cmd${vp.w < 900 && !cmdOpen ? ' compact' : ''}`} style={view === 'shot' ? { top: vp.w < 1150 ? 104 : 56 } : undefined}>
+          <div className={`st-cmd${vp.w < 900 && !cmdOpen ? ' compact' : ''}`} style={view === 'shot' ? { top: vp.w < 1150 ? 104 : 56, left: 12, right: 'auto', width: Math.min(420, vp.w - 24) } : undefined}>{/* Through Cam A: opened by Ctrl+K, a palette over the frame's top until Close */}
             <div className={`st-float${cmdOpen ? ' st-cmd-open' : ''}`} data-opts={cmdOpts}>
               {!cmdOpen && (
                 <button className="st-cmd-pill" onClick={() => setCmdOpen(true)}><span className="st-cmd-text">Describe a change</span>{vp.w < 900 && <span>Describe</span>}<span className="st-meta st-cmd-who">Nemotron</span><span className="st-meta">⌘K</span></button>
