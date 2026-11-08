@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import Credits from './Credits.tsx';
-import { rememberView, storedView, viewPath, type ViewName } from './simple/view.ts';
+import { storedView, viewPath, type ViewName } from './simple/view.ts';
 
 const Home = lazy(() => import('./simple/Drop.tsx')); // the drop page stays light: no 3D libraries
 const Simple = lazy(() => import('./simple/Simple.tsx'));
@@ -25,9 +25,8 @@ export class LoadBoundary extends Component<{ children: ReactNode; label: string
         <p>{/webgl|webglrenderer|graphics context/i.test(this.state.error)
           ? 'The browser could not start the 3D graphics view. Check that hardware acceleration is enabled, then reload.'
           : 'Reload to try again. If it still fails, share the error below.'}</p>
-        <details><summary>Error details</summary><pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxWidth: '60ch' }}>{this.state.error}</pre></details>
+        <details open><summary>Error details</summary><pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxWidth: '60ch' }}>{this.state.error}</pre></details>
         <button className="btn" onClick={() => location.reload()}>Reload</button>
-        {location.pathname.startsWith('/studio/') && <a href={location.pathname.replace('/studio/', '/p/') + location.search} onClick={() => rememberView('simple')}>Open Simple view</a>}
       </div>
     );
   }
