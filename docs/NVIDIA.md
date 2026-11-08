@@ -62,6 +62,8 @@ The studio renders only the user's objects from the shot camera (beauty, depth, 
 
 Measured on the public URL (test session, Qwen-Image as the generator because FLUX refused): composite 0.6 s; check 1 failed in 3.9 s ("lit from a low side angle while the real scene is flat overcast"); strength raised to 0.70 and re-rendered; check 2 in 5.5 s; Nano Omni's second opinion in 1.2 s (it called our crude test object "disproportionately large compared to the surrounding buildings"); 29 s in total.
 
+Placeholders become real. Grey mannequins and low-poly stand-in props are placeholders. Each one gets its own mask from the studio's object-ID layer and a prompt built from its row ("the grey mannequin in the centre, about 7 m from the camera, becomes a real person, walking, about 1.72 m tall, casual clothes that suit a cloudy late autumn golden hour, lit by soft overcast light, facing the camera"). Its padded crop is edited on its own and tone-matched to the photo at the crop's border. Only the placeholder and what the edit changed next to it are pasted back, fully opaque, so the rest of the photo stays exactly as it was. When over 35% of a mannequin comes back unchanged, the crop is edited again. The physics check also asks whether any person still looks like a mannequin, a statue or a 3D model, or is see-through. A flagged object gets one more edit, and the render keeps whichever round scored better. Before and after on the A9TVAN photo, one and two people: `web/screenshots/render-people-*.png` (about 25 to 30 s each with Qwen-Image doing the edits).
+
 ### 4. Generation into the set
 `POST /api/props/generate` ends every mode as a `scene_object` at real-world size:
 - **words to 3D:** TRELLIS text mode;
