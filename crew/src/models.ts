@@ -73,7 +73,7 @@ async function contentSafety(content: any, role: string): Promise<Safety | null>
 const POLICY = 'Should this photo be refused by a service that finds where a photo was taken? Refuse if it is unsafe content, if its subject is ' +
   'a private home or residence, or if it is aimed at a specific person rather than a public place (people in a public scene are fine).';
 
-/** Screens an upload: Nemotron Content Safety for general harm, and Super VL for ShotMatch's own rule (no homes, no photos aimed at a person), in parallel. null = no key at all. */
+/** Screens an upload: Nemotron Content Safety for general harm, and Super VL for Tessera's own rule (no homes, no photos aimed at a person), in parallel. null = no key at all. */
 export async function safetyCheck(image: string, text = ''): Promise<Safety | null> {
   const key = secret('nvidia_key');
   if (!key && !secret('vultr_inference_key')) return null;

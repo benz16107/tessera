@@ -18,7 +18,7 @@ export function planeGlb(image: Buffer, mime: 'image/jpeg' | 'image/png', widthM
   views.push({ buffer: 0, byteOffset: off, byteLength: image.length });
   off += img.length;
   const json = {
-    asset: { version: '2.0', generator: 'ShotMatch crew planeGlb' },
+    asset: { version: '2.0', generator: 'Tessera crew planeGlb' },
     scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0, name: 'image' }],
     meshes: [{ primitives: [{ attributes: { POSITION: 0, NORMAL: 1, TEXCOORD_0: 2 }, indices: 3, material: 0 }] }],
     materials: [{ pbrMetallicRoughness: { baseColorTexture: { index: 0 }, metallicFactor: 0, roughnessFactor: 0.85 }, doubleSided: true }],

@@ -1,9 +1,9 @@
 ---
 title: Privacy
-description: What this site and the ShotMatch app store, and which services process it.
+description: What this site and the Tessera app store, and which services process it.
 ---
 
-ShotMatch is a project built at HackUTD 2026. This page covers this documentation site and the ShotMatch app at [104-238-146-229.sslip.io](https://104-238-146-229.sslip.io). It matches the privacy page inside the app. Last updated November 8, 2026.
+Tessera is a project built at HackUTD 2026. This page covers this documentation site and the Tessera app at [104-238-146-229.sslip.io](https://104-238-146-229.sslip.io). It matches the privacy page inside the app. Last updated November 8, 2026.
 
 ## This site
 
@@ -35,4 +35,4 @@ The person who started a shoot can delete it from Share in the app. That removes
 
 ## Contact
 
-Ask at the ShotMatch table at HackUTD, or through the Devpost project page.
+Ask at the Tessera table at HackUTD, or through the Devpost project page.

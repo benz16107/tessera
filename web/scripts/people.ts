@@ -81,7 +81,7 @@ for (const m of gltf.materials) {
   const g = m.name === 'M_Joints' ? 0.16 : 0.62;
   m.pbrMetallicRoughness = { ...m.pbrMetallicRoughness, baseColorFactor: [g, g, g * 0.97, 1], roughnessFactor: 0.7 };
 }
-gltf.asset = { ...gltf.asset, copyright: 'Universal Animation Library by Quaternius, CC0 1.0 (pruned and recoloured for ShotMatch)' };
+gltf.asset = { ...gltf.asset, copyright: 'Universal Animation Library by Quaternius, CC0 1.0 (pruned and recoloured for Tessera)' };
 
 let body = Buffer.concat(chunks);
 body = Buffer.concat([body, Buffer.alloc((4 - (body.length % 4)) % 4)]);

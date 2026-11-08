@@ -16,7 +16,7 @@ const PHASE_TEXT: Record<Phase, string> = { idle: '', uploading: 'Uploading your
 export function Wordmark() {
   return (
     <a className="s-logo" href="/" onClick={e => { e.preventDefault(); navigate('/'); }}>
-      <Viewfinder width={18} height={18} /> ShotMatch
+      <Viewfinder width={18} height={18} /> Tessera
     </a>
   );
 }
@@ -72,7 +72,7 @@ export default function Home() {
       // The photo's GPS picks the spot; with one spot loaded, that one is the answer.
       const spotId = knownSpot || u.nearestSpot || (spots.length === 1 ? spots[0].id : '');
       for (let i = 0; !latest.current.mineReady && i < 100; i++) await new Promise(r => setTimeout(r, 100));
-      if (!latest.current.mineReady) throw new Error('Still connecting to ShotMatch. Try again in a moment.');
+      if (!latest.current.mineReady) throw new Error('Still connecting to Tessera. Try again in a moment.');
       pending.current = { u, spotId, before: new Set(latest.current.mine.map(s => String(s.id))) };
       setPhase('creating');
       const nm = localStorage.getItem(NAME_KEY) || 'Guest';
@@ -115,7 +115,7 @@ export default function Home() {
       </header>
       <main className="s-home-main">
         <h1>Where did they stand?</h1>
-        <p className="s-lede">Drop in a photo of a place you love. ShotMatch finds where the photographer stood, which way they faced and the lens they used.</p>
+        <p className="s-lede">Drop in a photo of a place you love. Tessera finds where the photographer stood, which way they faced and the lens they used.</p>
         <div className="s-drop" data-busy={busy || undefined} aria-busy={busy}>
           <i className="s-corner tl" /><i className="s-corner tr" /><i className="s-corner bl" /><i className="s-corner br" />
           <input ref={input} id="s-file" type="file" accept="image/*,.heic,.heif" className="sr-only"

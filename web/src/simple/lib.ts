@@ -13,10 +13,10 @@ export async function uploadPhoto(file: Blob, name = ''): Promise<Upload> {
   if (file.size > MAX) throw new Error('Photos up to 25 MB.');
   let r: Response;
   try { r = await fetch('/api/upload', { method: 'POST', body: file, headers: { 'Content-Type': type } }); }
-  catch { throw new Error('Could not reach ShotMatch. Check the connection and try again.'); }
+  catch { throw new Error('Could not reach Tessera. Check the connection and try again.'); }
   if (!r.ok) {
     const j = await r.json().catch(() => ({} as { error?: string }));
-    throw new Error(r.status >= 502 ? 'ShotMatch is not taking photos right now. Try again in a minute.' : j.error ?? `Upload failed (${r.status}).`);
+    throw new Error(r.status >= 502 ? 'Tessera is not taking photos right now. Try again in a minute.' : j.error ?? `Upload failed (${r.status}).`);
   }
   return r.json();
 }

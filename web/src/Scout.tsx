@@ -28,7 +28,7 @@ export default function Scout({ code }: { code: string }) {
   const me = identity && parts.find(p => p.identity.isEqual(identity));
   useClaimInvite(me ? me.id : undefined); // opened from a Photon invite: link this phone to the invitee's channel
 
-  const brand = <p className="s-logo"><Viewfinder width={18} height={18} /> ShotMatch</p>;
+  const brand = <p className="s-logo"><Viewfinder width={18} height={18} /> Tessera</p>;
   if (!ready || (card && !partsReady)) return <div className="simple s-center" aria-busy="true">{brand}<span className="s-sk s-sk-line" /></div>;
   if (!card) return <div className="simple s-center">{brand}<h1>No shoot with the code {code}</h1><p className="s-muted">Check the link or the QR code.</p></div>;
   if (!me || me.role !== 'scout') {

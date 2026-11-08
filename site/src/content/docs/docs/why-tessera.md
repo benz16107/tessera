@@ -1,6 +1,6 @@
 ---
-title: Why ShotMatch
-description: The problem ShotMatch solves, what people already ask for, the numbers we measured, and common questions.
+title: Why Tessera
+description: The problem Tessera solves, what people already ask for, the numbers we measured, and common questions.
 ---
 
 ## A photo shows you the place, not where to stand
@@ -13,13 +13,13 @@ What people ask for, in their own words:
 - A wedding photographer with 10 years of experience can't find the spot in her sister's elopement photos ([r/WeddingPhotography](https://reddit.com/r/WeddingPhotography/comments/1hr7i2c/)).
 - Guides to our own demo shot, the Manhattan Bridge from Washington St, disagree on which block to stand on ([triptins.com](https://triptins.com/manhattan-bridge-view-spot-dumbo/)).
 
-The tools that exist each cover one side of the gap. Lens and similar tools name the place. Spot directories list spots someone already posted. PhotoPills plans the sun once you know where you stand. Ghost-overlay apps help once you are already there. ShotMatch does the step between them: photo to standing spot, heading and lens. Then the scout page's ghost overlay covers the last metres, and the timeline picks the light.
+The tools that exist each cover one side of the gap. Lens and similar tools name the place. Spot directories list spots someone already posted. PhotoPills plans the sun once you know where you stand. Ghost-overlay apps help once you are already there. Tessera does the step between them: photo to standing spot, heading and lens. Then the scout page's ghost overlay covers the last metres, and the timeline picks the light.
 
 ## Measured
 
 | Number | What it means | Source |
 |---|---|---|
-| 10 of 11 | Held-out photos from other photographers placed at the DUMBO spot. The 11th had 75 matches and ShotMatch said "Couldn't place" instead of guessing. | `spots/nyc_dumbo/eval.md`, [Solve against the open 3D model](/docs/how-it-works/solve/) |
+| 10 of 11 | Held-out photos from other photographers placed at the DUMBO spot. The 11th had 75 matches and Tessera said "Couldn't place" instead of guessing. | `spots/nyc_dumbo/eval.md`, [Solve against the open 3D model](/docs/how-it-works/solve/) |
 | 9 of 11 | Of those, placed within 25 m of the photo's own phone GPS (median 14 m; phone GPS is off by metres). | `spots/nyc_dumbo/eval.md` |
 | 3% | Median focal length error on the held-out photos. | `spots/nyc_dumbo/eval.md` |
 | 15.8 s | Median time to solve a photo on a CPU (11.0 to 18.5 s). | `spots/nyc_dumbo/eval.md` |
@@ -50,4 +50,4 @@ It is stored so everyone in your shoot can see it, and NVIDIA hosted models read
 
 ### Can someone use it to find where a person lives?
 
-ShotMatch can only place a photo at a spot we mapped, and we map public places that are already famous. Nemotron Content Safety screens every upload.
+Tessera can only place a photo at a spot we mapped, and we map public places that are already famous. Nemotron Content Safety screens every upload.

@@ -46,7 +46,7 @@ export function callerSession(a: { caller?: string; session_id?: string; session
   return null;
 }
 
-const NO_SESSION = { say: "I don't have a set for this number yet. Text a photo to ShotMatch from this phone first, or tell me the six-letter set code." };
+const NO_SESSION = { say: "I don't have a set for this number yet. Text a photo to Tessera from this phone first, or tell me the six-letter set code." };
 
 /** The caller's live position: their own scout page if their number is linked to a participant, else the newest scout in the set. */
 function livePose(c: Caller) {
@@ -112,7 +112,7 @@ export async function sendFraming(caller: string, idem: string): Promise<string>
   const dk = `framing:${normHandle(caller)}`, last = Number(sharedStore().get('sent', dk) ?? 0);
   if (Date.now() - last < 10 * 60_000) return 'already sent for this call';
   sharedStore().put('sent', dk, Date.now());
-  const f = framing(s.sessionId) ?? 'Thanks for calling ShotMatch.';
+  const f = framing(s.sessionId) ?? 'Thanks for calling Tessera.';
   const job = latestRender(s.sessionId), path = job ? await ensureLocal(job.imageUrl) : null;
   const version = job ? [...conn.db.shotVersion.sessionId.filter(s.sessionId)].find(v => v.imageUrl === job.imageUrl) : undefined;
   const text = `After your call, here is the framing. ${f}${version ? ` The latest render is ${version.label}; reply to it to change it.` : ''} Live set: ${PUBLIC_URL}/p/${conn.db.session.id.find(s.sessionId)?.code ?? ''}`;

@@ -49,7 +49,7 @@ async function sessionFor(m: Inbound, channel: Channel): Promise<{ t: ThreadInfo
     const title = `photon:${m.platform}:${m.spaceId}`.slice(0, 120);
     const mine = conn.identity!.toHexString();
     const find = () => [...conn.db.session.iter()].find(s => s.title === title && s.owner.toHexString() === mine);
-    if (!find()) await conn.reducers.createSession({ spotId: '', title, name: 'ShotMatch' });
+    if (!find()) await conn.reducers.createSession({ spotId: '', title, name: 'Tessera' });
     sessionId = (await until(find, 15_000, 'the new session')).id;
     const t: ThreadInfo = { sessionId: String(sessionId), channel: m.platform, chatId: m.spaceId, handle: direct ? m.handle : '', senderId: m.agentUserId, kind: m.spaceKind };
     store.setThread(t);
@@ -63,7 +63,7 @@ async function sessionFor(m: Inbound, channel: Channel): Promise<{ t: ThreadInfo
 type Ctx = { m: Inbound; t: ThreadInfo; sessionId: bigint; channel: Channel; target: Target; name: string; participantId: bigint; upload?: Ingested; isNew: boolean };
 
 /** A reply into the thread, threaded on the person's message, mirrored into the session. */
-const reply = (c: Ctx, text: string) => run(c.target, [{ op: 'text', text, subject: 'Re: ShotMatch' }], { parentMessageId: c.m.messageId, idem: `reply:${c.m.messageId}` });
+const reply = (c: Ctx, text: string) => run(c.target, [{ op: 'text', text, subject: 'Re: Tessera' }], { parentMessageId: c.m.messageId, idem: `reply:${c.m.messageId}` });
 
 /** Words for the set, then (when the set changed and there is a photo to render over) a numbered render back into the thread. */
 async function setTurn(c: Ctx, words: string, fork?: { id: bigint; label: string; sessionId: bigint }) {
@@ -209,7 +209,7 @@ async function handle(m: Inbound) {
   finally { release(); }
 }
 
-/** In groups, answer photos, replies to us and messages that name ShotMatch; in direct chats, everything. */
+/** In groups, answer photos, replies to us and messages that name Tessera; in direct chats, everything. */
 export const shouldAnswer = (m: Inbound) =>
   m.spaceKind === 'direct' || m.attachmentIds.length > 0 || !!m.parentId || /shot\s?match/i.test(m.text) || !!parseCommand(m.text);
 

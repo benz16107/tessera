@@ -48,7 +48,7 @@ const demo = conn.db.session.code.find('A9TVAN')!, solved = latestSolved(demo.id
 const spot = conn.db.spot.id.find(demo.spotId || 'nyc_dumbo')!, p = solved.p, pose = solved.r!.pose;
 for (const n of (process.argv.slice(2).map(Number).filter(Boolean).length ? process.argv.slice(2).map(Number) : [1, 2])) {
   const title = `nvidia-render-people-${n}-${Date.now()}`;
-  await conn.reducers.createSession({ spotId: spot.id, title, name: 'ShotMatch crew' });
+  await conn.reducers.createSession({ spotId: spot.id, title, name: 'Tessera crew' });
   const s = await until(() => [...conn.db.session.iter()].find(x => x.title === title), 15_000, 'the test session');
   try {
     await conn.reducers.addPhoto({ sessionId: s.id, spotId: '', url: p.url, thumb: p.thumb, width: p.width, height: p.height, pinLat: undefined, pinLon: undefined, exifF35: p.exifF35, source: 'web' });

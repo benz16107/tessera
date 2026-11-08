@@ -1,5 +1,5 @@
 // Go anywhere: place search through OpenStreetMap's Nominatim (usage policy: at most one request a second, searches only on
-// Enter, attribution shown with the results). A browser can't set User-Agent; the page's Referer identifies ShotMatch,
+// Enter, attribution shown with the results). A browser can't set User-Agent; the page's Referer identifies Tessera,
 // which the policy accepts for web apps.
 import { useEffect, useRef, useState } from 'react';
 import { Ico } from './ui.tsx';

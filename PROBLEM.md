@@ -1,4 +1,4 @@
-# The problem ShotMatch solves
+# The problem Tessera solves
 
 Research of Sat Nov 7, 2026, from 1,900 Reddit posts in 30 searches (Arctic Shift archive) and web sources. The raw pulls are in `~/Code/scratch/shotmatch-problem/` on linuxbox.
 
@@ -6,7 +6,7 @@ Research of Sat Nov 7, 2026, from 1,900 Reddit posts in 30 searches (Arctic Shif
 
 A photo shows you a place but not where to stand. Google Lens names the landmark in a second. The standing spot, the direction and the zoom are still guesswork, so people ask strangers online, message photographers who often won't say, or walk around until the shot lines up. Even at the right corner, a phone on 1x gets a different picture when the original was shot from farther back with a longer lens.
 
-Pitch line: **Google Lens tells you what's in the photo. ShotMatch tells you where to stand.**
+Pitch line: **Google Lens tells you what's in the photo. Tessera tells you where to stand.**
 
 ## Who has it
 
@@ -36,12 +36,12 @@ Pitch line: **Google Lens tells you what's in the photo. ShotMatch tells you whe
 | PhotoPills | Plans sun and moon | Assumes you already know where you'll stand (its Find tool: "you know from where you wish to take the photo") https://www.photopills.com/user-guide |
 | Vantage Point, GhostViewer, rePhoto | Ghost overlay of the old photo on your camera | Helps only once you're already at the spot https://ghostviewer.co.uk/all-posts/features/rephotography-alignment-guide/ |
 
-ShotMatch does the step between them: photo to standing spot, heading and lens. Then the scout page's ghost overlay covers the last meters and the sun planner picks the light.
+Tessera does the step between them: photo to standing spot, heading and lens. Then the scout page's ghost overlay covers the last meters and the sun planner picks the light.
 
 ## Questions judges may ask
 
-- **Won't this crowd fragile spots?** Photographers keep spots private because shared spots get trashed and closed (the wedding thread, https://www.responsiblephoto.com/blog/thinking-twice-before-sharing-locations). ShotMatch maps only public spots that are already famous. The DUMBO view is a city street with its own visitor website.
-- **Stalking?** GeoSpy closed public access in January 2025 after users asked it to find specific women (404 Media, via https://www.malwarebytes.com/blog/news/2025/01/ai-tool-geospy-analyzes-images-and-identifies-locations-in-seconds). ShotMatch can't place a photo anywhere we haven't mapped, and Nemotron safety screens every upload.
+- **Won't this crowd fragile spots?** Photographers keep spots private because shared spots get trashed and closed (the wedding thread, https://www.responsiblephoto.com/blog/thinking-twice-before-sharing-locations). Tessera maps only public spots that are already famous. The DUMBO view is a city street with its own visitor website.
+- **Stalking?** GeoSpy closed public access in January 2025 after users asked it to find specific women (404 Media, via https://www.malwarebytes.com/blog/news/2025/01/ai-tool-geospy-analyzes-images-and-identifies-locations-in-seconds). Tessera can't place a photo anywhere we haven't mapped, and Nemotron safety screens every upload.
 
 ## Where the evidence is weak
 

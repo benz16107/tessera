@@ -8,7 +8,7 @@ const path = Astro.url.pathname;
 const here = current ?? (path.startsWith('/tracks') ? 'tracks' : path.startsWith('/docs') ? 'docs' : 'home');
 ---
 <div class="sm-bar">
-  <a class="sm-brand" href="/" aria-label="ShotMatch home"><span class="sm-mark" set:html={mark} />ShotMatch</a>
+  <a class="sm-brand" href="/" aria-label="Tessera home"><span class="sm-mark" set:html={mark} />Tessera</a>
   <slot name="middle" />
   <nav class="sm-nav" aria-label="Site">
     <a href="/tracks/" aria-current={here === 'tracks' ? 'page' : undefined}>Tracks</a>

@@ -64,7 +64,7 @@ export async function photonRoute(p: string, req: IncomingMessage, res: ServerRe
   const sheet = /^\/sheet\/([A-Za-z2-9]{6})$/.exec(p);
   if (sheet && req.method === 'GET') {
     const s = byCode(sheet[1]), saved = s && savedSheet(s.id);
-    if (!saved) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); res.end('No call sheet for this set yet. Text "call sheet" to ShotMatch or press Send call sheet in the studio.'); return true; }
+    if (!saved) { res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }); res.end('No call sheet for this set yet. Text "call sheet" to Tessera or press Send call sheet in the studio.'); return true; }
     const last = [...conn.db.previewJob.sessionId.filter(s!.id)].filter(j => j.state === 'done' && j.imageUrl).sort((a, b) => Number(b.id - a.id))[0];
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' });
     res.end(sheetHtml(saved, s!.code, last ? `${PUBLIC_URL}${last.imageUrl}` : undefined));

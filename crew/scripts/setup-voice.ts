@@ -1,4 +1,4 @@
-// Creates (or updates) the ElevenLabs "ShotMatch guide" phone agent, its three webhook tools and the post-call webhook.
+// Creates (or updates) the ElevenLabs "Tessera guide" phone agent, its three webhook tools and the post-call webhook.
 // Safe to re-run: ids live in data/voice.json. Secrets: elevenlabs_key, voice_tool_secret; writes elevenlabs_webhook_secret.
 // Usage: npx tsx scripts/setup-voice.ts [public-base-url]
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -57,26 +57,26 @@ for (const [name, t] of Object.entries(TOOLS)) {
 }
 
 if (!st.webhookId) {
-  const w = await el('POST', '/v1/workspace/webhooks', { settings: { auth_type: 'hmac', name: 'ShotMatch post-call', webhook_url: `${base}/api/voice/ended` } });
+  const w = await el('POST', '/v1/workspace/webhooks', { settings: { auth_type: 'hmac', name: 'Tessera post-call', webhook_url: `${base}/api/voice/ended` } });
   st.webhookId = w.webhook_id; save();
   if (w.webhook_secret) writeFileSync(join(SECRETS, 'elevenlabs_webhook_secret'), w.webhook_secret, { mode: 0o600 });
   console.log(`post-call webhook ${w.webhook_id}${w.webhook_secret ? ', secret saved to elevenlabs_webhook_secret' : ', NO secret returned'}`);
 }
 
-const prompt = `You are the ShotMatch set on a phone call. The caller is part of a photo shoot planned in a shared virtual set, and they may be walking to the spot right now.
+const prompt = `You are the Tessera set on a phone call. The caller is part of a photo shoot planned in a shared virtual set, and they may be walking to the spot right now.
 Start by calling get_plan and say the plan in one short sentence. To guide them, call guide_me and read its one instruction; call it again every time they say they moved or ask "where now", until it says they are on the mark.
 When they ask to change the shot ("move the bike to the left", "make it sunset", "add two friends"), call edit_set with their words and tell them it is done; everyone planning sees it live.
-Keep every answer under 25 words. Never read out coordinates. If a tool says there is no set, ask them to text ShotMatch a photo first or to say the six-letter set code.
+Keep every answer under 25 words. Never read out coordinates. If a tool says there is no set, ask them to text Tessera a photo first or to say the six-letter set code.
 Before hanging up, say you will text them the final framing.`;
 
 const agentBody = {
-  name: 'ShotMatch guide',
+  name: 'Tessera guide',
   conversation_config: {
-    agent: { first_message: 'Hi, this is ShotMatch. I can walk you to your mark or change the shot by voice. One second while I pull up your set.', language: 'en', prompt: { prompt, tool_ids: Object.values(st.tools) } },
+    agent: { first_message: 'Hi, this is Tessera. I can walk you to your mark or change the shot by voice. One second while I pull up your set.', language: 'en', prompt: { prompt, tool_ids: Object.values(st.tools) } },
   },
   platform_settings: { workspace_overrides: { webhooks: { post_call_webhook_id: st.webhookId, events: ['transcript'] } } },
 };
 if (st.agentId) await el('PATCH', `/v1/convai/agents/${st.agentId}`, agentBody);
 else { st.agentId = (await el('POST', '/v1/convai/agents/create', agentBody)).agent_id; save(); }
-console.log(`agent "ShotMatch guide": ${st.agentId}`);
+console.log(`agent "Tessera guide": ${st.agentId}`);
 console.log(`tools: ${JSON.stringify(st.tools)}`);

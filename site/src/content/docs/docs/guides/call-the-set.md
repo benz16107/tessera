@@ -7,12 +7,12 @@ At the spot your hands are full: a phone, a bag, maybe a tripod. You can talk, t
 
 ## Status
 
-The call is built and the agent is configured, but it needs a phone number to dial. That number is a Photon line with a SIP profile pointed at the ElevenLabs agent, which is a setup step in Photon's dashboard (step 5 in `crew/PHOTON.md`). Until it exists, ShotMatch publishes no number to call. The tools below were tested against a stand-in for Photon's Beta API with the real crew and the real SpacetimeDB module: `guide_me` and `edit_set` both ran in the end-to-end check.
+The call is built and the agent is configured, but it needs a phone number to dial. That number is a Photon line with a SIP profile pointed at the ElevenLabs agent, which is a setup step in Photon's dashboard (step 5 in `crew/PHOTON.md`). Until it exists, Tessera publishes no number to call. The tools below were tested against a stand-in for Photon's Beta API with the real crew and the real SpacetimeDB module: `guide_me` and `edit_set` both ran in the end-to-end check.
 
 ## What happens on a call
 
-1. You call the ShotMatch number. Photon hands the call over SIP to an ElevenLabs agent ("ShotMatch guide").
-2. The agent finds your set: from your phone number's channel link, else your latest Photon thread, else the six-letter set code you say. If it finds none, it says: "I don't have a set for this number yet. Text a photo to ShotMatch from this phone first, or tell me the six-letter set code."
+1. You call the Tessera number. Photon hands the call over SIP to an ElevenLabs agent ("Tessera guide").
+2. The agent finds your set: from your phone number's channel link, else your latest Photon thread, else the six-letter set code you say. If it finds none, it says: "I don't have a set for this number yet. Text a photo to Tessera from this phone first, or tell me the six-letter set code."
 3. While you talk, it calls tools on the crew (`POST /api/tools/<name>`, guarded by a shared secret):
    - **`get_plan`** reads out the framing: "The mark is `where`. Face `direction`, `n` millimetre lens, about `zoom` on an iPhone."
    - **`guide_me`** gives one turn-by-turn instruction from your phone's live position and compass on the scout page, for example "Turn left 26 degrees, then walk 12 m north." It uses your own scout page when your number is linked to you, else the newest scout in the set, and only positions from the last 10 minutes.
@@ -23,7 +23,7 @@ The call is built and the agent is configured, but it needs a phone number to di
 ## Before you call
 
 - Open the scout page on the same phone (see [Scout to the mark](/docs/guides/scout-to-the-mark/)) so `guide_me` has your live position. Without it, the agent can still read the plan and edit the set.
-- Text a photo to the ShotMatch line once from that phone, or have someone invite your number from Share, so your number is linked to the set.
+- Text a photo to the Tessera line once from that phone, or have someone invite your number from Share, so your number is linked to the set.
 
 ## Voice in the studio
 

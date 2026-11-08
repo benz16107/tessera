@@ -17,7 +17,7 @@ const { t, prev, next } = Astro.props;
 const STATUS: Record<Status, string> = { live: 'Live', built: 'Built', 'stand-in': 'Stand-in proof', blocked: 'Blocked' };
 const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['threads', 'The threads']] : []), ['where', "Where it's used"], ['proof', 'Proof'], ['split', 'Ours vs theirs'], ['limits', 'Limits'], ['video', 'Video']];
 ---
-<Landing title={`${t.sponsor} track: ShotMatch`} description={t.oneLine} current="tracks">
+<Landing title={`${t.sponsor} track: Tessera`} description={t.oneLine} current="tracks">
   <article class="tk">
     <header class="tk-head">
       <nav class="crumbs" aria-label="Breadcrumb"><a href="/tracks/">Tracks</a><span aria-hidden="true">/</span>{t.sponsor}</nav>
@@ -66,7 +66,7 @@ const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['
 
     <section id="where" class="tk-sec">
       <h2>Where it's used</h2>
-      <p class="sub">{t.uses.length} places in ShotMatch, each with where it lives in the code.</p>
+      <p class="sub">{t.uses.length} places in Tessera, each with where it lives in the code.</p>
       <ul class="uses">
         {t.uses.map((u) => (
           <li class:list={['use', { 'has-img': !!u.img }]}>
@@ -98,7 +98,7 @@ const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['
     <section id="split" class="tk-sec">
       <h2>{t.splitTitle ?? `What's ours, what's ${t.sponsor}'s`}</h2>
       <div class="split">
-        <div><h3>ShotMatch built</h3><ul>{t.ours.map((x) => <li>{x}</li>)}</ul></div>
+        <div><h3>Tessera built</h3><ul>{t.ours.map((x) => <li>{x}</li>)}</ul></div>
         <div><h3>{t.theirsTitle ?? `${t.sponsor} provides`}</h3><ul>{t.theirs.map((x) => <li>{x}</li>)}</ul></div>
       </div>
     </section>

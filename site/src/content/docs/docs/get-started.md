@@ -1,14 +1,14 @@
 ---
 title: Get started
-description: Open ShotMatch, drop a photo of a mapped spot, read the answer, invite friends and reach the set by text.
+description: Open Tessera, drop a photo of a mapped spot, read the answer, invite friends and reach the set by text.
 ---
 
-ShotMatch runs in the browser. There is nothing to install.
+Tessera runs in the browser. There is nothing to install.
 
 - **Simple:** https://104-238-146-229.sslip.io
 - **The demo shoot:** https://104-238-146-229.sslip.io/p/A9TVAN in Simple, https://104-238-146-229.sslip.io/studio/A9TVAN in Studio
 
-One spot is mapped today: **Manhattan Bridge from Washington St, DUMBO** in Brooklyn. ShotMatch can only place photos taken at a spot it has a 3D model of. A photo from anywhere else gets an honest "Couldn't place" instead of a guess.
+One spot is mapped today: **Manhattan Bridge from Washington St, DUMBO** in Brooklyn. Tessera can only place photos taken at a spot it has a 3D model of. A photo from anywhere else gets an honest "Couldn't place" instead of a guess.
 
 ## 1. Drop a photo
 
@@ -22,7 +22,7 @@ What happens next, step by step on screen:
 
 - The crew stores the photo, turns HEIC into JPEG, applies the EXIF rotation and reads the photo's GPS and focal length (with the digital zoom ratio applied).
 - A new shoot starts: a SpacetimeDB session with a six-letter code, and the photo queued for a solve.
-- The GPS picks the spot. If the photo has no location, ShotMatch asks **Which place is this?** and you pick the spot it shows.
+- The GPS picks the spot. If the photo has no location, Tessera asks **Which place is this?** and you pick the spot it shows.
 - The solver matches the photo against the spot's 3D model. On our CPU this takes 11 to 18.5 s a photo (median 15.8 s on the held-out set). The page says "This usually takes about 20 seconds".
 
 How it finds the camera: [Solve against the open 3D model](/docs/how-it-works/solve/).
@@ -46,7 +46,7 @@ The confidence line says how sure the solver is. There are three states:
 | Check this | Likely match, check it | Enough matches, but the pose is more than 40 m from every mapped camera, or the solved lens falls outside the lens range the solver was given |
 | Couldn't place | Couldn't place this photo | Under 200 matches. The cut-off sits between our one wrong answer (78 matches) and the weakest right one (336), and is not calibrated beyond that |
 
-The reason line gives the count, for example "1690 matches, 1 m from a mapped camera, solved in 19 s". On "Couldn't place", ShotMatch asks **Know roughly which lens took it? It narrows the search.** and re-runs the solve with your hint as a range.
+The reason line gives the count, for example "1690 matches, 1 m from a mapped camera, solved in 19 s". On "Couldn't place", Tessera asks **Know roughly which lens took it? It narrows the search.** and re-runs the solve with your hint as a range.
 
 ## 3. Make it yours
 
@@ -67,7 +67,7 @@ Everyone in a shoot edits the same set live. Friends on Simple and a photographe
 The set also lives in message threads through Photon: renders arrive in your thread, a reply to a version forks it, a photo from the street checks you in. Status on November 8, 2026:
 
 - The production crew is connected to Photon's live API and event stream (`GET /api/photon/status` answers `"enabled": true`). Telegram is live: message @ShotMatchSetBot, or send it a photo of the Manhattan Bridge view and it answers with where to stand. iMessage, SMS, email, WhatsApp and the phone line have no public handle yet.
-- The iMessage line, SMS, the voice number, email and WhatsApp Business each need a number, DNS records or testers set up by hand in Photon's dashboard. Until they are, ShotMatch publishes no number to text, and invites on those channels are saved and go out once the line exists.
+- The iMessage line, SMS, the voice number, email and WhatsApp Business each need a number, DNS records or testers set up by hand in Photon's dashboard. Until they are, Tessera publishes no number to text, and invites on those channels are saved and go out once the line exists.
 - All five messaging mechanisms were proven end to end against a stand-in for Photon's Beta API, with the real crew, the real SpacetimeDB module and real NVIDIA models: 29 of 29 checks.
 
 Details: [Messaging](/docs/how-it-works/messaging/).

@@ -31,7 +31,7 @@ Anything anyone sends back, on any channel, lands in the session as a `message` 
 
 ## 2. Call the set
 
-Calling the ShotMatch number connects to the set by voice: an ElevenLabs agent on Photon's SIP voice line. The agent calls tools on the crew:
+Calling the Tessera number connects to the set by voice: an ElevenLabs agent on Photon's SIP voice line. The agent calls tools on the crew:
 
 - `guide_me` gives one turn-by-turn instruction from the caller's live phone position and compass on the scout page: "Turn left 26 degrees, then walk 12 m north."
 - `edit_set` sends the caller's words to the same Nemotron command the studio uses ("move the bike to the left", "make it sunset"), so planners watch the set change while the caller talks.

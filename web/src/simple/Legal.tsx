@@ -20,7 +20,7 @@ function Privacy() {
   return (
     <>
       <h1>Privacy</h1>
-      <p>ShotMatch is a hackathon project. This page says what it keeps and who it shares it with.</p>
+      <p>Tessera is a hackathon project. This page says what it keeps and who it shares it with.</p>
       <h2>What we store</h2>
       <ul>
         <li><b>Photos you add.</b> Stored on our server and our storage bucket so everyone in the shoot can see them. We keep the photo's location and focal length from its metadata to find the spot, and drop the rest.</li>
@@ -46,11 +46,11 @@ function Terms() {
     <>
       <h1>Terms</h1>
       <ul>
-        <li>ShotMatch is a demo built at HackUTD 2026. It can be offline or lose data, and comes with no warranty.</li>
+        <li>Tessera is a demo built at HackUTD 2026. It can be offline or lose data, and comes with no warranty.</li>
         <li>Only add photos you took or are allowed to use. Credit the photographer when you share a result made from someone else's photo.</li>
         <li>Renders are AI interpretations of your photo. They are not records of a real moment, so do not present them as one.</li>
         <li>The 3D view uses Google Map Tiles under Google's terms. Map imagery is shown for planning only and never enters a render or an export.</li>
-        <li>Do not use ShotMatch to follow or locate people who have not joined your shoot.</li>
+        <li>Do not use Tessera to follow or locate people who have not joined your shoot.</li>
       </ul>
     </>
   );

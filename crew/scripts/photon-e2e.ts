@@ -122,10 +122,10 @@ const got = (sp: string, from: number) => photon.sentTo(sp).slice(from);
 const mayaV1 = got(maya.spaceId, marks.maya), junV1 = got(junSpace!.id, marks.jun), theoV1 = got(theoSpace!.id, marks.theo), samV1 = got(samIn.spaceId, marks.sam), priyaV1 = got(priyaSpace!.id, marks.priya);
 check('render recorded as version v1', !!v1 && !!v1.imageUrl, v1?.imageUrl);
 check('iMessage gets the render image plus one line', mayaV1[0]?.content.type === 'attachment' && /^v1: .*Reply to this to change it/.test(textOf(mayaV1[1]?.content)), textOf(mayaV1[1]?.content));
-check('email gets one designed message: Markdown body, the image attached, a subject', junV1[0]?.content.type === 'group' && junV1[0].content.parts[0].format === 'markdown' && junV1[0].content.parts.some((p: any) => p.type === 'attachment') && /^ShotMatch v1/.test(junV1[0].email?.subject ?? ''), junV1[0]?.email?.subject);
+check('email gets one designed message: Markdown body, the image attached, a subject', junV1[0]?.content.type === 'group' && junV1[0].content.parts[0].format === 'markdown' && junV1[0].content.parts.some((p: any) => p.type === 'attachment') && /^Tessera v1/.test(junV1[0].email?.subject ?? ''), junV1[0]?.email?.subject);
 check('WhatsApp gets the image, then the line with the live set link', theoV1[0]?.content.type === 'attachment' && /v1: .*\/p\//.test(textOf(theoV1[1]?.content)));
 check('Telegram gets an album of lens options (exact crops) with a caption', samV1[0]?.content.type === 'group' && samV1[0].content.parts.length === 3 && /35 mm, 50 mm, 85 mm/.test(textOf(samV1[0].content)), textOf(samV1[0]?.content));
-check('SMS gets text plus a link to the image', priyaV1.length === 1 && /^ShotMatch v1: .* See it: http/.test(textOf(priyaV1[0].content)), textOf(priyaV1[0]?.content));
+check('SMS gets text plus a link to the image', priyaV1.length === 1 && /^Tessera v1: .* See it: http/.test(textOf(priyaV1[0].content)), textOf(priyaV1[0]?.content));
 check('outbound messages are mirrored into the session', [...planner.db.message.iter()].filter(m => m.sessionId === sid && m.direction === 'out').length >= 8);
 
 // ---- 4. the thread is the version tree: reply to v1 forks the set -------------------------------------------------

@@ -126,7 +126,7 @@ async function runSolve(j: SolveJob, spotLoaded: boolean) {
       v => (v === null ? 'skipped: NVIDIA key not set yet' : `${v.safe ? 'safe' : 'refused'} (${v.model}): ${v.detail}`));
     if (safety && !safety.safe) {
       // Keep no exact location for refused uploads: fail the job (so clients get the toast), then drop the file and every row.
-      await finish(false, 'Refused by the safety check. ShotMatch only places photos of public places, not homes or photos aimed at a person.');
+      await finish(false, 'Refused by the safety check. Tessera only places photos of public places, not homes or photos aimed at a person.');
       await forget(photo!.url);
       await conn.reducers.deletePhoto({ photoId: j.photoId }).catch(warn('deletePhoto'));
       return;

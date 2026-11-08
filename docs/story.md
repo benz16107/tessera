@@ -1,4 +1,4 @@
-# The ShotMatch story bible
+# The Tessera story bible
 
 How every track is told, in one place. The site (`site/`), the Devpost text (`DEVPOST.md`) and the track videos follow
 this file. When a principle changes, it changes for every track. Every number here comes from a file in this repo or a
@@ -6,11 +6,11 @@ worker report; where nothing was measured, the text says "not measured".
 
 **Headline:** Stand where the photo was taken. Then make the shot yours.
 
-**Under it:** Drop a photo of a place. ShotMatch finds where the photographer stood, which way they faced and what lens
+**Under it:** Drop a photo of a place. Tessera finds where the photographer stood, which way they faced and what lens
 they used, rebuilds the place as a 3D set, and your group plans its own version there together, from a browser, a text
 thread or a phone call.
 
-**Pitch line (from the research in `PROBLEM.md`):** Google Lens tells you what's in the photo. ShotMatch tells you where
+**Pitch line (from the research in `PROBLEM.md`):** Google Lens tells you what's in the photo. Tessera tells you where
 to stand.
 
 ## Principles for every track
@@ -22,7 +22,7 @@ to stand.
    couldn't get the focal length/settings right" (1,215 upvotes), a wedding photographer who couldn't find her sister's
    elopement spot, guides to our own demo shot that disagree on the block. The tools that exist each do one side of the
    gap: Lens names the place, Locationscout lists known spots, PhotoPills plans the sun once you know where you stand,
-   ghost-overlay apps help once you're there. ShotMatch does the step between them.
+   ghost-overlay apps help once you're there. Tessera does the step between them.
 2. **The virtual set is the environment everything runs in.** Entering a spot builds the place as a 3D set you work in
    like a film set: people, props, lights and cameras with real lenses. Every object is a row in SpacetimeDB, so every
    feature (Nemotron's edits, a texted photo, a phone call, a geodata layer) acts on the same set and everyone sees it.
@@ -48,10 +48,10 @@ to stand.
 9. **Label what is core and what is the track.** Core is what every track stands on: the solver and spot model, the set
    (Studio and Simple), the optics, the render compositing, the geodata layers. The track part is what the sponsor's
    product adds. Every feature says why it is there and which criterion it serves.
-10. **ShotMatch is a suite, not one screen:** Simple (phone-first, for anyone), Studio (the pro set editor), the scout
+10. **Tessera is a suite, not one screen:** Simple (phone-first, for anyone), Studio (the pro set editor), the scout
     page with the ghost overlay, the text threads and the phone line, the public library of shots and props, live
     geodata, and the docs at the site.
-11. **Safe by design.** ShotMatch can only place a photo at a spot we mapped, and we map public, already-famous places.
+11. **Safe by design.** Tessera can only place a photo at a spot we mapped, and we map public, already-famous places.
     Nemotron Content Safety screens every upload and command. Position is shared only while the camera page is open.
 
 ### Two views, one set

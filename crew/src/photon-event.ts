@@ -22,7 +22,7 @@ function flatten(c: any, texts: string[], atts: string[]) {
 /** Email replies quote the whole thread below the new text; keep only what the person wrote. */
 export const stripQuoted = (t: string) => t.split(/\n(?:On .{5,200} wrote:|-{2,} ?Original Message|>.*\n>)/)[0].trim();
 
-/** A human's message.received on a channel ShotMatch answers, else null (receipts, typing, edits, our own sends). */
+/** A human's message.received on a channel Tessera answers, else null (receipts, typing, edits, our own sends). */
 export function parseInbound(ev: any): Inbound | null {
   if (ev?.type !== 'message.received') return null;
   const m = ev.data?.object ?? ev.data;

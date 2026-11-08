@@ -1,4 +1,4 @@
-// ShotMatch Simple: the friendly, phone-first view of a shoot (Figma round 1, direction A "Viewfinder"). It reads and writes
+// Tessera Simple: the friendly, phone-first view of a shoot (Figma round 1, direction A "Viewfinder"). It reads and writes
 // the same SpacetimeDB rows as Studio (scene_object, shot_settings, session.planTime, preview jobs, shot_version), so a
 // friend here and a photographer in Studio edit one shot together. Steps: Found it, Make it yours, Take me there.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

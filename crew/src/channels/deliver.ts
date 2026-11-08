@@ -40,11 +40,11 @@ export async function targetFor(l: Link): Promise<Target> {
   if (t?.senderId) return { ...l, platform, spaceId: t.chatId, senderId: t.senderId };
   const cached = store.get<{ spaceId: string; senderId: string }>('spaces', `${platform}:${normHandle(l.address)}`);
   if (cached) return { ...l, platform, ...cached };
-  if (l.channel === 'imessage') throw new PhotonError(403, 'SHARED_LINE_INBOUND_REQUIRED', `${l.name} has not texted the ShotMatch iMessage line yet`);
-  if (l.channel === 'telegram') throw new PhotonError(403, 'TELEGRAM_START_REQUIRED', `${l.name} has not opened the ShotMatch bot yet`);
+  if (l.channel === 'imessage') throw new PhotonError(403, 'SHARED_LINE_INBOUND_REQUIRED', `${l.name} has not texted the Tessera iMessage line yet`);
+  if (l.channel === 'telegram') throw new PhotonError(403, 'TELEGRAM_START_REQUIRED', `${l.name} has not opened the Tessera bot yet`);
   if (l.channel === 'voice') throw new PhotonError(422, 'NOT_A_MESSAGING_CHANNEL', 'voice links take calls, not messages');
   const agent = await agentFor(platform);
-  if (!agent) throw new PhotonError(409, 'SENDER_NOT_FOUND', `no ShotMatch ${l.channel} sender yet: add it to photon_agents (crew/PHOTON.md)`);
+  if (!agent) throw new PhotonError(409, 'SENDER_NOT_FOUND', `no Tessera ${l.channel} sender yet: add it to photon_agents (crew/PHOTON.md)`);
   const user = await userId(platform, l.address);
   const space = await spaceId(platform, [agent, user]);
   store.put('spaces', `${platform}:${normHandle(l.address)}`, { spaceId: space, senderId: agent });
@@ -84,7 +84,7 @@ export async function run(t: Target, ops: Op[], opts: { parentMessageId?: string
     ];
     const req = async (format: string) => {
       const ps = await parts(format);
-      return sendMessage({ ...base, email: { subject: text?.subject ?? 'ShotMatch' }, content: ps.length === 1 ? ps[0] : { type: 'group', parts: ps } }, key(format === 'plain' ? 1 : 0));
+      return sendMessage({ ...base, email: { subject: text?.subject ?? 'Tessera' }, content: ps.length === 1 ? ps[0] : { type: 'group', parts: ps } }, key(format === 'plain' ? 1 : 0));
     };
     let id: string;
     try { id = await req(text?.format ?? 'plain'); }
@@ -112,7 +112,7 @@ export async function run(t: Target, ops: Op[], opts: { parentMessageId?: string
   if (opts.mirror !== false && out.ids.length)
     await conn.reducers.postMessage({
       sessionId: t.sessionId, channel: t.channel, threadId: t.spaceId, externalId: out.ids[0], parentExternalId: opts.parentMessageId ?? '',
-      direction: 'out', author: 'ShotMatch', text: out.texts.join('\n').slice(0, 4000) || '(image)', imageUrl: out.imageUrl,
+      direction: 'out', author: 'Tessera', text: out.texts.join('\n').slice(0, 4000) || '(image)', imageUrl: out.imageUrl,
     }).catch(e => console.warn(`mirror out: ${e.message}`));
   return out;
 }

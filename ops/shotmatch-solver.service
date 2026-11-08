@@ -2,7 +2,7 @@
 #   ln -sf ~/Code/hackathons/shotmatch/ops/shotmatch-solver.service ~/.config/systemd/user/
 #   systemctl --user daemon-reload && systemctl --user enable --now shotmatch-solver
 [Unit]
-Description=ShotMatch solver (FastAPI, 127.0.0.1:8791)
+Description=Tessera solver (FastAPI, 127.0.0.1:8791)
 After=network.target
 
 [Service]

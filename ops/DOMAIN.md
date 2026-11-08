@@ -1,4 +1,4 @@
-# Moving ShotMatch to a real domain
+# Moving Tessera to a real domain
 
 Today the app is https://104-238-146-229.sslip.io and the docs site is https://site.104-238-146-229.sslip.io. Both are
 the Vultr VM `shotmatch-app` (104.238.146.229, Dallas), and sslip.io resolves any name ending in the IP to the IP, so

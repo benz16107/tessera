@@ -67,7 +67,7 @@ export function PhotonPanel({ sessionId, code, myName }: { sessionId: bigint; co
             </li>
           ))}
         </ul>
-      ) : <p className="ph-dim">Nobody is on a channel yet. Invite someone, or text a photo to ShotMatch.</p>}
+      ) : <p className="ph-dim">Nobody is on a channel yet. Invite someone, or text a photo to Tessera.</p>}
 
       <form className="ph-invite" onSubmit={invite}>
         <input aria-label="Name" placeholder="Name" value={name} onChange={e => setName(e.target.value)} maxLength={40} />

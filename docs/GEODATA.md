@@ -1,6 +1,6 @@
 # Live geodata layers
 
-ShotMatch pulls live open data about the spot and the shot time: weather, haze, danger and disruption zones, tides,
+Tessera pulls live open data about the spot and the shot time: weather, haze, danger and disruption zones, tides,
 real building shadows, useful places and where photographers stand. It shows them in the 3D set, on a 2D map and on the
 timeline, and hands them to the AI as one paragraph. Everything works for any lat/lon in the US. NYC spots also get
 permits, closures, scaffolding and the city's own building heights.

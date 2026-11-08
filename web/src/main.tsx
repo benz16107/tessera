@@ -42,8 +42,8 @@ function Boot() {
     if (location.pathname.startsWith('/credits')) return <App />;
     return (
       <main className="waiting" aria-live="polite">
-        <p className="wordmark">ShotMatch</p>
-        <h1>Waiting for the ShotMatch service</h1>
+        <p className="wordmark">Tessera</p>
+        <h1>Waiting for the Tessera service</h1>
         <p>The crew service at <code>/api/config</code> is not answering yet. This page retries every 3 seconds{tries > 0 ? ` (try ${tries + 1})` : ''}.</p>
       </main>
     );

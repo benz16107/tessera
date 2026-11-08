@@ -490,7 +490,7 @@ const text = (s: string, max: number) => {
 const finite = (...xs: number[]) => { if (!xs.every(Number.isFinite)) throw new SenderError('non-finite number'); };
 
 const whoName = (ctx: Ctx, sessionId: bigint) =>
-  member(ctx, sessionId)?.name ?? (isCrew(ctx) ? 'ShotMatch crew' : isOwner(ctx) ? 'owner' : 'someone');
+  member(ctx, sessionId)?.name ?? (isCrew(ctx) ? 'Tessera crew' : isOwner(ctx) ? 'owner' : 'someone');
 /** Everyone who may read the session (participants and the crew), once each: the recipients of its events. */
 const audience = (ctx: Ctx, sessionId: bigint) => {
   const out = new Map<string, Identity>();
@@ -607,7 +607,7 @@ export const registerCrew = spacetimedb.reducer({ code: t.string() }, (ctx, { co
 export const joinSessionAsCrew = spacetimedb.reducer({ sessionId: t.u64(), name: t.string() }, (ctx, { sessionId, name }) => {
   requireCrew(ctx);
   if (!ctx.db.session.id.find(sessionId)) throw new SenderError('no such session');
-  addParticipant(ctx, sessionId, text(name || 'ShotMatch', 40), 'crew');
+  addParticipant(ctx, sessionId, text(name || 'Tessera', 40), 'crew');
   trace(ctx, sessionId, 'joinSessionAsCrew');
 });
 
@@ -1371,7 +1371,7 @@ export const shareShot = spacetimedb.reducer({ sessionId: t.u64(), previewJobId:
   const pose = ctx.db.camera.sessionId.find(sessionId)?.pose ?? ctx.db.solveResult.photoId.find(j.photoId)?.pose;
   if (!pose) throw new SenderError('place the camera first');
   const row = {
-    shareCode: shareCode(ctx), title: s.title.startsWith('photon:') ? 'ShotMatch plan' : s.title, spotId: s.spotId, imageUrl: absUrl(ctx, j.imageUrl),
+    shareCode: shareCode(ctx), title: s.title.startsWith('photon:') ? 'Tessera plan' : s.title, spotId: s.spotId, imageUrl: absUrl(ctx, j.imageUrl),
     lat: pose.lat, lon: pose.lon, heading: pose.heading, pitch: pose.pitch, f35: pose.f35,
   };
   ctx.db.publicShot.insert({ ...row, sessionId, state: 'pending', error: '', createdAt: ctx.timestamp });
@@ -1492,7 +1492,7 @@ const fetchLayer = (ctx: { http: { fetch: (u: string, i?: any) => any } }, layer
     return JSON.stringify(hourly);
   }
   const r = ctx.http.fetch(`https://api.weather.gov/alerts/active?point=${lat.toFixed(4)},${lon.toFixed(4)}`, {
-    headers: { 'User-Agent': 'ShotMatch (me@thebenzhou.com)', Accept: 'application/geo+json' }, timeout: TimeDuration.fromMillis(15_000),
+    headers: { 'User-Agent': 'Tessera (me@thebenzhou.com)', Accept: 'application/geo+json' }, timeout: TimeDuration.fromMillis(15_000),
   });
   if (!r.ok) throw new Error(`weather.gov HTTP ${r.status}`);
   const features: any[] = r.json()?.features ?? [];
@@ -1667,7 +1667,7 @@ export const elevenlabsWebhook = spacetimedb.httpHandler((ctx, req) => {
       for (const [i, m] of turns.slice(0, 200).entries())
         tx.db.message.insert({
           id: 0n, sessionId: s.id, channel: 'voice', threadId: conversationId, externalId: `${conversationId}:${i}`, parentExternalId: '',
-          direction: m.role === 'agent' ? 'out' : 'in', author: m.role === 'agent' ? 'ShotMatch guide' : 'Caller', text: m.message.slice(0, 4000), imageUrl: '', createdAt: tx.timestamp,
+          direction: m.role === 'agent' ? 'out' : 'in', author: m.role === 'agent' ? 'Tessera guide' : 'Caller', text: m.message.slice(0, 4000), imageUrl: '', createdAt: tx.timestamp,
         });
       notify(tx, s.id, 'voice_call', `Phone call saved: ${turns.length} turns`);
       traceAs(tx, s.id, 'POST /hooks/elevenlabs', 'ElevenLabs', `${turns.length} turns`);

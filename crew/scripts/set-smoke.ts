@@ -19,7 +19,7 @@ const solved = latestSolved(demo.id);
 if (!solved) throw new Error('A9TVAN has no solved photo');
 const spot = conn.db.spot.id.find(demo.spotId || 'nyc_dumbo')!;
 const title = `nvidia-smoke-${Date.now()}`;
-await conn.reducers.createSession({ spotId: spot.id, title, name: 'ShotMatch crew' });
+await conn.reducers.createSession({ spotId: spot.id, title, name: 'Tessera crew' });
 const s = await until(() => [...conn.db.session.iter()].find(x => x.title === title), 15_000, 'the test session');
 console.log(`test session ${s.id} (${s.code}) at ${spot.id}`);
 const p = solved.p, pose = solved.r!.pose;

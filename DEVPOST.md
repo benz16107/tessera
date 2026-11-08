@@ -8,11 +8,11 @@ Placeholders still open are marked **TODO** and listed at the end.
 
 ## Project name
 
-ShotMatch
+Tessera
 
 ## Elevator pitch (200 characters max)
 
-Drop a photo of a place. ShotMatch finds where the photographer stood, the heading and the lens, then your group plans its own version in a live 3D set, even by text.
+Drop a photo of a place. Tessera finds where the photographer stood, the heading and the lens, then your group plans its own version in a live 3D set, even by text.
 
 (169 characters.)
 
@@ -63,7 +63,7 @@ Domain Name from GoDaddy Registry only if Ben registers a domain (`ops/DOMAIN.md
 
 ## Stand where the photo was taken. Then make the shot yours.
 
-Drop a photo of a place. ShotMatch finds where the photographer stood, which way they faced and what lens they used,
+Drop a photo of a place. Tessera finds where the photographer stood, which way they faced and what lens they used,
 rebuilds the place as a 3D set, and your group plans its own version there together, from a browser, a text thread or
 a phone call.
 
@@ -107,7 +107,7 @@ call it: a voice agent guides you to the mark and edits the set as you talk.
   with photo GPS, a mirror filter for the symmetric bridge tower). A new photo is matched against it and solved for
   position, heading, focal length and lens distortion. On 11 held-out photos from other photographers, 10 were placed,
   9 within 25 m of their phone GPS, with a median focal error of 3% and a median solve of 15.8 s on a CPU. The 11th had
-  75 matches, and ShotMatch said "Couldn't place" instead of guessing.
+  75 matches, and Tessera said "Couldn't place" instead of guessing.
 - **The virtual set (core).** three.js with React Three Fiber. The 3D world is Google Photorealistic 3D Tiles (the
   Earth view, with Google's credits on screen) and our clay model of the block from NYC building footprints with the
   user's photo projected onto it from where it was taken. Tiles never enter a render, an export or an AI step. The camera

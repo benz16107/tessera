@@ -10,10 +10,10 @@ export default {
   sponsor: 'Vultr',
   prize: 'MLH Best Use of Vultr',
   order: 5,
-  oneLine: 'ShotMatch runs in production on Vultr: one VM in Dallas serves the app and this site, Vultr Object Storage keeps the photos and props, and Vultr Serverless Inference runs four models in the pipeline.',
+  oneLine: 'Tessera runs in production on Vultr: one VM in Dallas serves the app and this site, Vultr Object Storage keeps the photos and props, and Vultr Serverless Inference runs four models in the pipeline.',
   hero: {
     img: hero,
-    alt: 'ShotMatch Studio on the production URL: the Clay + photo world of Washington St with the user\'s photo projected onto clay buildings, two placed figures, a bicycle, the Cam A frustum, and the camera inspector on the right.',
+    alt: 'Tessera Studio on the production URL: the Clay + photo world of Washington St with the user\'s photo projected onto clay buildings, two placed figures, a bicycle, the Cam A frustum, and the camera inspector on the right.',
     caption: 'Studio on the production URL, served by Caddy and the crew on the Vultr VM in Dallas.',
     frame: 'browser',
     url: '104-238-146-229.sslip.io/studio/A9TVAN',
@@ -130,11 +130,11 @@ export default {
     'The lens tunnel depends on the Brev GPU box, which is deleted after judging.',
   ],
   video: {
-    title: 'ShotMatch on Vultr',
+    title: 'Tessera on Vultr',
     length: 'about 1:30',
     summary: 'A screen recording of the live app, then a real terminal session on the VM showing its services, then the Vultr-hosted models at work.',
     shots: [
-      { t: '0:00 to 0:15', screen: 'Simple /p/A9TVAN on the production URL: the answer for the DUMBO photo', say: 'ShotMatch tells you where to stand for a photo you saw. All of it runs on Vultr.', criterion: 'Problem first' },
+      { t: '0:00 to 0:15', screen: 'Simple /p/A9TVAN on the production URL: the answer for the DUMBO photo', say: 'Tessera tells you where to stand for a photo you saw. All of it runs on Vultr.', criterion: 'Problem first' },
       { t: '0:15 to 0:35', screen: 'Terminal: ssh ben@104.238.146.229 \'systemctl --user status shotmatch-*\': crew, solver, Ollama and the lens tunnel active', say: 'One VM in Dallas: the crew, the solver and Nemotron Bolt on the CPU, behind Caddy with automatic HTTPS.', criterion: 'Vultr compute' },
       { t: '0:35 to 0:50', screen: 'Browser: the app at 104-238-146-229.sslip.io and this site at site.104-238-146-229.sslip.io, the padlock on both', say: 'Two hostnames, one Caddy, certificates issued automatically.', criterion: 'Hosting' },
       { t: '0:50 to 1:10', screen: 'Studio: drop a photo in a test set; the agent trace shows the safety check; then GET /api/nvidia/models with the Vultr rows highlighted', say: 'Every upload is screened by Nemotron Content Safety on Vultr Serverless Inference, in about half a second.', criterion: 'Vultr Serverless Inference' },

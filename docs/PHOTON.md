@@ -1,12 +1,12 @@
-# ShotMatch on Photon
+# Tessera on Photon
 
-ShotMatch plans a photo shoot in a shared virtual set: a 3D copy of a real place where friends place people, props, lights and the camera, then render the shot with AI. Photon is how the set reaches people who are not at a laptop. This page is for Photon judges: why messaging is essential here, the five things ShotMatch does with Photon that a chat app can't, and which Photon Beta features each one uses.
+Tessera plans a photo shoot in a shared virtual set: a 3D copy of a real place where friends place people, props, lights and the camera, then render the shot with AI. Photon is how the set reaches people who are not at a laptop. This page is for Photon judges: why messaging is essential here, the five things Tessera does with Photon that a chat app can't, and which Photon Beta features each one uses.
 
 ## Why the set lives in messages
 
 - **The people who won't install an app.** A shoot has a photographer, two friends in the frame, someone holding a reflector and a parent who drives. Only one of them opened the studio. Everyone else already has iMessage, Telegram, WhatsApp, SMS or email, so the set comes to them there, in each one's own app, with nothing to install.
 - **The person at the spot has their hands full.** The scout is outdoors with a phone, a bag and maybe a tripod. They can call and talk, or snap one photo, but they can't drive a 3D editor. Calling the set and texting a photo are the two things a person can do while walking.
-- **The camera roll lives in Messages.** Reference shots, the jacket someone wants to wear, the sign they want in frame: people already send these as texts. A photo texted to ShotMatch becomes a check-in, a prop in the set, or a new spot to locate.
+- **The camera roll lives in Messages.** Reference shots, the jacket someone wants to wear, the sign they want in frame: people already send these as texts. A photo texted to Tessera becomes a check-in, a prop in the set, or a new spot to locate.
 - **Light doesn't wait.** Golden hour starts at a fixed minute. The message that matters is the one that arrives at that minute on the channel that will actually deliver, with how far that person still has to walk.
 
 ## The five mechanisms
@@ -31,7 +31,7 @@ Demo: In the studio, invite a judge by email and a friend on Telegram. Press Ren
 
 ### 2. Call the set
 
-Calling the ShotMatch number connects to the set by voice (an ElevenLabs agent over Photon's SIP voice line). The agent has tools on the crew: `guide_me` gives one turn-by-turn instruction from the caller's live phone position and compass on the scout page ("Turn left 26 degrees, then walk 12 m north."), and `edit_set` sends the caller's words to the same Nemotron text-to-set command the studio uses ("move the bike to the left", "make it sunset"), so planners watch the set change while the caller talks. When the call ends, Photon's `call.ended` event makes the crew send the final framing and the latest render to the caller's own thread, and ElevenLabs' signed post-call webhook writes the transcript into the session's messages inside SpacetimeDB.
+Calling the Tessera number connects to the set by voice (an ElevenLabs agent over Photon's SIP voice line). The agent has tools on the crew: `guide_me` gives one turn-by-turn instruction from the caller's live phone position and compass on the scout page ("Turn left 26 degrees, then walk 12 m north."), and `edit_set` sends the caller's words to the same Nemotron text-to-set command the studio uses ("move the bike to the left", "make it sunset"), so planners watch the set change while the caller talks. When the call ends, Photon's `call.ended` event makes the crew send the final framing and the latest render to the caller's own thread, and ElevenLabs' signed post-call webhook writes the transcript into the session's messages inside SpacetimeDB.
 
 Demo: A judge calls the number from the street and says "move the bike to the left"; the bike moves on the studio screen. They hang up and the framing arrives in their texts.
 
@@ -67,7 +67,7 @@ Live on Photon (Sunday, 12:42 to 1:03 AM CT), over the managed Telegram bot @Sho
 |---|---|---|
 | iMessage shared line: inbound text and images, replies, native threaded replies (`parentMessageId`) | Yes | `src/photon.ts`, `channels/versions.ts` |
 | iMessage dedicated line (send first, groups) | No | would remove the forward-a-JOIN-text step; needs a paid line |
-| Telegram bot: direct and group chats | Yes | `src/photon.ts` (groups answer photos, replies, commands and "ShotMatch") |
+| Telegram bot: direct and group chats | Yes | `src/photon.ts` (groups answer photos, replies, commands and "Tessera") |
 | Telegram albums (2 to 10 attachments) with captions | Yes | `channels/format.ts`, `channels/deliver.ts` |
 | Telegram edits (`message.update`) | Yes | progress message edited in place |
 | Telegram deep links to start the bot | Yes | invites (`t.me/<bot>?start=<code>`) |

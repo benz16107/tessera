@@ -24,7 +24,7 @@ export default {
     { value: '38 of 38', label: 'feature checks pass on the scratch database (19 of 19 on production)', check: 'cd module && node scripts/proof.ts shotmatch-scratch' },
   ],
   why: [
-    { title: 'It is the primary function', body: 'ShotMatch is a shared set. Every object in it is a row in one TypeScript module on Maincloud. There is no API server, websocket layer, queue or cron of ours in between. Without SpacetimeDB there is no set.' },
+    { title: 'It is the primary function', body: 'Tessera is a shared set. Every object in it is a row in one TypeScript module on Maincloud. There is no API server, websocket layer, queue or cron of ours in between. Without SpacetimeDB there is no set.' },
     { title: 'Many kinds of clients, one truth', body: 'The planner\'s browser, the scout\'s phone, the GPU worker, the phone agent and the iMessage bridge all read and write the same rows, and a subscription delivers every committed change in order.' },
     { title: 'Logic runs next to the data', body: 'Reducers validate every edit in one transaction. Schedules requeue jobs, free stale locks and run the sun. Procedures call NVIDIA and weather services from inside the database.' },
     { title: 'Private by default', body: 'Row-level security sends a shoot\'s rows only to its members and the worker. A share code is the only way in.' },

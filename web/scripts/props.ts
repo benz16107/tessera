@@ -18,7 +18,7 @@ mkdirSync(outDir, { recursive: true });
 interface Credit { id: string; title: string; author: string; license: string; page: string; source: string }
 const credits: Record<string, Credit> = existsSync(creditsPath) ? JSON.parse(readFileSync(creditsPath, 'utf8')) : {};
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-const UA = { 'User-Agent': 'ShotMatch studio asset fetch (hackathon project)' };
+const UA = { 'User-Agent': 'Tessera studio asset fetch (hackathon project)' };
 
 const failed: string[] = [];
 for (const p of PROPS) {

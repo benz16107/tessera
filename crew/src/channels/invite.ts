@@ -31,27 +31,27 @@ export async function invite(sessionId: bigint, who: { name: string; channel: Ch
   sharedStore().put('invites', token, { sessionId: String(sessionId), channel, address, name, at: now });
   const url = `${PUBLIC_URL}/s/${s.code}?inv=${token}`;
   const spot = s.spotId ? conn.db.spot.id.find(s.spotId)?.name : undefined;
-  const text = `${by} added you to a ShotMatch shoot${spot ? ` at ${spot}` : ''}. Open the live set on your phone (nothing to install): ${url}\nReply here any time: your messages land in the set, and you'll get the renders and the light alerts on this channel.`;
+  const text = `${by} added you to a Tessera shoot${spot ? ` at ${spot}` : ''}. Open the live set on your phone (nothing to install): ${url}\nReply here any time: your messages land in the set, and you'll get the renders and the light alerts on this channel.`;
   const base = { ok: true, linkId: String(row.id), channel, url };
 
-  if (channel === 'voice') return { ...base, delivered: false, note: `${name} can call ShotMatch${agentHandle('voice') ? ` at ${agentHandle('voice')}` : ''} from ${address}; the call joins this set.` };
+  if (channel === 'voice') return { ...base, delivered: false, note: `${name} can call Tessera${agentHandle('voice') ? ` at ${agentHandle('voice')}` : ''} from ${address}; the call joins this set.` };
   if (channel === 'imessage') {
     const line = agentHandle('imessage');
-    const share = `Text "JOIN ${s.code}" to ${line ?? 'the ShotMatch iMessage number'} to join my ShotMatch shoot.`;
+    const share = `Text "JOIN ${s.code}" to ${line ?? 'the Tessera iMessage number'} to join my Tessera shoot.`;
     return { ...base, delivered: false, shareText: share, note: `Photon's shared iMessage line can't text ${name} first. Send them this once: ${share} (Their number must be on the line's tester list, crew/PHOTON.md.)` };
   }
   if (channel === 'telegram' && !sharedStore().threads().some(t => t.channel === 'telegram' && t.handle.toLowerCase() === address.replace(/^@/, '').toLowerCase())) {
     const bot = agentHandle('telegram')?.replace(/^@/, '');
-    const share = bot ? `https://t.me/${bot}?start=${s.code}` : `Message the ShotMatch Telegram bot: /start ${s.code}`;
+    const share = bot ? `https://t.me/${bot}?start=${s.code}` : `Message the Tessera Telegram bot: /start ${s.code}`;
     return { ...base, delivered: false, shareText: share, note: `Telegram bots can't message first. Send ${name} this link: ${share}` };
   }
   if (!photonEnabled()) return { ...base, delivered: false, note: `${name} is in the set as ${LABEL[channel]} ${address}. The invite goes out once Photon credentials are in (crew/PHOTON.md).`, shareText: text };
   try {
-    await run(await targetFor({ id: row.id, sessionId, channel, address, name, participantId: 0n }), [{ op: 'text', text, subject: `${by} invited you to a ShotMatch shoot` }], { idem: `invite:${row.id}` });
+    await run(await targetFor({ id: row.id, sessionId, channel, address, name, participantId: 0n }), [{ op: 'text', text, subject: `${by} invited you to a Tessera shoot` }], { idem: `invite:${row.id}` });
     return { ...base, delivered: true, note: `Invited ${name} on ${LABEL[channel]}.` };
   } catch (e) {
     const why = (e as Error).message;
-    return { ...base, delivered: false, shareText: text, note: isRefusal(e) ? `Photon won't let ShotMatch message ${name} first on ${LABEL[channel]} (${why.replace(/^Photon \S+ \S+: /, '')}). Send them the link yourself.` : `The invite failed: ${why.slice(0, 160)}` };
+    return { ...base, delivered: false, shareText: text, note: isRefusal(e) ? `Photon won't let Tessera message ${name} first on ${LABEL[channel]} (${why.replace(/^Photon \S+ \S+: /, '')}). Send them the link yourself.` : `The invite failed: ${why.slice(0, 160)}` };
   }
 }
 

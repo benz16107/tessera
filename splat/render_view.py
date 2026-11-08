@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render a trained splat from a ShotMatch pose (solve_result style: lat, lon, alt, heading, pitch, roll, f35).
+"""Render a trained splat from a Tessera pose (solve_result style: lat, lon, alt, heading, pitch, roll, f35).
 
 Two steps, because the pose maths lives in the solver venv and the renderer on the GPU box:
   solver/.venv/bin/python splat/render_view.py pose <spot> <lat> <lon> <alt> <heading> <pitch> <roll> <f35> <w> <h> > cam.json

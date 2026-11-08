@@ -23,12 +23,12 @@ export default function Credits() {
   const authors = new Set(rows.map(r => r.author)).size;
   return (
     <div className="credits">
-      <header className="home-head"><a className="wordmark" href="/">ShotMatch</a></header>
+      <header className="home-head"><a className="wordmark" href="/">Tessera</a></header>
       <main>
         <h1>Credits and licenses</h1>
         <section className="sheet">
           <h2>Map data</h2>
-          <p>The 3D view uses Google Photorealistic 3D Tiles through the Map Tiles API. Google's logo and the data providers for the tiles in view are shown on the map at all times. ShotMatch only displays the tiles. It does not analyse them: the solver places photos against open structure-from-motion models built from the photos below.</p>
+          <p>The 3D view uses Google Photorealistic 3D Tiles through the Map Tiles API. Google's logo and the data providers for the tiles in view are shown on the map at all times. Tessera only displays the tiles. It does not analyse them: the solver places photos against open structure-from-motion models built from the photos below.</p>
           <h2>AI interpretation</h2>
           <p>Previews are generated edits of the photo you uploaded, made by an image model from your lens, people and light settings. Every preview carries the label "AI interpretation". They show an idea of the shot, not a real photograph of the place.</p>
         </section>

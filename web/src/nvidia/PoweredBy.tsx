@@ -1,4 +1,4 @@
-// "Powered by NVIDIA": every NVIDIA model ShotMatch calls, what it does here, and its measured latency (GET /api/nvidia/models).
+// "Powered by NVIDIA": every NVIDIA model Tessera calls, what it does here, and its measured latency (GET /api/nvidia/models).
 import { useEffect, useState } from 'react';
 import { call } from './api.ts';
 

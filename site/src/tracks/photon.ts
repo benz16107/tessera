@@ -27,7 +27,7 @@ export default {
   oneLine: 'The shared set reaches every person on the app they already use, and a phone call can guide you to the mark and edit the set by voice.',
   noteTag: 'Live on Telegram',
   note: 'Every mechanism that runs on Telegram is shown below from real screenshots: Photon\'s live API and the managed bot @ShotMatchSetBot, Sunday Nov 8, 12:42 to 1:24 AM CT. iMessage, SMS, voice calls, email and WhatsApp Business each need a number, DNS or Meta signup, so the phone call, the fallback between channels and those channels are shown from our end-to-end run against a stand-in for the Photon Beta API and tagged Stand-in.',
-  hero: { img: liveLocate, alt: 'The live Telegram chat with the ShotMatch bot: a photo of the Manhattan Bridge from Washington St goes in; the reply says Solid, 1600 matches, where to stand, facing north 4 degrees, 54 mm equivalent or about 2.2x on an iPhone, and the next golden hour.', caption: 'Live on Telegram, Nov 8, 12:51 AM CT: a texted photo comes back located, with where to stand, the heading, the lens and the next good light.', frame: 'none' },
+  hero: { img: liveLocate, alt: 'The live Telegram chat with the Tessera bot: a photo of the Manhattan Bridge from Washington St goes in; the reply says Solid, 1600 matches, where to stand, facing north 4 degrees, 54 mm equivalent or about 2.2x on an iPhone, and the next golden hour.', caption: 'Live on Telegram, Nov 8, 12:51 AM CT: a texted photo comes back located, with where to stand, the heading, the lens and the next good light.', frame: 'none' },
   headline: [
     { value: '9', label: 'live round trips on Telegram, 12:42 to 1:24 AM CT: hello, locate, v1, fork to v1.1, versions, check-in, prop, fan-out, golden-hour alert with conditions', check: 'web/screenshots/photon-live-*.png; message @ShotMatchSetBot' },
     { value: '29 of 29', label: 'end-to-end checks across all five mechanisms', check: 'cd crew && npx tsx scripts/photon-e2e.ts', standIn: true },
@@ -36,7 +36,7 @@ export default {
   why: [
     { title: 'Most of the crew will never open a 3D editor', body: 'A shoot has a photographer, friends in the frame, someone holding a reflector, a parent driving. They already have iMessage, Telegram, WhatsApp, SMS or email. Photon lets the set come to each of them there.' },
     { title: 'The person at the spot has their hands full', body: 'A scout outdoors can call or snap one photo, not drive an editor. Calling the set and texting a photo are the two things a person can do while walking, and both run on Photon.' },
-    { title: 'Light does not wait', body: 'Golden hour starts at a fixed minute. The message that matters arrives at that minute on the channel that will actually deliver, so ShotMatch falls back to the next channel when one refuses.' },
+    { title: 'Light does not wait', body: 'Golden hour starts at a fixed minute. The message that matters arrives at that minute on the channel that will actually deliver, so Tessera falls back to the next channel when one refuses.' },
     { title: 'A thread is a natural version history', body: 'People already reply to the picture they mean. Photon\'s threaded replies let a reply to v1 fork the set from v1, so the conversation and the set history stay one thing.' },
   ],
   threads: [
@@ -45,13 +45,13 @@ export default {
       channel: 'Telegram',
       why: 'A real "hi" to @ShotMatchSetBot starts a session and returns the live plan and scout links, with nothing to install.',
       source: 'Photon live API, managed Telegram bot, Nov 8, 12:43 AM CT',
-      live: { when: '12:43 AM CT', shots: [{ img: liveHello, alt: 'Telegram chat with the ShotMatch bot: /start and hi; the bot replies: Hi. I am ShotMatch. Share a photo of a place and I will find where the photographer stood, which way they faced, and what lens they used, with links to the live plan and the scout page.' }] },
+      live: { when: '12:43 AM CT', shots: [{ img: liveHello, alt: 'Telegram chat with the Tessera bot: /start and hi; the bot replies: Hi. I am Tessera. Share a photo of a place and I will find where the photographer stood, which way they faced, and what lens they used, with links to the live plan and the scout page.' }] },
       messages: [],
     },
     {
       mechanism: 'Live: text a photo, get the spot',
       channel: 'Telegram',
-      why: 'The core of ShotMatch runs in the chat: a photo goes in; where to stand, which way to face, the lens and the next good light come back.',
+      why: 'The core of Tessera runs in the chat: a photo goes in; where to stand, which way to face, the lens and the next good light come back.',
       source: 'Photon live API, managed Telegram bot, Nov 8, 12:51 AM CT',
       live: { when: '12:51 AM CT', shots: [{ img: liveLocate, alt: 'Telegram: the Manhattan Bridge photo with the caption Where was this taken from; the bot replies Locating your shot: done, then Solid: Manhattan Bridge from Washington St, DUMBO. 1600 matches, 1 m from a mapped camera. Stand at 40.70317, -73.98960. Face north (4 degrees), tilted up 3 degrees. Lens: 54 mm equivalent, about 2.2x on an iPhone. Next good light: golden hour Sun 6:35 AM to 7:15 AM.' }] },
       messages: [],
@@ -117,7 +117,7 @@ export default {
         { from: 'person', text: 'add Priya +1 469 555 0144 on SMS' },
         { from: 'note', text: 'Priya is invited by SMS with a link to the scout page.' },
         { from: 'shotmatch', text: 'v1: warm golden hour light Reply to this to change it.', img: render, meta: 'image, then one line' },
-        { from: 'note', text: 'Email: subject "ShotMatch v1: warm golden hour light", the image attached, "It is an AI interpretation of the shot." SMS: "ShotMatch v1: warm golden hour light See it:" and a link.' },
+        { from: 'note', text: 'Email: subject "Tessera v1: warm golden hour light", the image attached, "It is an AI interpretation of the shot." SMS: "Tessera v1: warm golden hour light See it:" and a link.' },
       ],
     },
     {
@@ -126,7 +126,7 @@ export default {
       why: 'A caller walking to the spot gets turn-by-turn directions from their live phone position, and can change the set out loud while planners watch.',
       source: `${SRC}. Voice tools guide_me and edit_set in crew/src/voice.ts.`,
       messages: [
-        { from: 'note', text: 'The scout calls the ShotMatch number. The agent asks guide_me for the caller\'s live position and compass.' },
+        { from: 'note', text: 'The scout calls the Tessera number. The agent asks guide_me for the caller\'s live position and compass.' },
         { from: 'shotmatch', text: 'Turn left 26 degrees, then walk 12 m north.', meta: 'spoken' },
         { from: 'person', text: 'move the red bike to the right side of the frame', meta: 'spoken' },
         { from: 'shotmatch', text: 'The red bike is now on the right side of the frame at frame_x 1, 9.2 m from the camera.', meta: 'spoken; the bike moves in the studio' },
@@ -184,7 +184,7 @@ export default {
       { t: '0:00 to 0:15', screen: 'Simple /p/A9TVAN, then Share: the invite sheet', say: 'Most people on a shoot will never open a 3D editor. So the set comes to their texts.', criterion: 'Problem first' },
       { t: '0:15 to 0:45', screen: 'Studio on the test set; press Render. Telegram receives the 35, 50 and 85 mm album with the progress message edited in place. iMessage and email: record once the line is live; until then the e2e log lines for iMessage and email', say: 'One render, every channel in its own form: an album on Telegram, the image and one line on iMessage, an attachment by email.', criterion: 'Photon 2.0 API, multi-channel' },
       { t: '0:45 to 1:15', screen: 'Reply "make it sunset" to v1 in the thread; the studio\'s set rewinds to v1 and v1.1 arrives threaded. Record once iMessage is live; until then Telegram reply or the e2e log', say: 'Reply to any version and the set forks from it. The thread is a version tree over the set\'s history.', criterion: 'Threads drive state' },
-      { t: '1:15 to 1:45', screen: 'Scout page on a phone at the mark; text a photo; the correction reply and a check-in marker in the studio', say: 'Text a photo from where you stand. ShotMatch solves it and tells you which way to step.', criterion: 'Messaging as input' },
+      { t: '1:15 to 1:45', screen: 'Scout page on a phone at the mark; text a photo; the correction reply and a check-in marker in the studio', say: 'Text a photo from where you stand. Tessera solves it and tells you which way to step.', criterion: 'Messaging as input' },
       { t: '1:45 to 2:20', screen: 'Call the number; say "move the bike to the left"; the bike moves in the studio; hang up; the framing arrives as a text. Record once the voice number is live; until then the e2e log\'s guide_me and edit_set lines', say: 'Call the set. It guides you to the mark and edits the scene by voice while your friends watch.', criterion: 'Voice-call prize' },
       { t: '2:20 to 2:45', screen: 'The golden-hour alert on one channel and the fallback to email; then this page\'s Where it\'s used list', say: 'Twenty minutes before golden hour, everyone gets their walking time on the channel that will deliver.', criterion: 'Reliability, problem codes' },
     ],

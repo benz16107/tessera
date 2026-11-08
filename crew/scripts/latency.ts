@@ -1,4 +1,4 @@
-// Latency of the Nemotron tiers on the same two jobs ShotMatch runs: routing a command (short JSON) and planning a set edit
+// Latency of the Nemotron tiers on the same two jobs Tessera runs: routing a command (short JSON) and planning a set edit
 // with tool calls. Raw fetch, no Spacetime connection. Run on the Vultr VM so Ollama is local:
 //   node --import tsx scripts/latency.ts [runs]      (prints a markdown table; writes data/latency.json)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';

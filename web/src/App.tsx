@@ -97,7 +97,7 @@ export default function App() {
       <>
         {(['simple', 'studio'] as const).filter(v => views.has(v)).map(v => (
           <div key={v} style={{ display: v === r.view ? 'contents' : 'none' }}>
-            <LoadBoundary label={v === 'studio' ? 'The studio' : 'ShotMatch'}>
+            <LoadBoundary label={v === 'studio' ? 'The studio' : 'Tessera'}>
               <Suspense fallback={boot}>
                 {v === 'studio' ? <Studio code={r.code} /> : <Simple code={r.code} active={r.view === 'simple'} />}
               </Suspense>
@@ -108,7 +108,7 @@ export default function App() {
     );
   }
   return (
-    <LoadBoundary label="ShotMatch">
+    <LoadBoundary label="Tessera">
       <Suspense fallback={boot}>
         {r.kind === 'scout' ? <Scout code={r.code} /> : r.kind === 'legal' ? <Legal page={r.page} /> : <Home />}
       </Suspense>

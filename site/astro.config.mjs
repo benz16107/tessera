@@ -42,16 +42,16 @@ export default defineConfig({
           details: [
             `- The app is at ${APP_URL}. The demo shoot is session A9TVAN at the Manhattan Bridge view in DUMBO, Brooklyn.`,
             '- Every number on these pages was measured; "not measured" means exactly that.',
-            '- Google Photorealistic 3D Tiles are display only in ShotMatch and never enter a render, an export or an AI step.',
+            '- Google Photorealistic 3D Tiles are display only in Tessera and never enter a render, an export or an AI step.',
           ].join('\n'),
           exclude: ['404'],
         }),
       ],
       sidebar: [
-        { label: 'ShotMatch home', link: '/' },
+        { label: 'Tessera home', link: '/' },
         { label: 'Open the app', link: APP_URL, attrs: { rel: 'noopener' } },
         { label: 'Tracks', link: '/tracks/' },
-        { label: 'Get started', items: ['docs/get-started', 'docs/why-shotmatch'] },
+        { label: 'Get started', items: ['docs/get-started', 'docs/why-tessera'] },
         {
           label: 'How it works',
           items: [

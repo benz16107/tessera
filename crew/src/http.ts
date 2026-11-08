@@ -297,7 +297,7 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
   return false;
 }
 
-const NOT_BUILT = '<!doctype html><meta charset="utf-8"><title>ShotMatch</title><p style="font:16px system-ui;margin:3rem">The web app is not built yet. Run <code>npm run build</code> in <code>web/</code>.</p>';
+const NOT_BUILT = '<!doctype html><meta charset="utf-8"><title>Tessera</title><p style="font:16px system-ui;margin:3rem">The web app is not built yet. Run <code>npm run build</code> in <code>web/</code>.</p>';
 
 async function handle(req: IncomingMessage, res: ServerResponse) {
   const url = new URL(req.url ?? '/', 'http://x');

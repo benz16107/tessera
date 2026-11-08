@@ -120,7 +120,7 @@ export async function fakePhoton(opts: { key?: string; project?: string; agents?
     return seq;
   };
 
-  /** A person writes to ShotMatch on a platform (optionally into a group, with an image, as a reply). */
+  /** A person writes to Tessera on a platform (optionally into a group, with an image, as a reply). */
   function inbound(a: { platform: string; handle: string; text?: string; image?: Buffer; imageType?: string; audio?: Buffer; parentMessageId?: string; group?: string; displayName?: string }) {
     const agentHandle = agentOn(a.platform) ?? `agent-${a.platform}`;
     const agent = user(a.platform, agentHandle, 'agent'), human = user(a.platform, a.handle, 'human');

@@ -1,8 +1,8 @@
-# ShotMatch crew: Spacetime job worker, agent, photo store and web host on 127.0.0.1:8790.
+# Tessera crew: Spacetime job worker, agent, photo store and web host on 127.0.0.1:8790.
 # Install: ln -sf ~/Code/hackathons/shotmatch/ops/shotmatch-crew.service ~/.config/systemd/user/
 #          systemctl --user daemon-reload && systemctl --user enable --now shotmatch-crew
 [Unit]
-Description=ShotMatch crew service
+Description=Tessera crew service
 After=network-online.target
 
 [Service]

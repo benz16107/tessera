@@ -194,7 +194,7 @@ export default {
     length: 'about 2:30',
     summary: 'A screen recording of Studio on the live app: one sentence becomes a staged shot, Nemotron checks its own render, and the fine-tuned lens reader explains what the photo was shot with.',
     shots: [
-      { t: '0:00 to 0:15', screen: 'Simple /p/A9TVAN: the DUMBO photo over the 3D view, "Solid match", facing 4 degrees N, 2.2x', say: 'You saw this shot online. ShotMatch found where the photographer stood. Now make it yours.', criterion: 'Problem first' },
+      { t: '0:00 to 0:15', screen: 'Simple /p/A9TVAN: the DUMBO photo over the 3D view, "Solid match", facing 4 degrees N, 2.2x', say: 'You saw this shot online. Tessera found where the photographer stood. Now make it yours.', criterion: 'Problem first' },
       { t: '0:15 to 0:45', screen: 'Studio on the test set /studio/ZJNNGP. Type "two friends walking toward camera, a red vintage bike on the left wall, warm string lights" in the Nemotron bar, press Send; the step trace streams and objects appear', say: 'One sentence. Lightning routes it, Super plans it with reasoning on, and our set tools place every object through the shot camera.', criterion: 'Beyond a chatbot: words become a scene' },
       { t: '0:45 to 1:00', screen: 'Type "move the bike a little closer"; it moves', say: 'Small edits stay on the fast model. About two seconds.', criterion: 'Model tiers' },
       { t: '1:00 to 1:30', screen: "Switch to Through Cam A, press Render; show the render panel's checks, the failed check, the re-render", say: 'The render puts your objects into your own photo. Then Nemotron checks light, shadows and scale, and fixes what fails.', criterion: 'Verification, vision' },

@@ -46,7 +46,7 @@ export interface Track {
   uses: Use[];
   threads?: Thread[]; // Photon only: the mechanisms as real message threads
   proof: Proof[];
-  ours: string[]; // what ShotMatch built
+  ours: string[]; // what Tessera built
   theirs: string[]; // what the sponsor's product does
   limits: string[];
   video: { title: string; length: string; summary: string; shots: Shot[]; notes: string; url?: string };

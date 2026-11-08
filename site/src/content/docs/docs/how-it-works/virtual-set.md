@@ -3,7 +3,7 @@ title: The virtual set
 description: How a solved photo becomes a shared 3D set of the place, with people, props, lights and cameras that everyone edits live.
 ---
 
-Once a photo is placed, ShotMatch builds the spot as a 3D set around the mark. You work in it like a small film set: place people and props, light them, and frame the shot through a camera with a real lens. Studio (`/studio/<code>`) shows the whole set. Simple shows the same set through the shot camera.
+Once a photo is placed, Tessera builds the spot as a 3D set around the mark. You work in it like a small film set: place people and props, light them, and frame the shot through a camera with a real lens. Studio (`/studio/<code>`) shows the whole set. Simple shows the same set through the shot camera.
 
 ![Studio's World view in Clay + photo: clay buildings from NYC footprints with the photo projected onto them, Cam A's frustum, two walking people and a bicycle on the street](../../../../assets/shots/studio-world-clay.png)
 

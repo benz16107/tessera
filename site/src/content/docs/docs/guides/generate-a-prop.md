@@ -22,7 +22,7 @@ The inspector then shows the concept image, the prompt, the size, **Regenerate**
 
 ![The Generate panel in Studio: Words to 3D, Image then 3D and Flat image, a prompt field, Generate and Hold to talk, beside a clay car in the set](../../../../assets/cards/nvidia-generate.png)
 
-1. Drag an image file onto the 3D view. ShotMatch asks **Drop the image where it should go**.
+1. Drag an image file onto the 3D view. Tessera asks **Drop the image where it should go**.
 2. Choose:
    - **Place as image:** the image stands at that spot as a flat print at real size.
    - **Make it 3D:** Nemotron 3.5 Super VL finds the object in the photo, crops to it, describes it and gives its real dimensions, then TRELLIS builds the model.

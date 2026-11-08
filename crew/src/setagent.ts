@@ -27,7 +27,7 @@ export function setBrief(ctx: SetCtx): string {
   ].filter(Boolean).join('\n');
 }
 
-const SYSTEM = `You are the set builder in ShotMatch, a virtual photo set. You turn a director's words into tool calls that place people, props and lights in the 3D set, as seen from the shot camera.
+const SYSTEM = `You are the set builder in Tessera, a virtual photo set. You turn a director's words into tool calls that place people, props and lights in the 3D set, as seen from the shot camera.
 Rules: call every tool needed in as few turns as possible (several calls in one turn is good). Use library props (add_prop) when one fits; search_assets when unsure; generate_prop only for things the library lacks. Posters, murals, signs and screens: add_image.
 "On the left" means frame_x about -0.6; "left wall" about -0.85; "in the background" means farther (15 to 40 m); "close" 2 to 4 m. People "walking toward camera" use pose walk and facing camera.
 String lights: add_lights type point, count 10 to 16, warm 2200 to 2700 K, height 2.6 to 3.2 m, spanning frame_x from one side to the other above the subjects.
@@ -134,7 +134,7 @@ export async function setCommand(sessionId: bigint, text: string, opts: { offlin
   const s0 = Date.now();
   const [safety, routed] = await Promise.all([screenText(clean), routeP]);
   await logStep(sessionId, 'safety_check', 'command', `${safety.safe ? 'safe' : 'refused'} (${safety.model}): ${safety.detail}`, Date.now() - s0);
-  if (!safety.safe) return done({ reply: "I can't help with that one. ShotMatch plans photos of public places.", intent: 'refused', model: safety.model });
+  if (!safety.safe) return done({ reply: "I can't help with that one. Tessera plans photos of public places.", intent: 'refused', model: safety.model });
 
   if (!routed) {
     try { const o = await offline(ctx, clean, steps, key ? 'hosted router failed' : 'no NVIDIA key'); return done({ reply: o.reply, intent: 'edit', model: o.model, offline: true }); }

@@ -1,9 +1,9 @@
 ---
 title: Live geodata
-description: The open data ShotMatch pulls about a spot and a shot time, the rules behind its numbers, and where it shows up.
+description: The open data Tessera pulls about a spot and a shot time, the rules behind its numbers, and where it shows up.
 ---
 
-A good shot depends on more than the place: cloud for sunset colour, haze for the far skyline, a film permit holding the block, scaffolding on the facade, the tide under the bridge, the street falling into building shadow. ShotMatch pulls this from open sources for the spot and the set's time, shows it in the 3D set, on a 2D map and on the timeline, and hands it to the AI as one paragraph.
+A good shot depends on more than the place: cloud for sunset colour, haze for the far skyline, a film permit holding the block, scaffolding on the facade, the tide under the bridge, the street falling into building shadow. Tessera pulls this from open sources for the spot and the set's time, shows it in the 3D set, on a 2D map and on the timeline, and hands it to the AI as one paragraph.
 
 Everything works for any latitude and longitude in the US. NYC spots also get permits, closures, scaffolding and the city's own building heights. Code: `crew/src/layers/` (server), `web/src/layers/` (screens), tests in `crew/test/layers.test.ts`.
 

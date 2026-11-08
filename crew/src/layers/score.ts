@@ -11,7 +11,7 @@ export interface ColorChance { score: number; label: 'good' | 'fair' | 'poor'; w
  * Sunrise or sunset colour chance, 0 to 100, from Open-Meteo's cloud cover by layer (percent) at the hour of the sun event.
  * Physics, from Corfidi (NOAA Storm Prediction Center, "The Colors of Sunset and Twilight"): the colour is sunlight reddened
  * along a long path through clean air, and it shows best on mid and high cloud that the low sun still lights from below.
- * Low cloud near the horizon blocks that light, and haze mutes it. The thresholds are ShotMatch's own:
+ * Low cloud near the horizon blocks that light, and haze mutes it. The thresholds are Tessera's own:
  * - canvas = the sky's mid or high cover, 1 - (1 - mid)(1 - high). Under 5% scores 20 (a clean glow, little sky colour);
  *   it rises to 90 at 30%, holds 100 from 30% to 70%, and falls to 45 at 100% (a solid deck catches less light).
  * - low cloud over 15% scales that down, to a tenth at 80% and above (the light never reaches the canvas).

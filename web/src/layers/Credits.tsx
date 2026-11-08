@@ -23,7 +23,7 @@ export default function GeoCredits() {
   return (
     <section className="sheet" id="geodata">
       <h2>Live data layers</h2>
-      <p>The conditions, the danger and disruption zones, the building shadows and the 2D map come from these open sources. ShotMatch caches each response (weather 15 minutes, alerts 5 minutes, permits and map data 24 hours) and never derives any of them from Google's tiles.</p>
+      <p>The conditions, the danger and disruption zones, the building shadows and the 2D map come from these open sources. Tessera caches each response (weather 15 minutes, alerts 5 minutes, permits and map data 24 hours) and never derives any of them from Google's tiles.</p>
       <div className="table-wrap">
         <table>
           <thead><tr><th scope="col">Source</th><th scope="col">License</th><th scope="col">Used for</th></tr></thead>

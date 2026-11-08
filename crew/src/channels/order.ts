@@ -1,4 +1,4 @@
-// Which of a person's channels to try, in order, for a message ShotMatch starts (an alert, the framing after a call). Pure.
+// Which of a person's channels to try, in order, for a message Tessera starts (an alert, the framing after a call). Pure.
 import type { Channel } from './format.ts';
 
 export type Person = { channel: Channel; address: string; name: string; participantId?: bigint };

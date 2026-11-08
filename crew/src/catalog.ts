@@ -1,4 +1,4 @@
-// What each NVIDIA model does in ShotMatch, for the studio's "Powered by NVIDIA" list (with live latency from the ledger)
+// What each NVIDIA model does in Tessera, for the studio's "Powered by NVIDIA" list (with live latency from the ledger)
 // and docs/NVIDIA.md. Ids come from config.ts so this list cannot drift from what the code calls.
 import { MODELS, RIVA } from './config.ts';
 

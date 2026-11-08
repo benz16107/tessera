@@ -1,6 +1,6 @@
 ---
 title: Solve against the open 3D model
-description: How ShotMatch recovers where a photo was taken from, which way it faced and its lens, and how it decides how sure it is.
+description: How Tessera recovers where a photo was taken from, which way it faced and its lens, and how it decides how sure it is.
 ---
 
 The solver answers one question: where did the photographer stand? It returns a position, a heading, pitch and roll, and the 35 mm-equivalent focal length. It matches the photo against our own 3D model of the spot. It never looks at Google's map tiles.
@@ -76,7 +76,7 @@ This matters for far, flat scenes, where the camera can slide toward the scene w
 
 ## The f35 convention
 
-Every focal length in ShotMatch is the 35 mm equivalent on the diagonal of the final image:
+Every focal length in Tessera is the 35 mm equivalent on the diagonal of the final image:
 
 ```
 f35 = fpx * 43.2666 / hypot(w, h)

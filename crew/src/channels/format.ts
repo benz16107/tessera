@@ -50,13 +50,13 @@ export function plan(ev: SetEvent, channel: Channel): Op[] {
     case 'progress':
       return channel === 'telegram' ? [{ op: 'progress', key: ev.key, text: ev.text }] : [];
     case 'note':
-      if (channel === 'email') return [{ op: 'text', format: 'markdown', subject: `ShotMatch: ${oneLine(ev.text, 70)}`, text: `${ev.text}${ev.planUrl ? `\n\n[Open the live set](${ev.planUrl})` : ''}` }];
+      if (channel === 'email') return [{ op: 'text', format: 'markdown', subject: `Tessera: ${oneLine(ev.text, 70)}`, text: `${ev.text}${ev.planUrl ? `\n\n[Open the live set](${ev.planUrl})` : ''}` }];
       return [{ op: 'text', text: ev.planUrl && channel === 'sms' ? `${ev.text} ${ev.planUrl}` : ev.text }];
     case 'render': {
       const line = `${ev.label}: ${oneLine(ev.caption)}`;
       if (channel === 'imessage') return [{ op: 'image', path: ev.image }, { op: 'text', text: `${line} Reply to this to change it.` }];
       if (channel === 'whatsapp') return [{ op: 'image', path: ev.image }, { op: 'text', text: `${line} Reply to this to change it. ${ev.planUrl}` }];
-      if (channel === 'sms') return [{ op: 'text', text: `ShotMatch ${line} See it: ${ev.imageUrl}` }];
+      if (channel === 'sms') return [{ op: 'text', text: `Tessera ${line} See it: ${ev.imageUrl}` }];
       if (channel === 'telegram') {
         const lenses = (ev.lenses ?? []).slice(0, 10);
         const caption = `${line}${lenses.length > 1 ? ` Lens options: ${lenses.map(l => `${Math.round(l.f35)} mm`).join(', ')}, exact crops of the render.` : ''} Reply to change it.`;
@@ -66,7 +66,7 @@ export function plan(ev: SetEvent, channel: Channel): Op[] {
           ...(ev.progressKey ? [{ op: 'progress' as const, key: ev.progressKey, text: `${ev.label} is ready.` }] : []),
         ];
       }
-      return [{ op: 'text', format: 'markdown', subject: `ShotMatch ${ev.label}: ${oneLine(ev.title, 60)}`,
+      return [{ op: 'text', format: 'markdown', subject: `Tessera ${ev.label}: ${oneLine(ev.title, 60)}`,
         text: `## ${ev.label}\n\n${ev.caption}\n\nThe image is attached. It is an AI interpretation of the shot.\n\n[Open the live set](${ev.planUrl}) · [Full-size image](${ev.imageUrl})\n\nReply to this email to change it.` },
       { op: 'image', path: ev.image }];
     }

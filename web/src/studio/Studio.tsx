@@ -87,7 +87,7 @@ export default function Studio({ code }: { code: string }) {
   const askName = !name || !!err;
   return (
     <div className="studio st-gate">
-      <p className="st-logo">SHOTMATCH</p>
+      <p className="st-logo">TESSERA</p>
       {askName ? (
         <form onSubmit={e => { e.preventDefault(); if (name.trim()) { setErr(''); tried.current = true; join(name.trim()); } }}>
           <h1>Join the set for <span className="mono">{code}</span></h1>
@@ -786,7 +786,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   return (
     <div className="studio" data-time={timeHover || timePinned ? 'open' : 'slim'} data-focus={focus} data-view={view}>
       <header className="st-top">
-        <a className="st-logo" href={`/p/${session.code}`} onClick={e => { e.preventDefault(); navigate(`/p/${session.code}`); }} title="Back to the planner">SHOTMATCH</a>
+        <a className="st-logo" href={`/p/${session.code}`} onClick={e => { e.preventDefault(); navigate(`/p/${session.code}`); }} title="Back to the planner">TESSERA</a>
         <ViewSwitch code={session.code} current="studio" selected={selected} onArrive={h => { if (h.selected !== null) setSelected(h.selected); if (h.first) setView('shot'); }} />
         <div className="st-setname"><span>{spot?.name ?? session.title}</span><span className="saved">Saved live</span></div>
         {/* Simple | Studio toggle: the "simple" thread owns this one spot. */}

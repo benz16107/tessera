@@ -20,15 +20,15 @@ const tone = t.channel.toLowerCase().replace(/\s+/g, '');
     </div>
   ) : <>
   <div class="thread-head" aria-hidden="true">
-    {kind === 'call' ? <><span class="call-dot"></span>ShotMatch · call in progress</> : <>ShotMatch</>}
+    {kind === 'call' ? <><span class="call-dot"></span>Tessera · call in progress</> : <>Tessera</>}
   </div>
   <ol class="thread-body">
     {t.messages.map((m) => (
       <li class:list={['msg', `m-${m.from}`]}>
         {m.from === 'note' ? <p class="note-line">{m.text}</p> : (
           <div class="bubble">
-            {kind === 'call' && <span class="who">{m.from === 'person' ? 'Caller' : 'ShotMatch'}</span>}
-            {m.img && <Image src={m.img} alt={m.from === 'person' ? 'The photo the person sent' : 'The render ShotMatch sent, labelled AI interpretation'} widths={[240, 480]} sizes="240px" class="bubble-img" />}
+            {kind === 'call' && <span class="who">{m.from === 'person' ? 'Caller' : 'Tessera'}</span>}
+            {m.img && <Image src={m.img} alt={m.from === 'person' ? 'The photo the person sent' : 'The render Tessera sent, labelled AI interpretation'} widths={[240, 480]} sizes="240px" class="bubble-img" />}
             {m.text && <p>{m.text}</p>}
           </div>
         )}

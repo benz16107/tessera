@@ -36,7 +36,7 @@ export function sheetHtml(s: Sheet, code: string, imageUrl?: string): string {
     <td class="t">${esc(x.lens_mm)} mm${x.aperture ? `<div class="sub">f/${esc(x.aperture)}${x.shutter ? ` · ${esc(x.shutter)}` : ''}</div>` : ''}</td><td>${esc(x.people ?? '')}</td><td>${esc(x.light ?? '')}${x.notes ? `<div class="sub">${esc(x.notes)}</div>` : ''}</td></tr>`).join('');
   const windows = s.windows ? Object.entries(s.windows).map(([k, v]) => `<li><span>${esc(k.replace(/_/g, ' '))}</span> ${esc(v)}</li>`).join('') : '';
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(s.title ?? 'Call sheet')} · ShotMatch</title>
+<title>${esc(s.title ?? 'Call sheet')} · Tessera</title>
 <style>
 :root{--paper:#f4f1ea;--ink:#1d1b18;--mute:#6b665d;--rule:#d8d2c4;--mark:#c2410c}
 @media (prefers-color-scheme:dark){:root{--paper:#16150f;--ink:#ece8de;--mute:#a39d90;--rule:#3a372f;--mark:#f0884f}}

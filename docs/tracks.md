@@ -1,11 +1,11 @@
 # Tracks we are entering
 
-One row per prize track: what it is, what it needs, and what ShotMatch does for it. HackUTD 2026 rules (Devpost, read
+One row per prize track: what it is, what it needs, and what Tessera does for it. HackUTD 2026 rules (Devpost, read
 Nov 7): up to 3 sponsor tracks, 1 HackUTD track and any number of MLH tracks; the overall prizes are automatic. Track
 facts come from the sponsors' stage slides as recorded on Nov 7 and from `BUILD.md`. The story for each row is in
 `docs/story.md`; the judge pages are on the site under `/tracks/`.
 
-| Track | What it is | What it needs | What ShotMatch does |
+| Track | What it is | What it needs | What Tessera does |
 |---|---|---|---|
 | HackUTD overall (General Track) | Best project at the event; $20k overall pool. | Automatic. Devpost by Sun Nov 8, 12:00 PM CT; present at judging and closing. | Problem first (you saw a shot, where do you stand), the honest solver (10 of 11 held-out photos placed, the 11th "Couldn't place"), then the live set across browser, phone and texts. |
 | NVIDIA: Nemotron, beyond a chatbot | Build with Nemotron models in a way that goes past a chat box. Prizes: 2x RTX 5080 plus $200 Brev; second place 1x RTX 5080. | Nemotron doing real work. | Nemotron runs the set's workflows: text to set, rebuild the scene from the photo, a render that checks its own physics, generation at real size, art director, call sheet with cuOpt, voice with Parakeet and Magpie, offline with Bolt on CPU, safety on every input. Plus our LoRA fine-tune of Nemotron Nano 12B v2 VL that reads lenses (72.4% long-lens recall on unseen landmarks). Page: `/tracks/nvidia/`. |

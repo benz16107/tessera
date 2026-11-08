@@ -2,7 +2,7 @@
 export type V = { id: bigint; parentVersionId?: bigint; label: string; channel: string; externalMessageId: string; imageUrl: string; createdAt: Date };
 
 /** The version label a crew message starts with ("v3: ...", "v3.1 (from v3): ..."), or null. */
-export const labelIn = (text: string) => /^(?:ShotMatch\s+)?(v\d+(?:\.\d+)*)\b/.exec(text.trim())?.[1] ?? null;
+export const labelIn = (text: string) => /^(?:(?:Tessera|ShotMatch)\s+)?(v\d+(?:\.\d+)*)\b/.exec(text.trim())?.[1] ?? null;
 
 const fmt = (d: Date, tz?: string) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', ...(tz && { timeZone: tz }) });
 

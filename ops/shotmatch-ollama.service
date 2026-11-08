@@ -1,7 +1,7 @@
 # Ollama on the Vultr VM's CPU, serving Nemotron 3.5 Bolt E4B as the crew's offline command parser (127.0.0.1:11434).
 # Install: ops/ollama.sh (user-level, no sudo), which links this file into ~/.config/systemd/user/.
 [Unit]
-Description=Ollama (Nemotron 3.5 Bolt for ShotMatch)
+Description=Ollama (Nemotron 3.5 Bolt for Tessera)
 After=network-online.target
 
 [Service]

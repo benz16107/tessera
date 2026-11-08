@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { REPO } from '../config.ts';
 
 export const LAYERS_DIR = join(REPO, 'data/layers');
-export const UA = 'ShotMatch/0.1 (HackUTD 2026; me@thebenzhou.com)'; // api.weather.gov and Overpass ask for a contact
+export const UA = 'Tessera/0.1 (HackUTD 2026; me@thebenzhou.com)'; // api.weather.gov and Overpass ask for a contact
 
 export const MIN = 60_000, HOUR = 60 * MIN;
 export const TTL = { weather: 15 * MIN, alerts: 5 * MIN, quakes: 15 * MIN, tides: 6 * HOUR, permits: 24 * HOUR, osm: 24 * HOUR, stations: 7 * 24 * HOUR };

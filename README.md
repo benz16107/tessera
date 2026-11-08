@@ -1,6 +1,6 @@
-# ShotMatch
+# Tessera
 
-Stand where the photo was taken, then make the shot yours. Drop a photo of a place and ShotMatch finds where the photographer stood, which way they faced and what lens they used, rebuilds the place as a 3D set, and your group plans its own version there together: in a browser, in a Telegram chat or by phone. Built at HackUTD 2026.
+Stand where the photo was taken, then make the shot yours. Drop a photo of a place and Tessera finds where the photographer stood, which way they faced and what lens they used, rebuilds the place as a 3D set, and your group plans its own version there together: in a browser, in a Telegram chat or by phone. Built at HackUTD 2026.
 
 ![Studio looking through the solved camera, Cam A: the original photo as the backplate, two placed people, a 51 mm lens at f/2.8 focused on a person, and the golden hour band on the timeline](site/public/devpost/1-studio-camera.jpg)
 
@@ -166,7 +166,7 @@ cd module && npm run check                   # HMAC used by the webhook, against
 
 ## Credits and licences
 
-ShotMatch is built from other people's work; the full list is on the [credits page](https://site.104-238-146-229.sslip.io/credits/).
+Tessera is built from other people's work; the full list is on the [credits page](https://site.104-238-146-229.sslip.io/credits/).
 
 - Wikimedia Commons photographers, for the spot model and the lens dataset: each photo with its author and licence in [spots/nyc_dumbo/CREDITS.tsv](spots/nyc_dumbo/CREDITS.tsv) and [lens/CREDITS.tsv](lens/CREDITS.tsv)
 - People and most props: Quaternius, CC0; also Kenney (CC0) and Zsky (CC BY 3.0) via Poly Pizza ([web/src/studio/catalog/CREDITS.md](web/src/studio/catalog/CREDITS.md))

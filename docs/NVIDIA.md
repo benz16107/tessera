@@ -1,6 +1,6 @@
-# NVIDIA in ShotMatch
+# NVIDIA in Tessera
 
-ShotMatch turns a photo of a place into a shared virtual set: the spot as a 3D world, the user's people, props, lights and cameras as rows in SpacetimeDB, and an AI render that puts those objects into the user's own photo. NVIDIA models do the work between the words and the set: they read the photo, place objects from a sentence, generate props, render, check the render's physics, plan the shoot, listen and speak. This page lists every NVIDIA model and API we call, what it does, how fast it was, and what did not work.
+Tessera turns a photo of a place into a shared virtual set: the spot as a 3D world, the user's people, props, lights and cameras as rows in SpacetimeDB, and an AI render that puts those objects into the user's own photo. NVIDIA models do the work between the words and the set: they read the photo, place objects from a sentence, generate props, render, check the render's physics, plan the shoot, listen and speak. This page lists every NVIDIA model and API we call, what it does, how fast it was, and what did not work.
 
 All numbers here were measured on Saturday Nov 7, 2026 from our Vultr VM (Dallas) against the hosted APIs, unless a row says otherwise. Code: `crew/src/` (Node). Model ids live in one place, `crew/src/config.ts`.
 
@@ -18,7 +18,7 @@ All numbers here were measured on Saturday Nov 7, 2026 from our Vultr VM (Dallas
 
 Median latency is from `crew/scripts/latency.ts` (5 runs each) where the job matches, otherwise from the crew's live ledger (`GET /api/nvidia/models`, the studio's "Powered by NVIDIA" list).
 
-| Model | Where | What it does in ShotMatch | Measured | Status |
+| Model | Where | What it does in Tessera | Measured | Status |
 |---|---|---|---|---|
 | Nemotron 3.5 Super VL 120B-A12B (`nvidia/nemotron-3.5-super-vl-120b-a12b`) | NVIDIA API Catalog | Plans set compositions with reasoning on and calls set tools; reads the photo (objects with boxes) and its light; art director; call sheet; render physics check; real-world sizes for generated props; the iMessage and Telegram agent; upload policy check | Set plan 1.27 s (reasoning off), 5.78 s (on). Light read 2.2 s, photo read 5 to 6 s, render check 3.9 to 5.5 s, art director 21.6 s | Works |
 | Nemotron 3.5 Lightning 30B-A3B (`nvidia/nemotron-3.5-lightning-30b-a3b`) | NVIDIA API Catalog | Routes every command (intent, and whether to escalate to Super); quick replies; one-object edits; voice turns | Route 0.23 s; one-object edit plan 0.73 s; "what lens am I on?" answered end to end in 0.76 s | Works |

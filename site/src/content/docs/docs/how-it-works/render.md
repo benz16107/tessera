@@ -1,9 +1,9 @@
 ---
 title: The render pass
-description: How ShotMatch puts your people, props and lights into your own photo, then has Nemotron check the physics before you see it.
+description: How Tessera puts your people, props and lights into your own photo, then has Nemotron check the physics before you see it.
 ---
 
-A render is your version of the shot: the objects you placed, lit by the right sun, inside your own photo. ShotMatch does not repaint the photo. It composites your objects in, lets an image model blend only around them, and then checks the result.
+A render is your version of the shot: the objects you placed, lit by the right sun, inside your own photo. Tessera does not repaint the photo. It composites your objects in, lets an image model blend only around them, and then checks the result.
 
 ![Studio's render view: on the left, Through Cam A with two mannequins over the photo; on the right, the AI render of the same two people labelled "AI interpretation"; Nemotron's physics check at the right edge](../../../../assets/shots/studio-render-prod.png)
 

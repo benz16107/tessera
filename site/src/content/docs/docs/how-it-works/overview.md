@@ -1,9 +1,9 @@
 ---
 title: How it works
-description: The pieces of ShotMatch, how they talk to each other, and which machine runs each one.
+description: The pieces of Tessera, how they talk to each other, and which machine runs each one.
 ---
 
-ShotMatch has one shared state: a SpacetimeDB database on Maincloud. Every screen, every phone, the GPU worker and the message bridge read and write the same rows. Nothing else sits between them.
+Tessera has one shared state: a SpacetimeDB database on Maincloud. Every screen, every phone, the GPU worker and the message bridge read and write the same rows. Nothing else sits between them.
 
 ## The pieces
 

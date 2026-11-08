@@ -54,6 +54,6 @@ export async function markVerified(row: { id: bigint; verified: boolean }) {
 export async function crewParticipant(sessionId: bigint) {
   const me = conn.identity!.toHexString();
   const find = () => [...conn.db.participant.sessionId.filter(sessionId)].find(p => p.identity.toHexString() === me);
-  if (!find()) await conn.reducers.joinSessionAsCrew({ sessionId, name: 'ShotMatch' });
+  if (!find()) await conn.reducers.joinSessionAsCrew({ sessionId, name: 'Tessera' });
   return until(find, 10_000, 'the crew participant');
 }

@@ -23,10 +23,10 @@ test('fan-out: each channel gets the render in its own form', () => {
   assert.equal(plan({ ...render, progressKey: undefined } as SetEvent, 'telegram').length, 1, 'no progress line without a progress message');
   const sms = plan(render, 'sms');
   assert.equal(sms.length, 1);
-  assert.match((sms[0] as any).text, /^ShotMatch v3: .* See it: https:\/\/x\/preview\/v3\.jpg$/);
+  assert.match((sms[0] as any).text, /^Tessera v3: .* See it: https:\/\/x\/preview\/v3\.jpg$/);
   const email = plan(render, 'email');
   assert.equal((email[0] as any).format, 'markdown');
-  assert.match((email[0] as any).subject, /^ShotMatch v3: Bridge at dusk$/);
+  assert.match((email[0] as any).subject, /^Tessera v3: Bridge at dusk$/);
   assert.equal(email[1].op, 'image');
   assert.deepEqual(plan(render, 'voice'), []);
   // progress only on Telegram
@@ -131,13 +131,14 @@ test('version tree: thread versions in order, forks under their parent', () => {
   ];
   assert.equal(treeText(vs, 'UTC'), ['v1 · 10:00 PM · imessage', '  └ v1.1 · 10:09 PM · telegram (no image yet)', '    └ v1.1.1 · 10:12 PM · sms', 'v2 · 10:05 PM · studio', "Reply to any version's message to fork from it."].join('\n'));
   assert.equal(labelIn('v3.1 (from v3): moved the bike'), 'v3.1');
-  assert.equal(labelIn('ShotMatch v2: x'), 'v2');
+  assert.equal(labelIn('Tessera v2: x'), 'v2');
+  assert.equal(labelIn('ShotMatch v2: x'), 'v2'); // replies to messages sent before the rename
   assert.equal(labelIn('version 2'), null);
 });
 
 test('photon events: every messaging platform, voice notes, email quotes, call.ended', () => {
   const ev = (o: any) => ({ id: 'e', type: 'message.received', data: { object: { id: 'm', status: 'received', sentBy: { handle: 'jun@x.io', kind: 'human', metadata: { displayName: 'Jun' } }, receivedBy: { id: 'pho_usr_a' }, space: { id: 's', kind: 'direct' }, ...o } } });
-  const email = parseInbound(ev({ platform: 'email', content: { type: 'text', format: 'plain', text: 'make it 85mm\n\nOn Sat, Nov 7, 2026 ShotMatch wrote:\n> v2: ...' } }));
+  const email = parseInbound(ev({ platform: 'email', content: { type: 'text', format: 'plain', text: 'make it 85mm\n\nOn Sat, Nov 7, 2026 Tessera wrote:\n> v2: ...' } }));
   assert.equal(email?.text, 'make it 85mm');
   assert.equal(email?.displayName, 'Jun');
   assert.equal(parseInbound(ev({ platform: 'whatsapp_business', content: { type: 'voice', attachmentId: 'pho_att_v' } }))?.attachmentIds[0], 'pho_att_v');
