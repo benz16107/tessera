@@ -35,6 +35,15 @@ export function SetEventsBridge(p: { sessionId: bigint; me?: Identity; onChange:
   return hook ? <Bridge hook={hook} {...p} /> : null;
 }
 
+/** Presence heartbeat, always on (spacetime usePresence beats every 10 s while the tab is visible), so the People list
+ *  means "here now" even when nobody has the People drawer open. */
+type UsePresence = (sessionId: bigint, focusObjectId?: bigint | null) => unknown;
+function PresenceBeatInner({ hook, sessionId, focus }: { hook: UsePresence; sessionId: bigint; focus: bigint | null }) { hook(sessionId, focus); return null; }
+export function PresenceBeat(p: { sessionId: bigint; focus: bigint | null }) {
+  const hook = useSpacetimeMod()?.usePresence as UsePresence | undefined;
+  return hook ? <PresenceBeatInner hook={hook} {...p} /> : null;
+}
+
 /** Inside the east-north-up group: remote cursors and pings. */
 export function SetEventMarks({ ev }: { ev: SetEv | null }) {
   const [now, setNow] = useState(Date.now());

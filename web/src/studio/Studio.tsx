@@ -45,7 +45,7 @@ import { NvidiaSlot, SpacetimeSlot, PhotonSlot } from './slots.tsx';
 import { ViewSwitch } from '../simple/ViewSwitch.tsx';
 import { xrStore, VrButton, VrOrigin } from './xr/VR.tsx';
 import WalkControls, { WalkHud, newWalkInput, obstaclesFor } from './world/Walk.tsx';
-import { SetEventsBridge, SetEventMarks, ViewBroadcaster, FollowCamera, CheckinBridge, CheckinMarksSlot, type SetEv } from './world/SetEvents.tsx';
+import { SetEventsBridge, SetEventMarks, ViewBroadcaster, FollowCamera, PresenceBeat, CheckinBridge, CheckinMarksSlot, type SetEv } from './world/SetEvents.tsx';
 import type { Layers } from './render/layers.ts';
 import '@fontsource/martian-mono/400.css';
 import '@fontsource/martian-mono/500.css';
@@ -1234,6 +1234,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
         extra={st => (st.open ? <GeoBands geo={layers} {...st} top={116} zone={zone} /> : null)} />}
 
       <SetEventsBridge sessionId={sid} me={identity ?? undefined} onChange={setEv} />
+      <PresenceBeat sessionId={sid} focus={selected} />
       <CheckinBridge sessionId={sid} onChange={setCheckins} />
       {geoOpen && origin && <GeoPanel geo={layers} zone={zone} center={origin} camera={cone} onClose={() => setGeoOpen(false)} />}
       {liveOpen && (
