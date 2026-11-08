@@ -137,5 +137,12 @@ export function decidePlace(u: Pick<Upload, 'nearestSpot' | 'gpsLat' | 'gpsLon'>
   return { kind: 'clue' }; // medium (shown there as a suggestion), unsure or no answer: the clue panel
 }
 
+/** A place's own name, short and safe for a key=value params list: the first two parts that aren't only a number, so
+ *  "Palace of Fine Arts, 3301, Lyon Street, ..." becomes "Palace of Fine Arts, Lyon Street". */
+export const placeLabel = (name?: string) => {
+  const parts = (name ?? '').split(',').map(p => p.replace(/[;=]/g, ' ').trim()).filter(p => p && !/^\d[\d\s-]*[a-z]?$/i.test(p));
+  return parts.slice(0, 2).join(', ').slice(0, 80) || undefined;
+};
+
 /** How a free-location shoot's pin was set; Cam A's params carry it (placed=...), so every viewer gets the same label. */
 export type PlacedBy = 'gps' | 'guess' | 'search' | 'pin' | 'area';

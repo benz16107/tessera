@@ -6,7 +6,7 @@ import { useSpacetimeDB, useTable, useReducer } from 'spacetimedb/react';
 import { tables, reducers } from '../module_bindings/index.ts';
 import { NAME_KEY } from '../config.ts';
 import { navigate } from '../App.tsx';
-import { decidePlace, fetchLinkedPhoto, geoSpotId, groundHeight, locate, uploadPhoto, type Upload } from './lib.ts';
+import { decidePlace, fetchLinkedPhoto, geoSpotId, groundHeight, locate, placeLabel, uploadPhoto, type Upload } from './lib.ts';
 import { preferredView, viewPath } from './view.ts';
 import { Link as LinkIcon, Photo, Viewfinder, Close } from './icons.tsx';
 import './simple.css';
@@ -78,7 +78,7 @@ export default function Home() {
       // A pin shoot's session spot is 'geo:...' (Studio reads it); its photo has no spot, so no solve is queued. A clue shoot has
       // neither yet: it opens on the clue panel.
       const sessionSpot = at.kind === 'pin' ? geoSpotId(at.lat, at.lon, await groundHeight(at.lat, at.lon)) : at.kind === 'spot' ? at.spotId : '';
-      const title = at.kind === 'pin' && at.place ? at.place.split(',').slice(0, 2).join(',').trim().slice(0, 120) : 'Untitled shoot';
+      const title = (at.kind === 'pin' && placeLabel(at.place)) || 'Untitled shoot';
       for (let i = 0; !latest.current.mineReady && i < 100; i++) await new Promise(r => setTimeout(r, 100));
       if (!latest.current.mineReady) throw new Error('Still connecting to Tessera. Try again in a moment.');
       pending.current = { u, spotId: at.kind === 'spot' ? at.spotId : '', pin, source: at.kind === 'pin' && at.guessed ? 'locate' : 'web', before: new Set(latest.current.mine.map(s => String(s.id))) };

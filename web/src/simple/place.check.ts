@@ -1,6 +1,6 @@
 // Self-check for decidePlace (anywhere.md cases 1 to 3, anywhere2.md rule 1): npx tsx src/simple/place.check.ts (from web/).
 import assert from 'node:assert/strict';
-import { decidePlace, evidenceLine, type Located } from './lib.ts';
+import { decidePlace, evidenceLine, placeLabel, type Located } from './lib.ts';
 
 const loc = (o: Partial<Located>): Located => ({ place: '', lat: null, lon: null, confidence: 'low', reason: '', headingDeg: null, source: 'nemotron', nearestSpot: null, ...o });
 const noGps = { nearestSpot: null, gpsLat: null, gpsLon: null };
@@ -29,4 +29,11 @@ assert.equal(evidenceLine([{ type: 'sign', text: 'Travelodge' }, { type: 'sign',
 assert.equal(evidenceLine([{ type: 'landmark', text: 'the Palace of Fine Arts rotunda.' }]), 'From the landmark: the Palace of Fine Arts rotunda.');
 assert.equal(evidenceLine([{ type: 'other', text: 'night sky' }]), '');
 assert.equal(evidenceLine(undefined), '');
-console.log('place.check: 14 of 14 pass');
+// Place labels: the first two parts that aren't only a number, no ';' or '=' (Cam A's params syntax), idempotent.
+assert.equal(placeLabel('Palace of Fine Arts, 3301, Lyon Street, Marina District, San Francisco, California, 94123, United States'), 'Palace of Fine Arts, Lyon Street');
+assert.equal(placeLabel('Clifton Hill, Niagara Falls, Ontario, Canada'), 'Clifton Hill, Niagara Falls');
+assert.equal(placeLabel('12-14, Rue de Rivoli, Paris'), 'Rue de Rivoli, Paris');
+assert.equal(placeLabel(placeLabel('Eiffel Tower, Paris, France')), 'Eiffel Tower, Paris');
+assert.equal(placeLabel('a=b;c'), 'a b c');
+assert.equal(placeLabel(''), undefined);
+console.log('place.check: 20 of 20 pass');

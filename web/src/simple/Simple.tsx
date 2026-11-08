@@ -17,17 +17,18 @@ import { optics as opticsOf, frameFromPhoto } from '../studio/camera/shot.ts';
 import { sceneEv100 } from '../studio/optics.ts';
 import { cameraHpr, cameraQuat, enuToLlh, llhToEnu, type Origin } from '../studio/frame.ts';
 import { geometryFor, groundZ } from '../studio/world/geometry.ts';
-import { newUid, parseParams, stateOf, withParams } from '../studio/scene/objects.ts';
+import { newUid, parseParams } from '../studio/scene/objects.ts';
 import type { Layers } from '../studio/render/layers.ts';
 import ShotView from './ShotView.tsx';
 import Found, { PinFound } from './Found.tsx';
 import { CluePanel, type OnPlace } from './clue.tsx';
+import { placeLabel, placeShoot } from './place.ts';
 import Yours from './Yours.tsx';
 import There from './There.tsx';
 import ShareSheet from './Share.tsx';
 import { Wordmark, LegalLinks } from './Drop.tsx';
 import { ViewSwitch } from './ViewSwitch.tsx';
-import { CONFIDENCE, evidenceLine, geoSpotId, groundHeight, initials, locate, lonZone, parseGeo, uploadPhoto, useNow, type Located, type PlacedBy } from './lib.ts';
+import { CONFIDENCE, evidenceLine, initials, locate, lonZone, parseGeo, uploadPhoto, useNow, type Located, type PlacedBy } from './lib.ts';
 import { Close, Photo as PhotoIcon, Sun } from './icons.tsx';
 import './simple.css';
 
@@ -187,10 +188,12 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
       MADE_CAM.add(sid);
       const p = llhToEnu(origin, pose.lat, pose.lon, 0);
       const q = cameraQuat(pose.heading, pose.pitch, pose.roll);
+      // The name the shoot was titled with at the drop, so a later Change place knows the title came from a placement.
+      const camPlace = placedNext.current?.name ?? (['', 'Untitled shoot', 'New shoot'].includes(session.title) ? undefined : placeLabel(session.title));
       scene.addObject({
         kind: 'camera', assetId: '', name: 'Cam A', x: p.x, y: p.y, z: gz(p.x, p.y) + pose.alt, qx: q.x, qy: q.y, qz: q.z, qw: q.w, scale: 1,
         color: '', intensity: 0, lightType: '', visible: true,
-        params: `uid=${newUid()};shot=1;photo=${photo.id};alt=${pose.alt}${solved ? '' : `;approx=1;placed=${placedNext.current?.by ?? (photo.source === 'locate' ? 'guess' : 'gps')}${placedNext.current?.radiusM ? `;area=${Math.round(placedNext.current.radiusM)}` : ''}${placedNext.current?.name ? `;place=${placedNext.current.name}` : ''}`}`,
+        params: `uid=${newUid()};shot=1;photo=${photo.id};alt=${pose.alt}${solved ? '' : `;approx=1;placed=${placedNext.current?.by ?? (photo.source === 'locate' ? 'guess' : 'gps')}${placedNext.current?.radiusM ? `;area=${Math.round(placedNext.current.radiusM)}` : ''}${camPlace ? `;place=${camPlace}` : ''}`}`,
       });
     }, 4000);
     return () => clearTimeout(t);
@@ -199,17 +202,8 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
   // Every clue (search, exact spot, area, Nemotron's guess) moves the pin for everyone and records on Cam A how it was placed.
   const placedNext = useRef<{ by: PlacedBy; radiusM?: number; name?: string } | null>(null);
   const placeAt: OnPlace = async (lat, lon, by, radiusM, name) => {
-    // The place's own name ("Palace of Fine Arts"), short and safe for the key=value params list.
-    const place = name ? name.split(',').slice(0, 2).join(',').replace(/[;=]/g, ' ').trim().slice(0, 80) : undefined;
-    // The label and name go first, the pin second, so no screen pairs the new mark with the old place's name.
-    placedNext.current = { by, radiusM, name: place };
-    const patch = { placed: by, area: by === 'area' && radiusM ? Math.round(radiusM) : '', approx: 1, place: place ?? '' };
-    // The title follows the place while it is untitled or still the last placement's name; a title someone typed stays.
-    const prev = shotRow ? parseParams(shotRow.params).place : undefined;
-    if (place && place !== session.title && (['', 'Untitled shoot', 'New shoot'].includes(session.title) || (prev && session.title === prev)))
-      renameSession({ sessionId: sid, title: place }).catch(() => {}); // the module refuses non-owners once the shoot is named
-    if (shotRow) scene.setObject(shotRow, withParams({ ...stateOf(shotRow), x: 0, y: 0, z: 1.6 }, patch));
-    await setSessionSpot({ sessionId: sid, spotId: geoSpotId(lat, lon, await groundHeight(lat, lon)) });
+    placedNext.current = { by, radiusM, name: placeLabel(name) }; // the label for a Cam A that doesn't exist yet
+    await placeShoot({ sessionId: sid, title: session.title, shotRow, setObject: scene.setObject, setSessionSpot, renameSession }, lat, lon, by, radiusM, name);
   };
   const camPrm: Record<string, string> = shotRow ? parseParams(shotRow.params) : {};
   const placedBy = (camPrm.placed as PlacedBy | undefined) ?? placedNext.current?.by;

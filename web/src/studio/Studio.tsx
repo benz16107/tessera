@@ -23,7 +23,7 @@ import { daylight, lightColorK, previewGrade, sunPath, sunStrength, sunVector } 
 import { useScene } from './state/useScene.ts';
 import { useShotSettings, defaultShot } from './state/useShotSettings.ts';
 import { CluePanel, type OnPlace } from '../simple/clue.tsx';
-import { geoSpotId, groundHeight } from '../simple/lib.ts';
+import { placeShoot } from '../simple/place.ts';
 import '../simple/simple.css'; // the clue panel's styles, scoped under .simple
 import { approxLabel, makeObject, newUid, parseParams, stateOf, withParams, fmtParams, type AddItem, type ObjState } from './scene/objects.ts';
 import { optics as opticsOf, frameFromPhoto, fitFrame, type Fit } from './camera/shot.ts';
@@ -577,6 +577,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   // Earth: make the explored place the set's location (unsolved sets), or start a new shoot there. The ground height is the
   // tiles' display alignment at the place, stored once as the flat ground plane objects stand on (never tile geometry).
   const setSessionSpot = useReducer(reducers.setSessionSpot);
+  const renameSession = useReducer(reducers.renameSession);
   const createSession = useReducer(reducers.createSession);
   const [pendingSpot, setPendingSpot] = useState('');
   const groundOk = groundOffset !== null && groundOffset > -500 && groundOffset < 9000;
@@ -588,13 +589,11 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     setExplore(null);
     setToast('This set is here now. Add a camera and people from the + menu; the sun is this place\'s sun.');
   };
-  // Change place on a free-location shoot (anywhere2.md): Simple's clue panel, written the way Simple's placeAt writes it:
-  // Cam A back to the pin, 1.6 m up, labelled by how it was placed, then the session's spot moves for everyone.
+  // Change place on a free-location shoot (anywhere2.md): Simple's clue panel and Simple's placeShoot, so both apps rename the
+  // shoot, move Cam A back to the pin 1.6 m up and move the session's spot for everyone the same way.
   const [clueOpen, setClueOpen] = useState(false);
   const placeAt: OnPlace = async (lat, lon, by, radiusM, name) => {
-    const place = name ? name.split(',').slice(0, 2).join(',').replace(/[;=]/g, ' ').trim().slice(0, 80) : '';
-    if (shotRow) scene.setObject(shotRow, withParams({ ...stateOf(shotRow), x: 0, y: 0, z: 1.6 }, { placed: by, area: by === 'area' && radiusM ? Math.round(radiusM) : '', approx: 1, place }));
-    await setSessionSpot({ sessionId: sid, spotId: geoSpotId(lat, lon, await groundHeight(lat, lon)) });
+    await placeShoot({ sessionId: sid, title: session.title, shotRow, setObject: scene.setObject, setSessionSpot, renameSession }, lat, lon, by, radiusM, name);
     setClueOpen(false);
   };
   const newShootHere = async () => {
