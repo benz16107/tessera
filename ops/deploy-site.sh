@@ -5,8 +5,8 @@ set -euo pipefail
 IP=104.238.146.229
 cd "$(dirname "$0")/.."
 (cd site && npm run build)
-# /reels/ holds the reel videos, uploaded outside the build, so --delete must skip it.
-rsync -a --delete --exclude=/reels/ --chmod=D755,F644 site/dist/ "ben@$IP:/var/www/shotmatch-site/"
+# /reels/ and /videos/ hold videos, uploaded outside the build, so --delete must skip it.
+rsync -a --delete --exclude=/reels/ --exclude=/videos/ --chmod=D755,F644 site/dist/ "ben@$IP:/var/www/shotmatch-site/"
 if [ "${1:-}" = --caddy ]; then
   scp -q ops/Caddyfile "root@$IP:/etc/caddy/Caddyfile.new"
   ssh "root@$IP" 'caddy validate --config /etc/caddy/Caddyfile.new --adapter caddyfile 2>&1 | tail -1 &&
