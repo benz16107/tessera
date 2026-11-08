@@ -1,0 +1,27 @@
+/* ShotMatch "Darkroom" tokens, from the studio (web/src/studio/studio.css, Figma QrpLuCwKGGFFBSDRMd7VqS round 3).
+   Near-black ground, one amber accent for the primary action and the current place, Archivo for words, Martian Mono
+   for numbers. The site is dark only, like the studio: the photos and renders are the brightest things on screen.
+   Sizes snap to a 12/14/16/18/20/24/30/36/48/60 scale; spacing to 4/8/12/16/24/32/40/48/64/80/96. */
+:root {
+  --bg: #0b0b0a;
+  --panel: #111110;
+  --raise: #181816;
+  --field: #1c1b19;
+  --line: #22211e;
+  --line-2: #33312c;
+  --text: #f2efe8;
+  --text-2: #a39f96;
+  --text-3: #8a857c; /* lighter than the studio's #75716a so small text passes AA on --bg (5.3:1) */
+  --amber: #f2a33a;
+  --amber-ink: #1a1206;
+  --amber-tint: rgba(242, 163, 58, 0.14);
+  --amber-line: rgba(242, 163, 58, 0.65);
+  --teal: #5ec8c2;
+  --red: #e8675e;
+  --mono: 'Martian Mono', ui-monospace, monospace;
+  --sans: 'Archivo Variable', 'Archivo', system-ui, sans-serif;
+  --r: 8px;
+  --r-sm: 6px;
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  color-scheme: dark;
+}

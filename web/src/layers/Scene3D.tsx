@@ -6,14 +6,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
-import { BufferGeometry, CanvasTexture, Color, DoubleSide, EdgesGeometry, ExtrudeGeometry, Float32BufferAttribute, InstancedMesh, Matrix4, Object3D, Shape, ShapeGeometry, SRGBColorSpace, Vector2 } from 'three';
+import { BufferGeometry, CanvasTexture, Color, DirectionalLight, DoubleSide, EdgesGeometry, ExtrudeGeometry, Float32BufferAttribute, InstancedMesh, Matrix4, Mesh, Object3D, Shape, ShapeGeometry, SRGBColorSpace, Vector2 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { llhToEnu, type Origin } from '../studio/frame.ts';
 import type { Feature, FC, GeoLayers } from './useGeoLayers.ts';
 
 type XY = [number, number];
 type Gz = (x: number, y: number) => number;
-interface Props { geo: GeoLayers; origin: Origin; groundAt: Gz; labels?: boolean }
+interface Props { geo: GeoLayers; origin: Origin; groundAt: Gz; labels?: boolean; overlays?: boolean }
 
 const COLORS = { film: '#f2a33a', closures: '#e8675e', construction: '#d9b44a', alerts: '#e8675e' } as const;
 // Amber belongs to the studio's selection and Render button: until the Conditions panel is open or the camera is high,
@@ -54,17 +54,20 @@ function useHigh(m = 60) {
   return high;
 }
 
-export default function GeoScene({ geo, origin, groundAt, labels = true }: Props) {
+/** `overlays={false}` (the studio passes it while looking through the shot camera) draws nothing, casters included:
+ *  the user's photo already holds its real light, and plan-time building shadows on the catchers would wash it. */
+export default function GeoScene({ geo, origin, groundAt, labels = true, overlays = true }: Props) {
   const P = useProject(origin);
   const high = useHigh();
   const d = geo.data;
-  if (!d) return null;
+  if (!d || !overlays) return null;
   const L = d.layers;
   const quiet = labels && high;
   const loud = labels || high; // the panel is open (labels only show then) or we look from above
   return (
     <group name="geo-layers" userData={{ helper: true }}>
       {geo.on('shadow') && L.buildings && <Casters fc={L.buildings} P={P} gz={groundAt} />}
+      {<>
       {geo.on('buildings') && L.buildings && <Outlines fc={L.buildings} P={P} gz={groundAt} />}
       {geo.on('film') && L.film && <Zones fc={L.film} P={P} gz={groundAt} color={loud ? COLORS.film : QUIET} dim={!loud} lift={high ? 0.06 : 0.45} xray={high} labels={labels} quiet={quiet} />}
       {geo.on('closures') && L.closures && <Zones fc={L.closures} P={P} gz={groundAt} color={loud ? COLORS.closures : QUIET} dim={!loud} lift={high ? 0.08 : 0.5} xray={high} labels={labels} quiet={quiet} />}
@@ -73,17 +76,36 @@ export default function GeoScene({ geo, origin, groundAt, labels = true }: Props
       {geo.on('pois') && L.pois && <Pins fc={L.pois} P={P} gz={groundAt} labels={quiet} />}
       {geo.on('photographers') && L.photographers && <Heat fc={L.photographers} P={P} gz={groundAt} high={high} hotspots={quiet ? d.summary.photographers?.hotspots ?? [] : []} />}
       {geo.on('shadow') && labels && d.summary.shadow?.probes.map((pr, i, all) => <Probe key={pr.label} probe={pr} label={i === all.length - 1} xray={high} sunUp={(d.summary.shadow?.sun.alt ?? 1) > 0} P={P} gz={groundAt} />)}
+      </>}
     </group>
   );
 }
 
-/** Footprints extruded to their roof height: invisible (no colour, no depth) but casting the sun's shadow. */
+/** The casters live on their own layer. Cameras only see layer 0, so no colour, depth, picture-in-picture, render-layer
+ *  or look-through pass ever draws them; the sun's shadow camera gets this layer enabled, and three.js (r187
+ *  WebGLShadowMap) then renders shadows with the shadow camera's layers, so the casters still darken the street. */
+const CASTER_LAYER = 7;
+
+/** Footprints extruded to their roof height: never drawn, only casting the sun's shadow. */
 function Casters({ fc, P, gz }: { fc: FC; P: (c: number[]) => XY; gz: Gz }) {
   const geom = useMemo(() => extrudeAll(fc, P, gz), [fc, P, gz]);
   useEffect(() => () => geom?.dispose(), [geom]);
+  const mesh = useRef<Mesh>(null);
+  useEffect(() => { mesh.current?.layers.set(CASTER_LAYER); }, [geom]);
+  const sun = useRef<DirectionalLight | null>(null), last = useRef(0);
+  useFrame(({ scene }) => {
+    const now = performance.now();
+    if (sun.current?.parent && sun.current.shadow.camera.layers.isEnabled(CASTER_LAYER)) return;
+    if (now - last.current < 1000) return; // the studio may recreate its sun light; look again once a second until found
+    last.current = now;
+    let found: DirectionalLight | null = null;
+    scene.traverse(o => { if (!found && (o as DirectionalLight).isDirectionalLight && o.castShadow) found = o as DirectionalLight; });
+    sun.current = found;
+    (found as DirectionalLight | null)?.shadow.camera.layers.enable(CASTER_LAYER);
+  });
   if (!geom) return null;
   return (
-    <mesh geometry={geom} castShadow raycast={() => null} userData={{ geoCaster: true }}>
+    <mesh ref={mesh} geometry={geom} castShadow raycast={() => null} userData={{ geoCaster: true }}>
       <meshBasicMaterial colorWrite={false} depthWrite={false} />
     </mesh>
   );
@@ -158,16 +180,22 @@ function Sheds({ fc, P, gz, labels, dim }: { fc: FC; P: (c: number[]) => XY; gz:
     const c = centroid(pts), base = gz(c[0], c[1]);
     const g = new ExtrudeGeometry(new Shape(pts.map(([x, y]) => new Vector2(x, y))), { depth: 3.2, bevelEnabled: false });
     g.translate(0, 0, base);
-    return { key: i, f, g, c, top: base + 3.6 };
+    const edge = drape(new BufferGeometry().setFromPoints(pts.map(([x, y]) => new Vector2(x, y))), gz, 0.3);
+    return { key: i, f, g, edge, c, top: base + 3.6 };
   }).filter((x): x is NonNullable<typeof x> => !!x), [fc, P, gz]);
-  useEffect(() => () => items.forEach(it => it.g.dispose()), [items]);
+  useEffect(() => () => items.forEach(it => { it.g.dispose(); it.edge.dispose(); }), [items]);
   return (
     <>
       {items.map(it => (
         <group key={it.key}>
-          <mesh geometry={it.g} raycast={() => null} renderOrder={4}>
-            <meshBasicMaterial color={dim ? QUIET : COLORS.construction} transparent opacity={dim ? 0.06 : 0.16} depthWrite={false} toneMapped={false} side={DoubleSide} />
-          </mesh>
+          {/* Muted: a ground outline only. A 3 m wall right beside the camera would fill the frame. */}
+          {dim ? (
+            <lineLoop geometry={it.edge} raycast={() => null}><lineBasicMaterial color={QUIET} transparent opacity={0.3} toneMapped={false} /></lineLoop>
+          ) : (
+            <mesh geometry={it.g} raycast={() => null} renderOrder={4}>
+              <meshBasicMaterial color={COLORS.construction} transparent opacity={0.16} depthWrite={false} toneMapped={false} side={DoubleSide} />
+            </mesh>
+          )}
           {labels && Number(it.f.properties.m) < 160 && it.key < 4 && (
             <Html position={[it.c[0], it.c[1], it.top]} center zIndexRange={[20, 0]}>
               <span className="st-obj-label geo-label" style={{ borderLeft: `2px solid ${COLORS.construction}` }} title={it.f.properties.detail}>{it.f.properties.label}</span>

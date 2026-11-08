@@ -71,6 +71,7 @@ uniform float vigUnitMm;
 uniform float focalMm;
 uniform float gain;        // 2^stops
 uniform vec3 wb;
+uniform float clip;        // 1: transparent outside the frame (the user's photo is the backplate)
 
 float distortR(float ru) { return ru * (c0 + ru * (c14.x + ru * (c14.y + ru * (c14.z + ru * c14.w)))); }
 float distortD(float ru) { return c0 + ru * (2.0 * c14.x + ru * (3.0 * c14.y + ru * (4.0 * c14.z + ru * 5.0 * c14.w))); }
@@ -88,6 +89,7 @@ void mainUv(inout vec2 uv) {
 
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   vec2 p = (vUv - center) / frameScale;
+  if (clip > 0.5 && (abs(p.x) > 0.5 || abs(p.y) > 0.5)) { outputColor = vec4(0.0); return; }
   float rmm = length(p * sensorMm);
   float v = 1.0;
   if (vigMode > 1.5) { float r2 = pow(rmm / vigUnitMm, 2.0); v = 1.0 + vigK.x * r2 + vigK.y * r2 * r2 + vigK.z * r2 * r2 * r2; }
@@ -102,7 +104,7 @@ export class LensEffect extends Effect {
         ['frameScale', new Uniform(new Vector2(1, 1))], ['center', new Uniform(new Vector2(0.5, 0.5))], ['sensorMm', new Uniform(new Vector2(36, 24))],
         ['distOn', new Uniform(0)], ['c0', new Uniform(1)], ['c14', new Uniform(new Vector4())], ['unitMm', new Uniform(12)],
         ['overscan', new Uniform(1)], ['vigMode', new Uniform(1)], ['vigK', new Uniform(new Vector3())], ['vigUnitMm', new Uniform(21.6)],
-        ['focalMm', new Uniform(50)], ['gain', new Uniform(1)], ['wb', new Uniform(new Vector3(1, 1, 1))],
+        ['focalMm', new Uniform(50)], ['gain', new Uniform(1)], ['wb', new Uniform(new Vector3(1, 1, 1))], ['clip', new Uniform(0)],
       ]),
     });
   }

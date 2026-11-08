@@ -1,0 +1,13 @@
+---
+// The shared ShotMatch bar around Starlight's search.
+import Search from 'virtual:starlight/components/Search';
+import SiteHeader from './SiteHeader.astro';
+---
+<SiteHeader>
+  <div slot="middle" class="sm-search"><Search /></div>
+</SiteHeader>
+
+<style is:global>
+  .sm-search { margin-left: 16px; }
+  @media (max-width: 49.99rem) { .sm-search { margin-left: auto; } .header .sm-nav a:not(.sm-cta) { display: none; } }
+</style>

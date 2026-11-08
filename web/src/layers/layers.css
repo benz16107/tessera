@@ -34,7 +34,14 @@
 .geo-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); }
 .geo-overview { position: absolute; inset: 0; z-index: 5; pointer-events: none; transition: opacity 120ms linear; }
 .geo-overview .geo-map { height: 100% !important; border-radius: 0; }
-.geo-overview-pill { position: absolute !important; left: 50%; bottom: 84px; translate: -50% 0; }
+.geo-overview-card { position: absolute; top: 64px; right: 16px; max-width: 300px; padding: 10px 12px; border-radius: var(--r); background: var(--glass); color: var(--text); font: 12px/1.4 var(--sans); }
+.geo-overview-card p { margin: 0 0 6px; color: var(--text-2); }
+.geo-overview-card p b { color: var(--text); font-weight: 500; }
+.geo-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; color: var(--text-2); }
+.geo-legend li { display: flex; align-items: center; gap: 8px; }
+.geo-legend i { flex: none; width: 10px; height: 10px; border-radius: 2px; opacity: 0.8; }
+.geo-legend i.dot { width: 6px; height: 6px; margin: 0 2px; border-radius: 50%; background: #e6d3a8; }
+.geo-legend i.cone { background: none; width: 0; height: 0; border-radius: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 10px solid rgba(242, 163, 58, 0.6); }
 .geo-bands { position: absolute; left: 0; right: 0; height: 30px; pointer-events: none; }
 .geo-hour { position: absolute; top: 0; height: 14px; display: flex; flex-direction: column; gap: 1px; pointer-events: auto; }
 .geo-hour i { display: block; height: 3px; background: #c9d8f5; border-radius: 1px; }

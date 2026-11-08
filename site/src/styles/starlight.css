@@ -1,0 +1,61 @@
+/* Starlight mapped onto the Darkroom tokens. Dark only (ThemeProvider pins data-theme="dark"). */
+:root,
+:root[data-theme='dark'] {
+  --sl-font: var(--sans);
+  --sl-font-mono: var(--mono);
+  --sl-color-white: var(--text);
+  --sl-color-gray-1: #e4e0d8;
+  --sl-color-gray-2: #c4bfb5;
+  --sl-color-gray-3: var(--text-2);
+  --sl-color-gray-4: var(--text-3);
+  --sl-color-gray-5: var(--line-2);
+  --sl-color-gray-6: var(--raise);
+  --sl-color-gray-7: var(--panel);
+  --sl-color-black: var(--bg);
+  --sl-color-accent-low: #2b1d0a;
+  --sl-color-accent: var(--amber);
+  --sl-color-accent-high: #f7c27a;
+  --sl-color-text-accent: #f5b65c;
+  --sl-color-bg: var(--bg);
+  --sl-color-bg-nav: var(--bg);
+  --sl-color-bg-sidebar: var(--bg);
+  --sl-color-hairline: var(--line);
+  --sl-color-hairline-light: var(--line-2);
+  --sl-color-hairline-shade: var(--line);
+  --sl-text-h1: 2.25rem;
+  --sl-text-h2: 1.5rem;
+  --sl-text-h3: 1.25rem;
+  --sl-text-h4: 1.125rem;
+  --sl-nav-height: 3.5rem;
+}
+
+body { background: var(--bg); }
+
+.sl-markdown-content h1,
+.sl-markdown-content h2,
+.sl-markdown-content h3,
+h1#_top { text-wrap: balance; letter-spacing: -0.01em; font-weight: 600; }
+.sl-markdown-content p,
+.sl-markdown-content li { text-wrap: pretty; }
+
+/* Numbers and code in Martian Mono, sized down: it runs wide. */
+.sl-markdown-content code:not(pre code) { font-size: 0.82em; background: var(--field); border: 1px solid var(--line); border-radius: 4px; padding: 0.1em 0.35em; }
+
+/* Tables read like the studio's inspector: hairlines, no zebra fill. */
+.sl-markdown-content table { display: block; overflow-x: auto; border-collapse: collapse; font-size: 0.875rem; line-height: 1.43; }
+.sl-markdown-content th,
+.sl-markdown-content td { border: 0; border-bottom: 1px solid var(--line); padding: 0.5rem 0.75rem; vertical-align: top; background: none; }
+.sl-markdown-content th { color: var(--text-2); font-weight: 500; text-align: left; border-bottom-color: var(--line-2); }
+.sl-markdown-content tr:nth-child(2n) { background: none; }
+
+.sl-markdown-content img { border-radius: var(--r); border: 1px solid var(--line); }
+.sl-markdown-content a { text-underline-offset: 0.18em; }
+
+/* Sidebar: amber marks only the current page. */
+.sidebar-content a[aria-current='page'],
+.sidebar-content a[aria-current='page']:hover { background: var(--amber-tint); color: var(--text); font-weight: 600; box-shadow: inset 2px 0 0 var(--amber); }
+
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+/* Video shot lists: timestamps in mono. */
+.sl-markdown-content td:first-child code { white-space: nowrap; }

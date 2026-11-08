@@ -1,0 +1,62 @@
+---
+// Generated from the studio's own catalog (web/src/studio/catalog), so this page always matches the app.
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import AnchorHeading from '@astrojs/starlight/components/AnchorHeading.astro';
+import { LENSES } from '../../../../../web/src/studio/catalog/lenses.ts';
+import { BODIES, FORMAT_NAME } from '../../../../../web/src/studio/catalog/bodies.ts';
+
+const mm = (f: [number, number]) => (f[0] === f[1] ? `${f[0]} mm` : `${f[0]} to ${f[1]} mm`);
+const ap = (a: [number, number][]) => a.map(([, n]) => `f/${n}`).join(' to ');
+const mfd = (m: [number, number][] | null) => (m ? [...new Set(m.map(([, d]) => `${d} m`))].join(' to ') : 'not published');
+const r1 = (x: number) => Math.round(x * 100) / 100;
+const profiled = LENSES.filter((l) => l.lensfun).length;
+const headings = [
+  { depth: 2, slug: 'bodies', text: 'Camera bodies' },
+  { depth: 2, slug: 'lenses', text: 'Lenses' },
+  { depth: 2, slug: 'how-the-numbers-are-used', text: 'How the numbers are used' },
+];
+---
+<StarlightPage frontmatter={{ title: 'Lens catalog', description: `The ${BODIES.length} camera bodies and ${LENSES.length} lenses the studio offers, from the makers' published specifications.` }} headings={headings}>
+  <p>Studio's camera inspector offers {BODIES.length} bodies and {LENSES.length} lenses. Sizes, pixel counts, focal ranges, apertures and minimum focus distances are typed by hand from the makers' published specifications. {profiled} of the lenses match a lens in the <a href="https://github.com/lensfun/lensfun">lensfun</a> database, whose measured distortion and vignetting the studio applies when you look through the camera (CC BY-SA 3.0). This page is generated from <code>web/src/studio/catalog</code> at build time.</p>
+
+  <AnchorHeading level="2" id="bodies">Camera bodies</AnchorHeading>
+  <table>
+    <thead><tr><th>Body</th><th>Format</th><th>Sensor</th><th>Crop</th><th>Pixels</th><th>Stabilisation</th></tr></thead>
+    <tbody>
+      {BODIES.map((b) => (
+        <tr>
+          <td>{b.name}</td>
+          <td>{FORMAT_NAME[b.format]}</td>
+          <td><code>{r1(b.sensorMm[0])} x {r1(b.sensorMm[1])} mm</code></td>
+          <td><code>{r1(b.crop)}x</code></td>
+          <td><code>{b.px[0]} x {b.px[1]}</code></td>
+          <td>{b.ibisStops ? `${b.ibisStops} stops` : 'none or unrated'}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+
+  <AnchorHeading level="2" id="lenses">Lenses</AnchorHeading>
+  <table>
+    <thead><tr><th>Lens</th><th>Focal length</th><th>Max aperture</th><th>Min focus</th><th>Blades</th><th>Measured profile</th></tr></thead>
+    <tbody>
+      {LENSES.map((l) => (
+        <tr>
+          <td>{l.name}</td>
+          <td><code>{mm(l.focal)}</code></td>
+          <td><code>{ap(l.maxAperture)}</code></td>
+          <td>{mfd(l.minFocusM)}</td>
+          <td>{l.blades || 'fixed'}</td>
+          <td>{l.lensfun ? 'lensfun' : 'none'}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+
+  <AnchorHeading level="2" id="how-the-numbers-are-used">How the numbers are used</AnchorHeading>
+  <ul>
+    <li>The solver answers in <strong>f35</strong>, the 35 mm equivalent focal length on the diagonal: <code>f35 = fpx * 43.2666 / hypot(w, h)</code>. Studio picks a body and lens that reach it and shows the real focal length on that body.</li>
+    <li>Depth of field uses the thin-lens formula with each body's circle of confusion, derived from its sensor diagonal.</li>
+    <li>Phone modules are bodies with a fixed lens. Their sensor size comes from the EXIF focal length and the maker's stated 35 mm equivalent, so the equivalent and the field of view agree exactly. That is how Simple can say "2.2x on your iPhone's main camera".</li>
+  </ul>
+</StarlightPage>

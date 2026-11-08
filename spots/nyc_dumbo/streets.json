@@ -1,0 +1,11 @@
+{
+  "source": "OpenStreetMap contributors (ODbL), Overpass API query of 2026-11-08: nodes shared by the Washington Street ways and each cross street",
+  "credit": "Streets © OpenStreetMap contributors",
+  "street": "Washington St",
+  "corners": [
+    { "cross": "Plymouth St", "osm_node": 42472714, "lat": 40.7038599, "lon": -73.9895376 },
+    { "cross": "Water St", "osm_node": 42469336, "lat": 40.7032012, "lon": -73.98958 },
+    { "cross": "Front St", "osm_node": 42500003, "lat": 40.702523, "lon": -73.9896268 },
+    { "cross": "York St", "osm_node": 248607283, "lat": 40.7016338, "lon": -73.9896812 }
+  ]
+}

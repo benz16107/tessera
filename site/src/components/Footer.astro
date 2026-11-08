@@ -1,0 +1,13 @@
+---
+// Starlight's pagination, then the site footer edge to edge under the content column.
+import Default from '@astrojs/starlight/components/Footer.astro';
+import SiteFooter from './SiteFooter.astro';
+---
+<Default />
+<div class="sm-docs-footer"><SiteFooter /></div>
+
+<style is:global>
+  .sm-docs-footer { margin: 48px calc(-1 * var(--sl-content-pad-x)) calc(-1 * var(--sl-content-pad-x)); }
+  .sm-docs-footer .sm-footer-in { grid-template-columns: 1fr 1fr; }
+  .sm-docs-footer .sm-footer-brand { grid-column: 1 / -1; }
+</style>

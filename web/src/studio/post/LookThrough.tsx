@@ -3,12 +3,14 @@
 import { useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { EffectComposer, EffectPass, RenderPass } from 'postprocessing';
-import { HalfFloatType, Vector2, Vector3, Vector4, type PerspectiveCamera } from 'three';
+import { HalfFloatType, Vector2, Vector3, Vector4, type Object3D, type PerspectiveCamera } from 'three';
 import { DofEffect, LensEffect } from './LensEffects.ts';
 import type { Fit, Optics } from '../camera/shot.ts';
 import type { Shot } from '../state/useShotSettings.ts';
 
-interface Props { camera: PerspectiveCamera; o: Optics; shot: Shot; gain: number; wb: [number, number, number]; dofOn: boolean; vignette: boolean; fit: (vw: number, vh: number) => Fit }
+interface Props { camera: PerspectiveCamera; o: Optics; shot: Shot; gain: number; wb: [number, number, number]; dofOn: boolean; vignette: boolean; fit: (vw: number, vh: number) => Fit;
+  /** Over the user's photo only their objects and shadows draw: helpers hide and nothing renders outside the frame. */
+  photoOnly?: boolean }
 
 export function fitShotCamera(camera: PerspectiveCamera, o: Optics, fit: Fit, vw: number, vh: number) {
   const t = Math.tan((fit.fovDeg * Math.PI) / 360) * o.overscan;
@@ -23,7 +25,7 @@ export function fitShotCamera(camera: PerspectiveCamera, o: Optics, fit: Fit, vw
   return fit;
 }
 
-export default function LookThrough({ camera, o, shot, gain, wb, dofOn, vignette, fit: fitFn }: Props) {
+export default function LookThrough({ camera, o, shot, gain, wb, dofOn, vignette, fit: fitFn, photoOnly = false }: Props) {
   const { gl, scene, size, set, camera: prev, viewport } = useThree();
   useEffect(() => {
     set({ camera });
@@ -61,7 +63,12 @@ export default function LookThrough({ camera, o, shot, gain, wb, dofOn, vignette
     u.get('focalMm')!.value = shot.focalMm;
     u.get('gain')!.value = gain;
     (u.get('wb')!.value as Vector3).set(wb[0], wb[1], wb[2]);
+    u.get('clip')!.value = photoOnly ? 1 : 0;
+    const hide: Object3D[] = [];
+    if (photoOnly) scene.traverse(x => { if (x.userData.helper && x.visible) hide.push(x); });
+    hide.forEach(x => (x.visible = false));
     composer.render(dt);
+    hide.forEach(x => (x.visible = true));
   }, 1);
   return null;
 }

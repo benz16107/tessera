@@ -1,4 +1,4 @@
-// Live geodata layers for the studio (docs/GEODATA.md). Mount points:
+// Live geodata layers for the studio (docs/GEODATA.md). Mount points (GeoScene takes overlays={view !== "shot"}: nothing of ours over the photo):
 //   const geo = useGeoLayers(session.id, session.spotId, planTime)
 //   <GeoScene geo={geo} origin={origin} groundAt={gz} labels={view !== 'shot'} />   inside the ENU group
 //   <GeoButton .../> + <GeoPanel .../>                                              top bar and drawer

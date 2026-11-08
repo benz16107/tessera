@@ -16,12 +16,24 @@ export default function GeoOverview({ geo, center, camera, heightM, widthPx, fro
 }) {
   if (heightM < from || !geo.data) return null;
   const k = Math.min(1, (heightM - from) / (to - from));
+  const photos = geo.data.summary.photographers?.count ?? 0;
   return (
     <div className="geo-overview" style={{ opacity: k }} aria-hidden={k < 0.5}>
       <Suspense fallback={null}>
         <Map2D geo={geo} center={center} camera={camera} height="100%" zoom={Math.min(17, zoomForHeight(heightM, center.lat, widthPx))} interactive={false} />
       </Suspense>
-      {k > 0.6 && <span className="st-pill geo-overview-pill">Map overview · zoom in for the 3D set</span>}
+      {k > 0.6 && (
+        // Top right: the studio's "Building your set" card sits bottom left and the picture-in-picture bottom right.
+        <div className="geo-overview-card">
+          <p><b>Map overview</b> · zoom in for the 3D set</p>
+          <ul className="geo-legend">
+            {geo.on('photographers') && photos > 0 && <li><i className="dot" />Where photographers stood: {photos} geotagged Commons photos</li>}
+            {geo.on('film') && <li><i style={{ background: '#f2a33a' }} />Blocks with film permits in the past year</li>}
+            {geo.on('construction') && <li><i style={{ background: '#d9b44a' }} />Sidewalk sheds and scaffolds</li>}
+            {camera && <li><i className="cone" />What Cam A sees</li>}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

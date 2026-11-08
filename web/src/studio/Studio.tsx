@@ -396,8 +396,15 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     const r = selRow && selRow.kind !== 'camera' && selRow.kind !== 'light' ? selRow
       : scene.rows.filter(x => x.kind === 'person').sort((a, b) => (shotStats(a)?.distance ?? 1e9) - (shotStats(b)?.distance ?? 1e9))[0];
     const st = r && shotStats(r);
-    return r && st ? { name: r.name.replace(/ \(.*\)$/, ''), distance: st.distance } : null;
+    return r && st ? { id: r.id, name: r.name.replace(/ \(.*\)$/, ''), distance: st.distance } : null;
   })();
+  // "On Person" follows that person: dragging them keeps them sharp. Any typed focus change stops following.
+  const [focusFollow, setFocusFollow] = useState<bigint | null>(null);
+  const followRow = focusFollow === null ? undefined : scene.rows.find(r => r.id === focusFollow);
+  const followDist = followRow ? shotStats(followRow)?.distance.toFixed(2) : undefined;
+  useEffect(() => {
+    if (followDist !== undefined && Math.abs(+followDist - shot.focusM) > 0.05) setShot({ focusM: Math.max(0.1, +followDist) });
+  }, [followDist]); // eslint-disable-line react-hooks/exhaustive-deps
   const pick = (id: bigint | null, point: Vector3, alt: boolean) => {
     const p = threeToEnu(point);
     if ((laser || alt) && ev) { ev.ping({ x: p.x, y: p.y, z: p.z }, id ?? 0n).catch(() => {}); return; }
@@ -476,7 +483,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     const flat = new Vector3(shotPose.fwd.x, shotPose.fwd.y, 0).normalize();
     const target = shotPose.pos.clone().add(flat.clone().multiplyScalar(12));
     target.z = gz(target.x, target.y) + 1;
-    const pos = shotPose.pos.clone().add(flat.clone().multiplyScalar(-7)).add(new Vector3(0, 0, 1.4));
+    // Just behind Cam A at nearly its height: the splat's walls smear when seen far from the photos' viewpoints.
+    const pos = shotPose.pos.clone().add(flat.clone().multiplyScalar(-3)).add(new Vector3(0, 0, 0.3));
     return { pos, target };
   }, [!!shotPose, geo]); // eslint-disable-line react-hooks/exhaustive-deps
   // The splat's street smear near Cam A fades in the World view: a box 26 m wide, 62 m along the street (from 17 m behind Cam A), 3.6 m tall, on the slope.
@@ -589,7 +597,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                     onProgress={f => setSplatState(s => ({ ...s, progress: f }))} onLoaded={() => setSplatState({ loaded: true, progress: 1 })}
                     onError={e => { console.warn('splat failed, trying the next file', splatUrl, e); setSplatState({ loaded: false, progress: 0 }); setSplatSkip(k => [...k, splatUrl]); }} />
                 )}
-                {origin && <GeoScene geo={layers} origin={origin} groundAt={gz} labels={geoOpen && view !== 'shot'} />}
+                {origin && <GeoScene geo={layers} origin={origin} groundAt={gz} labels={geoOpen && view !== 'shot'} overlays={!photoBack} />}
                 <Catchers geo={geo} occlude={view === 'shot'} shadowOpacity={0.5} onTeleport={p => setVrOrigin(p)}
                   onPointerMove={e => { if (ev) { const p = threeToEnu(e.point); ev.cursor({ x: p.x, y: p.y, z: p.z }); } }}
                   onClick={e => { e.stopPropagation(); pick(null, e.point, e.nativeEvent.altKey); }} />
@@ -617,7 +625,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               <ShotCameraSync camera={shotCam} group={shotRow ? groups.current.get(shotRow.id) ?? null : null} />
               {view === 'persp' && <EditorControls start={startCam} cmd={cmd} target={orbitTarget} onHeight={setCamHeight} gz={gz} />}
               {view === 'top' && <TopView center={shotPose?.pos ?? new Vector3()} target={orbitTarget} />}
-              {view === 'shot' && shotRow && <LookThrough camera={shotCam} o={o} shot={shot} gain={gain} wb={wb} dofOn={dofOn} vignette={vignette} fit={fitFn} />}
+              {view === 'shot' && shotRow && <LookThrough camera={shotCam} o={o} shot={shot} gain={gain} wb={wb} dofOn={dofOn} vignette={vignette} fit={fitFn} photoOnly={photoBack} />}
               {view !== 'shot' && shotRow && <PipRenderer shotCam={shotCam} o={o} rect={pip} />}
               {view !== 'shot' && (
                 <GizmoHelper alignment="top-right" margin={[52, 52]} renderPriority={2}>
@@ -807,8 +815,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
         )}
         <Inspector row={selRow} isShot={!selRow || selRow.id === shotRow?.id} camName={shotName} lockedBy={selRow ? lockOwner(selRow)?.name ?? null : null}
           placedBy={selRow ? (isMe(selRow.updatedBy) ? 'you' : nameOf(selRow.updatedBy)) : ''}
-          shot={shot} setShot={setShot} shotError={shotError} optics={o} sceneEv={sceneEv} vignette={vignette} setVignette={setVignette}
-          focusTarget={focusTarget} shotStats={shotStats} sizeOf={r => objectSizes.get(r.id) ?? null}
+          shot={shot} setShot={pt => { if (pt.focusM !== undefined) setFocusFollow(null); setShot(pt); }} shotError={shotError} optics={o} sceneEv={sceneEv} vignette={vignette} setVignette={setVignette}
+          focusTarget={focusTarget} onFocusOn={setFocusFollow} shotStats={shotStats} sizeOf={r => objectSizes.get(r.id) ?? null}
           onChange={editRow} onMakeShot={makeShot} onRegenerate={(r, f) => void regenerate(r, f)}
           groundAt={gz}
           onFaceCamera={r => { const yaw = faceCamFrom(new Vector3(r.x, r.y, r.z)); const q = yawQuat(yaw); editRow(r, { ...stateOf(r), qx: q.x, qy: q.y, qz: q.z, qw: q.w }, ''); }} />

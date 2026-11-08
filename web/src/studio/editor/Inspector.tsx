@@ -32,7 +32,8 @@ export interface InspectorProps {
   optics: Optics;
   sceneEv: number;
   vignette: boolean; setVignette: (v: boolean) => void;
-  focusTarget: { name: string; distance: number } | null; // the selection (or nearest person) seen from the shot camera
+  focusTarget: { id: bigint; name: string; distance: number } | null; // the selection (or nearest person) seen from the shot camera
+  onFocusOn?: (id: bigint) => void; // keep the focus on this object as it moves
   shotStats: (row: SceneObject) => { distance: number; heightM: number } | null;
   sizeOf: (row: SceneObject) => [number, number, number] | null;
   onChange: (row: SceneObject, s: ObjState, tag: string) => void;
@@ -184,7 +185,7 @@ export default function Inspector(p: InspectorProps) {
             <div className="st-stat"><span>Focus</span><i className={`dot${inFocus ? '' : ' off'}`} /><b>{inFocus ? 'in focus' : 'out of focus'}</b></div>
             <div className="st-stat"><span>Sharp from</span><b>{fmtM(p.optics.dof.nearM)} to {fmtM(p.optics.dof.farM)}</b></div>
             <div className="st-stat"><span>Frame height</span><b>{Math.round(frac * 100)}%</b></div>
-            <button className="st-btn small" onClick={() => p.setShot({ focusM: Math.max(0.1, +stats.distance.toFixed(2)) })}>Focus {p.camName} here</button>
+            <button className="st-btn small" onClick={() => { p.setShot({ focusM: Math.max(0.1, +stats.distance.toFixed(2)) }); p.onFocusOn?.(row.id); }}>Focus {p.camName} here</button>
           </Disclosure>
         )}
         <Disclosure title="Advanced">
@@ -337,7 +338,7 @@ function CameraPage(p: InspectorProps) {
         <Field label="Focus">
           <div className="st-row">
             <NumField className="w80" value={shot.focusM} unit="m" digits={1} step={0.1} min={mfd ?? 0.05} max={10000} onChange={v => setShot({ focusM: v })} label="Focus distance" />
-            {p.focusTarget && <button className="st-target" onClick={() => setShot({ focusM: Math.max(mfd ?? 0.1, +p.focusTarget!.distance.toFixed(1)) })}><Ico n="crosshair" s={12} /> On {p.focusTarget.name}</button>}
+            {p.focusTarget && <button className="st-target" onClick={() => { setShot({ focusM: Math.max(mfd ?? 0.1, +p.focusTarget!.distance.toFixed(1)) }); p.onFocusOn?.(p.focusTarget!.id); }}><Ico n="crosshair" s={12} /> On {p.focusTarget.name}</button>}
           </div>
         </Field>
         <DofDiagram near={o.dof.nearM} far={o.dof.farM} focus={shot.focusM} hyper={o.dof.hyperfocalM} onFocus={m => setShot({ focusM: Math.max(mfd ?? 0.1, m) })} />

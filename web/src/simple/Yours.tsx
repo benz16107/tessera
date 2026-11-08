@@ -121,7 +121,7 @@ export default function Yours(p: Props) {
       const layers = await p.capture.current();
       const r = await postLayers(layers, { sessionId: sid, photoId: photo.id, text: words, settings });
       setMine({ url: r.url, words });
-      setStatus({ text: `Made with ${r.model}${r.fallback ? ` (${r.fallback})` : ''} in ${Math.round(r.ms / 1000)} s.` });
+      setStatus({ text: `Made in ${Math.round(r.ms / 1000)} s with ${r.model.split('/').pop()}.` }); // the fallback chain stays in Studio's render panel
     } catch (e) {
       // The NVIDIA render needs the 3D layers and the crew; when either fails, the preview job edits the photo from words.
       try {

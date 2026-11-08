@@ -1,0 +1,12 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import { lensCredits } from '../../credits.ts';
+const rows = lensCredits();
+---
+<StarlightPage frontmatter={{ title: 'Lens reader training photos', description: 'All Wikimedia Commons photos used to train and test the ShotMatch lens reader, with author and license.', pagefind: false }}>
+  <p>{rows.length.toLocaleString('en-US')} photos from Wikimedia Commons, pulled with their EXIF focal length to train and test the lens reader. Each links to its Commons page. Back to <a href="/credits/">credits and licenses</a>.</p>
+  <table>
+    <thead><tr><th>Photo</th><th>Author</th><th>License</th></tr></thead>
+    <tbody>{rows.map((r) => <tr><td><a href={r.page}>{r.title}</a></td><td>{r.author}</td><td>{r.license}</td></tr>)}</tbody>
+  </table>
+</StarlightPage>

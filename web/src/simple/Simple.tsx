@@ -103,6 +103,7 @@ function SessionSkeleton() {
 }
 
 const MADE_CAM = new Set<bigint>();
+const NO_ROWS: readonly never[] = []; // Found it shows the photo and the blend only; the set's people and props start at Make it yours
 
 function SimpleSession({ session, myName, active }: { session: Session; myName: string; active: boolean }) {
   const cfg = useConfig();
@@ -219,11 +220,11 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
         <section className="s-stage" aria-label={step === 'there' ? 'Camera' : 'Your photo over the 3D spot'}>
           {step === 'there' && stageReady ? <There.Stage session={session} result={result!} photo={photo!} live={active} />
             : stageReady ? (
-              <ShotView mapsKey={cfg.mapsKey} origin={origin!} spotId={spotId} geo={geo} gz={gz} cam={cam!} optics={o} rows={scene.rows} shotId={shotRow?.id ?? null}
+              <ShotView mapsKey={cfg.mapsKey} origin={origin!} spotId={spotId} geo={geo} gz={gz} cam={cam!} optics={o} rows={step === 'found' ? NO_ROWS : scene.rows} shotId={shotRow?.id ?? null}
                 sun={sun} expo={expo} photo={{ url: photo!.url || photo!.thumb, width: photo!.width, height: photo!.height }}
                 photoScale={o.f35 / solvedF35} blend={blend} selected={selected} onSelect={setSelected} capture={capture} live={active}>
                 {step === 'yours' && <p className="s-float s-sunpill"><Sun width={18} height={18} /> Sun {sunWords}, {fmtTime(planTime, zone)}</p>}
-                {selRow && (
+                {selRow && step !== 'found' && (
                   <div className="s-float s-selchip" role="status">
                     <span>{selRow.name.replace(/ \(.*\)$/, '')}</span>
                     <button className="s-textbtn" onClick={() => { scene.deleteObject(selRow); setSelected(null); }}>Remove</button>

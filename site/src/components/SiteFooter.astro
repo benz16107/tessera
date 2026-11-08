@@ -1,0 +1,45 @@
+---
+import { APP_URL, REPO } from '../site.ts';
+import mark from '../assets/mark.svg?raw';
+---
+<footer class="sm-footer">
+  <div class="sm-footer-in">
+    <div class="sm-footer-brand">
+      <a class="sm-brand" href="/"><span class="sm-mark" set:html={mark} />ShotMatch</a>
+      <p>Built at HackUTD 2026 in Dallas, November 7 and 8.</p>
+      <p>Map imagery in the app comes from Google Photorealistic 3D Tiles and is shown for planning only. It never enters a render, an export or an AI step.</p>
+    </div>
+    <nav aria-label="Product">
+      <h2>Product</h2>
+      <a href={APP_URL}>Open the app</a>
+      <a href="/docs/get-started/">Get started</a>
+      <a href="/docs/how-it-works/overview/">How it works</a>
+      <a href="/tracks/">Tracks</a>
+    </nav>
+    <nav aria-label="Reference">
+      <h2>Reference</h2>
+      <a href="/docs/reference/http-api/">HTTP API</a>
+      <a href="/docs/reference/spacetimedb/">SpacetimeDB module</a>
+      <a href="/docs/reference/lens-catalog/">Lens catalog</a>
+      <a href="/llms.txt">llms.txt</a>
+    </nav>
+    <nav aria-label="Legal">
+      <h2>Legal</h2>
+      <a href="/credits/">Credits and licenses</a>
+      <a href="/privacy/">Privacy</a>
+      <a href="/terms/">Terms</a>
+      {REPO && <a href={REPO}>Source on GitHub</a>}
+    </nav>
+  </div>
+</footer>
+
+<style is:global>
+  .sm-footer { border-top: 1px solid var(--line); background: var(--bg); color: var(--text-2); font-family: var(--sans); font-size: 0.875rem; line-height: 1.43; }
+  .sm-footer-in { max-width: 1200px; margin: 0 auto; padding: 48px 24px; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 32px; }
+  .sm-footer-brand p { margin: 12px 0 0; max-width: 40ch; }
+  .sm-footer nav { display: flex; flex-direction: column; gap: 8px; }
+  .sm-footer h2 { margin: 0 0 4px; font-size: 0.75rem; font-family: var(--mono); font-weight: 400; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; }
+  .sm-footer nav a { color: var(--text-2); text-decoration: none; width: fit-content; }
+  .sm-footer nav a:hover { color: var(--text); text-decoration: underline; text-underline-offset: 0.18em; }
+  @media (max-width: 760px) { .sm-footer-in { grid-template-columns: 1fr 1fr; } .sm-footer-brand { grid-column: 1 / -1; } }
+</style>

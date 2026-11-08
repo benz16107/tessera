@@ -1,0 +1,42 @@
+---
+import '@fontsource-variable/archivo';
+import '@fontsource/martian-mono/400.css';
+import '../styles/tokens.css';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import { DESCRIPTION, SITE_URL } from '../site.ts';
+interface Props { title: string; description?: string }
+const { title, description = DESCRIPTION } = Astro.props;
+---
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href={new URL(Astro.url.pathname, SITE_URL)} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={`${SITE_URL}/og.png`} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#0b0b0a" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="land-head"><SiteHeader current="home" /></header>
+    <main id="main"><slot /></main>
+    <SiteFooter />
+  </body>
+</html>
+<style is:global>
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 1rem; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .skip { position: absolute; left: 16px; top: -48px; background: var(--amber); color: var(--amber-ink); padding: 8px 12px; border-radius: var(--r-sm); z-index: 10; }
+  .skip:focus { top: 8px; }
+  .land-head { position: sticky; top: 0; z-index: 5; height: 56px; padding: 0 24px; background: rgba(11, 11, 10, 0.94); border-bottom: 1px solid var(--line); }
+  @media (max-width: 420px) { .land-head { padding: 0 16px; } }
+  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+</style>

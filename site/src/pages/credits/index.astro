@@ -1,0 +1,74 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import AnchorHeading from '@astrojs/starlight/components/AnchorHeading.astro';
+import { spotCredits, lensCredits, licenseCounts, authorCount } from '../../credits.ts';
+
+const spots = spotCredits();
+const lens = lensCredits();
+const headings = [
+  ...spots.map((s) => ({ depth: 2, slug: `spot-${s.spot}`, text: `Spot photos: ${s.name}` })),
+  { depth: 2, slug: 'lens-dataset', text: 'Lens reader training photos' },
+  { depth: 2, slug: 'models-and-data', text: 'Models, maps and open data' },
+  { depth: 2, slug: 'studio-assets', text: 'Studio assets' },
+  { depth: 2, slug: 'software', text: 'Software' },
+];
+const counts = (rows: ReturnType<typeof lensCredits>) => licenseCounts(rows).map(([l, n]) => `${l} (${n})`).join(', ');
+---
+<StarlightPage frontmatter={{ title: 'Credits and licenses', description: 'Every photo, model, dataset and asset ShotMatch uses, with its author and license.' }} headings={headings}>
+  <p>ShotMatch is built from other people's work: Creative Commons photos, open data, open models and open source code. This page lists all of it. The app's own credits page (<code>/credits</code> in the app) shows the same spot photos.</p>
+
+  {spots.map((s) => (
+    <>
+      <AnchorHeading level="2" id={`spot-${s.spot}`}>Spot photos: {s.name}</AnchorHeading>
+      <p>{s.rows.length} photos from Wikimedia Commons by {authorCount(s.rows)} authors, used to build the spot's 3D model (role <code>train</code>) and to test it (role <code>test</code>). Licenses: {counts(s.rows)}. The model files and the Gaussian splat trained from these photos stay out of the public repo; the splat is released under CC BY-SA 4.0 because some photos are share-alike.</p>
+      <table>
+        <thead><tr><th>Photo</th><th>Author</th><th>License</th><th>Role</th></tr></thead>
+        <tbody>
+          {s.rows.map((r) => (
+            <tr><td><a href={r.page}>{r.title}</a></td><td>{r.author}</td><td>{r.license}</td><td>{r.role}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  ))}
+
+  <AnchorHeading level="2" id="lens-dataset">Lens reader training photos</AnchorHeading>
+  <p>{lens.length.toLocaleString('en-US')} Wikimedia Commons photos by {authorCount(lens).toLocaleString('en-US')} authors, used to fine-tune and test the lens reader (a LoRA on Nemotron Nano 12B v2 VL). Licenses: {counts(lens)}. <a href="/credits/lens/">The full list with every photo, author and license</a>.</p>
+
+  <AnchorHeading level="2" id="models-and-data">Models, maps and open data</AnchorHeading>
+  <table>
+    <thead><tr><th>What</th><th>Used for</th><th>Terms</th></tr></thead>
+    <tbody>
+      <tr><td>NVIDIA Nemotron 3.5 Super VL, Lightning, Bolt; Nemotron 3 Nano Omni; Nemotron 3.5 Content Safety; Nemotron Embed and Llama Nemotron Embed and Rerank VL</td><td>Set planning, photo and light reads, routing, offline commands, safety, search</td><td>NVIDIA Open Model License, through the NVIDIA API Catalog, Vultr Serverless Inference and Ollama</td></tr>
+      <tr><td>NVIDIA Nemotron Nano 12B v2 VL</td><td>Base of our lens reader LoRA, served with vLLM</td><td>NVIDIA Open Model License</td></tr>
+      <tr><td>NVIDIA Parakeet CTC 1.1B, Magpie TTS Multilingual (Riva), cuOpt</td><td>Speech to text, spoken replies, shoot day route</td><td>NVIDIA API Catalog terms</td></tr>
+      <tr><td>Microsoft TRELLIS, Black Forest Labs FLUX.1-dev</td><td>Words or photos to 3D props; concept images</td><td>Through the NVIDIA API Catalog</td></tr>
+      <tr><td>Qwen-Image 2.1, Whisper large v3 turbo</td><td>Render generator and speech fallback</td><td>Through Vultr Serverless Inference</td></tr>
+      <tr><td>Google Photorealistic 3D Tiles</td><td>The planning view in Studio and Simple, display only, with Google's logo and data credits on screen</td><td>Google Maps Platform terms. Tiles never enter a render, an export or an AI step.</td></tr>
+      <tr><td>OpenStreetMap</td><td>Points of interest and building heights outside NYC</td><td>Open Database License (ODbL), © OpenStreetMap contributors</td></tr>
+      <tr><td>OpenFreeMap</td><td>The 2D map style and tiles</td><td>Free, keyless; "OpenFreeMap © OpenMapTiles, data from OpenStreetMap" stays on the map</td></tr>
+      <tr><td>Open-Meteo forecast and air quality (CAMS)</td><td>Weather, cloud layers, haze</td><td>CC BY 4.0; air quality from Copernicus</td></tr>
+      <tr><td>National Weather Service, NOAA CO-OPS tides, USGS earthquakes</td><td>Alerts, tides, quakes</td><td>US government works, public domain</td></tr>
+      <tr><td>NYC Open Data: film permits, street activity permits, DOT closures, DOB NOW permits, building footprints</td><td>Disruptions, scaffolding and real building shadows at NYC spots</td><td>NYC Open Data terms of use</td></tr>
+    </tbody>
+  </table>
+
+  <AnchorHeading level="2" id="studio-assets">Studio assets</AnchorHeading>
+  <table>
+    <thead><tr><th>Asset</th><th>Author</th><th>License</th></tr></thead>
+    <tbody>
+      <tr><td>Props: car, taxi, SUV, bench, chair, small table, flowers, streetlight, traffic light, traffic cone, fire hydrant, trashcan, town sign, arrow sign</td><td>Quaternius, via <a href="https://poly.pizza">Poly Pizza</a></td><td>CC0 1.0</td></tr>
+      <tr><td>Potted plant</td><td>Kenney, via Poly Pizza</td><td>CC0 1.0</td></tr>
+      <tr><td><a href="https://poly.pizza/m/NHjJnFYYCc">Bike</a> and <a href="https://poly.pizza/m/FLEbO2jluO">Parasol</a></td><td>Zsky, via Poly Pizza</td><td>CC BY 3.0</td></tr>
+      <tr><td>People: <a href="https://quaternius.itch.io/universal-animation-library">Universal Animation Library</a> mannequin, eight clips</td><td>Quaternius</td><td>CC0 1.0</td></tr>
+      <tr><td>Lens distortion and vignetting for 59 lenses</td><td><a href="https://github.com/lensfun/lensfun">lensfun</a> contributors</td><td>CC BY-SA 3.0</td></tr>
+      <tr><td>Camera body and lens specifications</td><td>Typed from the makers' published specifications</td><td>Facts; no maker text or images</td></tr>
+      <tr><td>Icons</td><td><a href="https://phosphoricons.com">Phosphor Icons</a></td><td>MIT</td></tr>
+      <tr><td>Fonts: Archivo, Martian Mono</td><td>Omnibus-Type; Evil Martians</td><td>SIL Open Font License 1.1</td></tr>
+      <tr><td>Generated props (<code>/asset/&lt;id&gt;.glb</code>)</td><td>Made on request by NVIDIA TRELLIS for the session that asked</td><td>Each session's output</td></tr>
+    </tbody>
+  </table>
+
+  <AnchorHeading level="2" id="software">Software</AnchorHeading>
+  <p>COLMAP and pycolmap, hloc, MegaLoc, SuperPoint and LightGlue (the solver; SuperPoint's weights carry a non-commercial license), gsplat (the photoreal set), vLLM, SpacetimeDB, three.js and React Three Fiber, 3d-tiles-renderer, Spark (MIT) for Gaussian splats, Google's Draco decoder (Apache 2.0), MapLibre GL, suncalc (BSD 2-Clause), React, Vite, Astro and Starlight (this site), Caddy.</p>
+</StarlightPage>

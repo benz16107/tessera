@@ -5,6 +5,8 @@ import type { Photo, SolveResult, Spot } from '../module_bindings/types.ts';
 import { angleDiff, compassWord, fmtTime, hfovDeg, lightWindows } from '../geo.ts';
 import { CONFIDENCE, iphoneZoom, photoCredit, resultLine } from './lib.ts';
 import { Arrow } from './icons.tsx';
+import { describeMark } from './street.ts';
+import { streetsFor } from './streets.data.ts';
 
 export const relDay = (d: Date, zone: string) => {
   const day = (x: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(x);
@@ -56,6 +58,9 @@ export default function Found({ result, photo, spot, zone, credit, onGo }: {
   const rel = golden ? angleDiff(golden.sunAz, pose.heading) : 0;
   const side = Math.abs(rel) < 25 ? 'ahead of you, in the frame' : Math.abs(rel) > 135 ? 'behind you' : rel < 0 ? 'from the left' : 'from the right';
   const face = `${Math.round(pose.heading)}° ${compassWord(pose.heading)}`;
+  const streets = streetsFor(spot?.id ?? '');
+  const street = describeMark(streets, pose.lat, pose.lon);
+  const coords = `${pose.lat.toFixed(6)}, ${pose.lon.toFixed(6).replace('-', '−')}`;
   return (
     <article className="s-found">
       <p className="s-conf" data-tone={c.tone}><i aria-hidden="true" />{c.word}</p>
@@ -79,8 +84,9 @@ export default function Found({ result, photo, spot, zone, credit, onGo }: {
       <div className="s-mark">
         <div>
           <p className="s-label">The mark</p>
-          <p className="s-mid">{pose.lat.toFixed(6)}, {pose.lon.toFixed(6).replace('-', '−')}</p>
+          <p className="s-mid">{street ?? coords}</p>
           <p className="s-muted">Stand here and face {face} to match the photo</p>
+          {street && <p className="s-muted small s-coords">{coords} · {streets!.credit}</p>}
         </div>
         <button className="s-btn primary big" onClick={onGo}><Arrow width={18} height={18} /> Take me there</button>
       </div>

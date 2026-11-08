@@ -61,11 +61,9 @@ export default function Map2D({ geo, center, camera, height = 320, zoom = 16.2, 
       add({ id: 'geo-closures', type: 'fill', source: 'geo-closures', paint: { 'fill-color': '#e8675e', 'fill-opacity': 0.55 } });
       add({ id: 'geo-construction', type: 'fill', source: 'geo-construction', paint: { 'fill-color': '#d9b44a', 'fill-opacity': 0.5 } });
       add({ id: 'geo-construction-line', type: 'line', source: 'geo-construction', paint: { 'line-color': '#d9b44a', 'line-width': 1.2 } });
-      add({ id: 'geo-photographers', type: 'heatmap', source: 'geo-photographers', paint: {
-        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 13, 5, 17, 16], 'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 13, 0.3, 17, 0.7],
-        'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'], 0, 'rgba(242,163,58,0)', 0.25, 'rgba(242,163,58,0.35)', 0.6, 'rgba(247,201,122,0.7)', 1, 'rgba(255,244,214,0.95)'],
-        'heatmap-opacity': 0.7 } });
-      add({ id: 'geo-photographers-dot', type: 'circle', source: 'geo-photographers', minzoom: 17, paint: { 'circle-radius': 2.5, 'circle-color': '#f7c97a' } });
+      // Plain dots, one per geotagged photo: where photographers stood. No glow; the overview legend names them.
+      add({ id: 'geo-photographers', type: 'circle', source: 'geo-photographers', paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 1.5, 18, 3.5], 'circle-color': '#e6d3a8', 'circle-opacity': 0.8 } });
       add({ id: 'geo-pois', type: 'circle', source: 'geo-pois', paint: { 'circle-radius': 4, 'circle-stroke-width': 1, 'circle-stroke-color': '#0b0b0a',
         'circle-color': ['match', ['get', 'kind'], 'viewpoint', '#f2a33a', 'transit', '#5f9cf0', 'cafe', '#5ec8c2', '#a39f96'] } });
       add({ id: 'geo-pois-label', type: 'symbol', source: 'geo-pois', filter: ['in', ['get', 'kind'], ['literal', ['viewpoint', 'transit']]], minzoom: 15.5,
@@ -90,7 +88,7 @@ export default function Map2D({ geo, center, camera, height = 320, zoom = 16.2, 
       if (p.detail) { const s = document.createElement('p'); s.textContent = p.detail; box.append(s); }
       popup.setLngLat(e.lngLat).setDOMContent(box).addTo(m);
     };
-    for (const l of ['geo-film', 'geo-closures', 'geo-construction', 'geo-alerts', 'geo-pois', 'geo-quakes', 'geo-tides', 'geo-photographers-dot']) m.on('click', l, show);
+    for (const l of ['geo-film', 'geo-closures', 'geo-construction', 'geo-alerts', 'geo-pois', 'geo-quakes', 'geo-tides', 'geo-photographers']) m.on('click', l, show);
     map.current = m;
     return () => { ready.current = false; map.current = null; m.remove(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
