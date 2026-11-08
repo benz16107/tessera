@@ -13,7 +13,7 @@ export default {
   oneLine: 'The whole shared set is one SpacetimeDB module: every person, prop, light and camera is a row that browsers, phones, our GPU worker and the text bridge edit together, live.',
   hero: {
     img: hero,
-    alt: 'Studio on production looking through Cam A over the Google Photorealistic 3D Tiles of Washington St, with two placed people, the scene outline listing Cam A, the sun, two people, a bicycle and a chair, and the camera inspector',
+    alt: 'Studio looking through Cam A at 4:35 PM over the Google Photorealistic 3D Tiles of Washington St, with two placed people, the scene outline listing Cam A, the sun, two people, a bicycle and a chair, and the camera inspector',
     caption: 'Studio on production. Cam A, the sun, the two people, the bicycle and the chair in the outline are rows in SpacetimeDB; everyone in the shoot sees them change within a network round trip.',
     frame: 'browser',
     url: 'app.tesseraphoto.com/studio/A9TVAN',
