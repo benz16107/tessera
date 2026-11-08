@@ -12,7 +12,7 @@ SpacetimeDB 2.14.1 (CLI, server SDK and client SDK). Every feature below was che
 ## Architecture
 
 ```
-  planner browsers        scout phone          crew (Node, Vultr GPU box)        phone agent (ElevenLabs)
+  planner browsers        scout phone          crew (Node, Vultr CPU VM)         phone agent (ElevenLabs)
   React + three.js        camera + GPS         solver, Nemotron, renders, Photon  post-call webhook
         |  websocket            |  websocket            |  websocket                      |  HTTPS POST
         v                       v                       v                                 v
