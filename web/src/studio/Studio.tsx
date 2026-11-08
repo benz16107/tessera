@@ -815,6 +815,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   }, [solved?.photoId, origin?.lat, photo?.id, frame, gz]); // eslint-disable-line react-hooks/exhaustive-deps
   const pipSize = portrait ? { w: Math.round(160 * frame.w / frame.h), h: 160 } : { w: 200, h: Math.round(200 * frame.h / frame.w) };
   const pip = { x: vp.w - 16 - pipSize.w, y: vp.h - 36 - pipSize.h, ...pipSize };
+  // Walk's bar (about 560 px, centred) owns the bottom row: drop the Light switch or the PiP only where they would touch it (ui-audit 45).
+  const walkHidesPip = view === 'walk' && vp.w / 2 + 280 > pip.x - 8, walkHidesLight = view === 'walk' && vp.w / 2 - 280 < 190; // the switch ends near 190 px
   const online = presence.length ? presence : parts.filter(p => p.online).map(p => ({ name: p.name, color: '', identity: p.identity, status: 'active' }));
   const camSub = (r: SceneObject) => {
     const b = bodyById(shot.bodyId), l = lensById(shot.lensId);
@@ -962,7 +964,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                 pickables={() => [...groups.current.entries()]} onPick={id => setSelected(id)} onFly={() => setWalkFly(true)} />}
               {view === 'shot' && shotRow && <LookThrough camera={shotCam} o={o} shot={shot} gain={gain} wb={wb} dofOn={dofOn} vignette={vignette} fit={fitFn} photoOnly={photoBack}
                 walkers={walkers} lights={pointLights} shakePx={shakePx} onHistogram={setHist} grab={grabRef} />}
-              {view !== 'shot' && shotRow && <PipRenderer shotCam={shotCam} o={o} rect={pip} inset={vp.w >= 720 && !explore} overPhoto={!!photo} />}
+              {view !== 'shot' && shotRow && <PipRenderer shotCam={shotCam} o={o} rect={pip} inset={vp.w >= 720 && !explore && !walkHidesPip} overPhoto={!!photo} />}
               {view !== 'shot' && (
                 <GizmoHelper alignment="top-right" margin={[52, 52]} renderPriority={2}>
                   <GizmoViewport axisColors={['#e8675e', '#7fc96f', '#5f9cf0']} labelColor="#0c0c0b" />
@@ -1149,7 +1151,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                 <button className="st-btn small" onClick={() => setFocus(false)}>Exit focus <span className="st-meta">Tab</span></button>
               </div>
             )}
-            {shotRow && !explore && view !== 'map' && (
+            {shotRow && !explore && view !== 'map' && !walkHidesPip && (
               <>
                 <button className="st-pip" style={{ left: pip.x, top: pip.y, width: pip.w, height: pip.h }} onClick={() => setView('shot')} aria-label={`Look through ${shotName}`} title={`Look through ${shotName} (0)`} />
                 <span className="st-pip-label" style={{ left: pip.x + 6, top: pip.y + pip.h - 22 }}>{shotName} · {Math.round(o.f35)} mm</span>
@@ -1171,7 +1173,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
           </Suspense>
         )}
         <div className="st-corner" aria-live="polite" style={view === 'map' ? { bottom: 56 } : undefined}>{/* on the Map, above Geo's hint chip (bottom 16 px) */}
-          {showTiles && view !== 'shot' && view !== 'map' && !focus && (
+          {showTiles && view !== 'shot' && view !== 'map' && !walkHidesLight && !focus && (
             <div className="st-seg st-float st-lightsw" role="group" aria-label="Light"
               title="Live sun relights Google's 3D tiles for the time on the timeline. Their photos were taken in daylight, so faint shadows from the capture still show.">
               <button aria-pressed={lightMode === 'live'} onClick={() => setLightMode('live')}>Live sun</button>
