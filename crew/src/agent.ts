@@ -7,6 +7,7 @@ import { dataUrl, ingest, localPath, type Ingested } from './images.ts';
 import { chat, readLens, type ChatMsg } from './models.ts';
 import { similar } from './similar.ts';
 import { previewWarnings } from './jobs.ts';
+import { planShootDay } from './shootday.ts';
 import { sunAt, sunWindows, windowWords } from './sun.ts';
 import { bearing, compassWord, metres, nearestSpot, zoomWords } from './geo.ts';
 import { answerText, matchSpotByName, parseFollowUp } from './words.ts';
@@ -169,6 +170,11 @@ const TOOLS: Record<string, Tool> = {
       return { results: hits.map(h => ({ spot: h.spot, score: h.score, heading: h.pose.heading, f35: h.pose.f35, lat: h.pose.lat, lon: h.pose.lon, credit: h.credit })) };
     },
   },
+  plan_shoot_day: {
+    description: 'Plan a shoot day: the solved shot plus up to 5 similar viewpoints at the spot, each at its best light, in a walking order solved by NVIDIA cuOpt.',
+    parameters: { type: 'object', properties: {} },
+    async run(c) { return planShootDay(c.sessionId); },
+  },
   scout_status: {
     description: "Where the scouts in this session are relative to the mark (the solved camera position).",
     parameters: { type: 'object', properties: {} },
@@ -198,7 +204,7 @@ async function callTool(c: Ctx, name: string, args: any) {
 
 const SYSTEM = `You are ShotMatch, texting with someone about a photo of a place. You find where the photographer stood, which way they faced and the lens, then help them plan their own version.
 Use the tools. With a new photo: pick_spot, then solve with that spot (solve also reads the lens and checks safety). If pick_spot finds nothing, ask where the photo was taken and name the mapped spots.
-If they ask to be reminded before good light, call set_reminder. For "show me shots like this" or a described mood, call find_similar_spots.
+If they ask to be reminded before good light, call set_reminder. For "show me shots like this" or a described mood, call find_similar_spots. For a plan covering several shots in one outing, call plan_shoot_day.
 Follow-ups like "make it 85mm", "add two people" or "what about sunset" mean: call make_preview right away on the session's photo (it works before the photo is solved too). Do not ask where it was taken for these.
 When solve returns an "answer", send that answer text as written, adding at most one short line. Write plainly, no markdown, no emojis. Previews are an AI interpretation; say so.
 If a photo is refused or cannot be placed, say why in one sentence.`;

@@ -88,5 +88,12 @@ export async function similar(q: { imagePath?: string; text?: string; spot?: str
     if (!idx) continue;
     idx.names.forEach((n, i) => hits.push({ spot: s, file: n, url: `/spot-photo/${s}/${n}`, score: Math.round(cosine(v, idx.vecs[i]) * 1000) / 1000, pose: idx.poses[n], credit: idx.credits[n] ?? '' }));
   }
-  return hits.sort((a, b) => b.score - a.score).slice(0, Math.min(Math.max(q.k ?? 6, 1), 24));
+  return hits.sort((a, b) => b.score - a.score).slice(0, Math.max(q.k ?? 6, 1));
+}
+
+/** One training photo as a hit (pose and credit), for routes built from photos the user picked. */
+export async function spotPhoto(spot: string, file: string): Promise<Hit | null> {
+  const idx = indexes.get(spot) ?? (await buildIndex(spot).catch(() => null));
+  if (!idx?.poses[file]) return null;
+  return { spot, file, url: `/spot-photo/${spot}/${file}`, score: 1, pose: idx.poses[file], credit: idx.credits[file] ?? '' };
 }

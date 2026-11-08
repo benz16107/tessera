@@ -5,6 +5,7 @@ import { DB_NAME, MAX_UPLOAD, PORT, PUBLIC_URL, SPACETIME_HOST, SPOTS_DIR, WEB_D
 import { IMAGE_TYPES, ingest, localPath } from './images.ts';
 import { VOICE_TOOLS, toolAuthorized, voiceEnded } from './voice.ts';
 import { similar } from './similar.ts';
+import { planShootDay } from './shootday.ts';
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
@@ -56,12 +57,20 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   }
 
   if (p === '/api/similar' && req.method === 'GET') {
-    const photo = url.searchParams.get('photo'), q = url.searchParams.get('q')?.slice(0, 300), k = Number(url.searchParams.get('k') ?? 6);
+    const photo = url.searchParams.get('photo'), q = url.searchParams.get('q')?.slice(0, 300), k = Math.min(Math.max(Number(url.searchParams.get('k')) || 6, 1), 24);
     const path = photo ? localPath(photo) : null;
     if (photo && (!path || !existsSync(path))) return json(res, 404, { error: 'photo must be a /photo/ or /preview/ URL on this server' });
     if (!path && !q) return json(res, 400, { error: 'give ?photo=/photo/<file> or ?q=<words>' });
     try { return json(res, 200, { results: await similar({ imagePath: path ?? undefined, text: q, k, spot: url.searchParams.get('spot') ?? undefined }) }); }
     catch (e) { return json(res, 503, { error: (e as Error).message }); }
+  }
+
+  if (p === '/api/route' && req.method === 'GET') {
+    const sid = url.searchParams.get('session') ?? '';
+    if (!/^\d+$/.test(sid)) return json(res, 400, { error: 'give ?session=<id>' });
+    const shots = url.searchParams.get('shots')?.split(',').map(s => s.trim()).filter(s => /^([a-z0-9_]+\/)?[A-Za-z0-9_.-]+$/i.test(s));
+    try { return json(res, 200, await planShootDay(BigInt(sid), shots)); }
+    catch (e) { return json(res, 502, { error: (e as Error).message }); }
   }
 
   const tool = /^\/api\/tools\/([a-z_]+)$/.exec(p);
