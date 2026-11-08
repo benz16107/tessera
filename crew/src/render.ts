@@ -157,7 +157,7 @@ export async function render(inp: RenderIn): Promise<RenderOut> {
   const masks = inp.mask && inp.legend?.length ? objectMasks(await rawRgb(inp.mask, w, h), w, h, inp.legend) : new Map<string, Buffer>();
   const when = whenWords(planTime ? new Date(Number(planTime.microsSinceUnixEpoch / 1000n)) : new Date(), sun?.alt, light?.sky);
   const lightFor = light ? `${light.hardness} ${light.time_look} light${/none/.test(light.sun_side) ? '' : `, sun ${light.sun_side}`}` : 'the scene\'s light';
-  const placeholders: (Placeholder & { mask: Buffer; prompt: string; strength: number })[] = [];
+  const placeholders: (Placeholder & { mask: Buffer; prompt: string; strength: number; area: number })[] = [];
   for (const l of inp.legend ?? []) {
     const row = objs.find(o => String(o.id) === l.id), m = masks.get(l.id);
     if (!row || !m || !['person', 'model', 'prop_generated'].includes(row.kind) || m.reduce((n, v) => n + (v ? 1 : 0), 0) < 40) continue;
@@ -165,8 +165,11 @@ export async function render(inp: RenderIn): Promise<RenderOut> {
     const toCam = ctx ? bearingTo(row, ctx.cam) : 0, yaw = ((-2 * Math.atan2(row.qz, row.qw) * 180) / Math.PI + 720) % 360, off = Math.abs(((yaw - toCam + 540) % 360) - 180);
     const ph: Placeholder = { id: l.id, kind: row.kind, name: row.name, asset: row.assetId, pose: prm.pose, heightM: Number(prm.height) || undefined, frameX: Number.isFinite(f.frameX) ? f.frameX : 0, dist: f.dist,
       facing: off < 45 ? 'the camera' : off > 135 ? 'away from the camera' : 'sideways' };
-    placeholders.push({ ...ph, mask: m, prompt: placeholderPrompt(ph, when, lightFor), strength: row.kind === 'person' ? 0.9 : 0.8 });
+    placeholders.push({ ...ph, mask: m, prompt: placeholderPrompt(ph, when, lightFor), strength: row.kind === 'person' ? 0.9 : 0.8, area: m.reduce((n, v) => n + (v ? 1 : 0), 0) });
   }
+  // At most 4 edits per render (people first, then the largest on screen): Vultr runs the edits about one at a time, so 6 took
+  // 97 s. The rest stay as composited.
+  placeholders.sort((a, b) => Number(b.kind === 'person') - Number(a.kind === 'person') || b.area - a.area).splice(4);
   let prompt = renderPrompt({
     light, f35: inp.f35 ?? ctx?.cam.f35 ?? 35, aperture: inp.aperture ?? settings?.aperture, focusM: inp.focusM ?? settings?.focusM,
     sun, heading: ctx?.cam.heading, objects: [...new Set(names)], people,
@@ -212,7 +215,9 @@ export async function render(inp: RenderIn): Promise<RenderOut> {
     let rerendered = false;
     if (c1 && !c1.pass) {
       // A placeholder that still looks like a mannequin, a model or a ghost gets one more focused edit with a firmer prompt.
-      const stuck = patchPath ? placeholders.filter(p => c1.placeholders.includes(p.id)).slice(0, 3) : [];
+      // A second round only for the objects the check flagged, and only when the first round left time (a render stays near a minute).
+      const stuck = patchPath && Date.now() - t0 < 60_000 ? placeholders.filter(p => c1.placeholders.includes(p.id)).slice(0, 3) : [];
+      if (patchPath && !stuck.length && c1.placeholders.length) await logStep(sid, 'render', 'no second round', 'the first round took over 60 s; kept it', 0);
       if (stuck.length) { await editAll(stuck, 2); patched = assemble(); }
       if (gen && 'rgb' in gen) {
         if (c1.strength === 'up') strength = Math.min(0.85, strength + 0.25);

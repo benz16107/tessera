@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { createReadStream, existsSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { DB_NAME, MAX_UPLOAD, PORT, PUBLIC_URL, REPO, SPACETIME_HOST, SPOTS_DIR, WEB_DIST, secret } from './config.ts';
 import { IMAGE_TYPES, ensureLocal, ingest } from './images.ts';
@@ -214,9 +214,15 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
     const requestId = randomUUID().replace(/-/g, '').slice(0, 16);
     renders.set(requestId, { state: 'running', startedAt: Date.now(), sessionId: String(sid) });
     rendersRunning++;
+    // The finished state is also written to data/renders, so a poll that reaches the next process after a restart still finds it.
+    const keep = (v: NonNullable<ReturnType<typeof renders.get>>) => {
+      renders.set(requestId, v);
+      try { mkdirSync(RENDERS_DIR, { recursive: true }); writeFileSync(join(RENDERS_DIR, `${requestId}.json`), JSON.stringify(v)); } catch (e) { console.warn(`render state: ${(e as Error).message}`); }
+    };
+    const startedAt = Date.now();
     render({ ...input, id: requestId })
-      .then(r => renders.set(requestId, { state: 'done', startedAt: renders.get(requestId)!.startedAt, sessionId: String(sid), result: r }))
-      .catch(e => renders.set(requestId, { state: 'failed', startedAt: renders.get(requestId)!.startedAt, sessionId: String(sid), error: (e as Error).message }))
+      .then(r => keep({ state: 'done', startedAt, sessionId: String(sid), result: r }))
+      .catch(e => keep({ state: 'failed', startedAt, sessionId: String(sid), error: (e as Error).message }))
       .finally(() => { rendersRunning--; setTimeout(() => renders.delete(requestId), 3_600_000).unref(); });
     json(res, 202, { requestId, state: 'running', poll: `/api/render/${requestId}` });
     return true;
@@ -224,9 +230,10 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
 
   const poll = /^\/api\/render\/([a-f0-9]{16})$/.exec(p);
   if (poll && req.method === 'GET') {
-    const r = renders.get(poll[1]);
+    let r = renders.get(poll[1]);
+    if (!r) try { r = JSON.parse(readFileSync(join(RENDERS_DIR, `${poll[1]}.json`), 'utf8')); } catch { /* not finished on this box */ }
     if (!r) { json(res, 404, { error: 'no such render (renders are kept for an hour; a crew restart forgets them, the preview_job row keeps the image)' }); return true; }
-    json(res, 200, { requestId: poll[1], ...r, seconds: Math.round((Date.now() - r.startedAt) / 1000) });
+    json(res, 200, { requestId: poll[1], ...r, seconds: Math.round((Date.now() - r!.startedAt) / 1000) });
     return true;
   }
 
@@ -360,6 +367,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
 
 const LONG = /^\/api\/(render|props\/generate|set\/(command|critique|callsheet|rebuild|read|apply|check)|voice\/transcribe)$/;
 let draining = false, inFlight = 0, rendersRunning = 0;
+const RENDERS_DIR = join(REPO, 'data/renders');
 /** Background renders by request id, for GET /api/render/<id>. */
 const renders = new Map<string, { state: 'running' | 'done' | 'failed'; startedAt: number; sessionId: string; result?: unknown; error?: string }>();
 /** For a graceful restart: refuse new long requests and report how many are still running. */

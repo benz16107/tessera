@@ -162,6 +162,9 @@ async function locate(c: Ctx) {
   if (progress) progressMsg = await sendMessage({ spaceId: c.target.spaceId, senderId: c.target.senderId, parentMessageId: c.m.messageId, content: { type: 'text', format: 'plain', text: 'Locating your shot…' } }).catch(() => undefined);
   try {
     const r = await handleInbound({ sessionId: c.sessionId, channel: c.channel, threadId: c.t.chatId, text: c.m.text, upload: c.upload });
+    // A set started from a text has no spot until the solve picks one; record it so the studio, the geo layers and alerts see it.
+    const sp = setContext(c.sessionId)?.spotId;
+    if (sp && !conn.db.session.id.find(c.sessionId)?.spotId) await conn.reducers.setSessionSpot({ sessionId: c.sessionId, spotId: sp }).catch(e => console.warn(`setSessionSpot: ${e.message}`));
     const code = conn.db.session.id.find(c.sessionId)?.code;
     const text = replyText(r.text, { hasPreview: !!r.imagePath, links: c.isNew && code ? { plan: `${PUBLIC_URL}/p/${code}`, scout: `${PUBLIC_URL}/s/${code}` } : undefined });
     const sent = await run(c.target, [...(r.imagePath ? [{ op: 'image' as const, path: r.imagePath }] : []), { op: 'text', text, subject: 'Your shot, located' }], { parentMessageId: c.m.messageId, idem: `reply:${c.m.messageId}` });

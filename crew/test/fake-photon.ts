@@ -84,6 +84,7 @@ export async function fakePhoton(opts: { key?: string; project?: string; agents?
     if (req.method === 'POST' && path === '/messages') {
       const b = j(), k = String(req.headers['idempotency-key'] ?? '');
       if (!k) return problem(400, 'INVALID_REQUEST', 'idempotency-key required');
+      if (!/^[\x21-\x7e]{1,255}$/.test(k)) return problem(400, 'INVALID_REQUEST', 'idempotency-key must be printable ASCII without spaces');
       if (!b?.spaceId || !b?.senderId || !b?.content?.type) return problem(422, 'VALIDATION_FAILED', 'spaceId, senderId and content are required');
       if (idem.has(k)) { res.setHeader('idempotent-replayed', 'true'); return send(202, { id: idem.get(k), status: 'accepted' }); }
       const sp = spaceById(b.spaceId);

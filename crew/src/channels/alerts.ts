@@ -55,9 +55,12 @@ export async function deliverAlert(sessionId: bigint, baseText: string, idem: st
   const store = sharedStore(), saved = store.get<{ start: string; kind: string }>('alerts', String(sessionId));
   const lead = saved && Math.abs(new Date(saved.start).getTime() - Date.now()) < 3 * 3600_000 ? alertLead(saved.kind, new Date(saved.start)) : baseText;
   const code = conn.db.session.id.find(sessionId)?.code ?? '';
-  // The geo thread's shot conditions for the window (colour chance, permits near the mark). Never worth a late alert: 15 s cap.
+  // The geo thread's shot conditions for the window (sky, colour chance, wind, tide, permits near the mark).
   const at = saved ? new Date(saved.start) : new Date(Date.now() + 20 * 60_000);
-  const cond = await Promise.race([conditions({ sessionId, at }).catch(() => null), new Promise<null>(r => setTimeout(() => r(null), 15_000))]);
+  // Sets started from a text thread learn their spot from the solve, so pass it: the geo resolver reads session.spotId first.
+  // 8 s cap: a slow geo source never holds up an alert that has to land at its minute.
+  const cond = await Promise.race([conditions({ sessionId, spotId: setContext(sessionId)?.spotId, at }).catch(e => { console.warn(`alert conditions: ${(e as Error).message}`); return null; }),
+    new Promise<null>(r => setTimeout(() => r(null), 8_000))]);
   const extra = conditionsLine(cond);
   const hasThread = (l: Link) => store.threads().some(t => t.channel === l.channel && !!t.handle && t.sessionId === String(sessionId));
   for (const person of people(linksFor(sessionId))) {

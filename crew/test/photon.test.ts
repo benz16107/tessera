@@ -83,9 +83,11 @@ test('alerts: distance on foot and the lead line', () => {
   assert.equal(awayWords(undefined), '');
   const now = new Date('2026-11-08T22:32:00Z');
   assert.equal(alertLead('golden hour', new Date('2026-11-08T22:52:00Z'), now), 'Golden hour starts in 20 min.');
-  const c = { colorChance: { score: 37, label: 'fair', why: '11% mid and high cloud to catch the light, no low cloud in the way' },
+  const c = { colorChance: { score: 37, label: 'fair', why: '11% mid and high cloud to catch the light' },
+    weather: { cloud: 11, rainPct: 0, windMph: 10, gustMph: 18 }, tide: { note: 'Low tide 1:47 PM (2.1 ft): exposes the rocks' },
     blockers: [{ label: 'Sidewalk shed', m: 41 }, { label: 'Supported scaffold', m: 41 }, { label: 'Street closure', m: 120 }] };
-  assert.equal(conditionsLine(c), 'Fair colour chance (37/100): 11% mid and high cloud to catch the light, no low cloud in the way. Watch for sidewalk shed 41 m away and supported scaffold 41 m away.');
+  assert.equal(conditionsLine(c), 'Clear sky, fair colour chance (37/100), wind 10 mph gusting 18; low tide 1:47 PM (2.1 ft). Watch for sidewalk shed 41 m away and supported scaffold 41 m away.');
+  assert.equal(conditionsLine({ colorChance: null, blockers: [], weather: { cloud: 90, rainPct: 70, windMph: 4, gustMph: 6 } }), 'Rain likely, wind 4 mph.');
   assert.equal(conditionsLine({ colorChance: null, blockers: [] }), '');
   assert.equal(conditionsLine(null), '');
 });
@@ -159,6 +161,7 @@ test('Photon client against the fake server: outbound-first spaces, uploads, alb
     const id = await api.sendMessage({ spaceId: sp, senderId: agent, content: { type: 'text', format: 'plain', text: 'v1 is ready' } }, 'k1');
     assert.equal(await api.sendMessage({ spaceId: sp, senderId: agent, content: { type: 'text', format: 'plain', text: 'v1 is ready' } }, 'k1'), id, 'same idempotency key, same message');
     assert.equal(f.sentTo(sp).length, 1);
+    assert.ok(await api.sendMessage({ spaceId: sp, senderId: agent, content: { type: 'text', format: 'plain', text: 'alert' } }, 'alert:3:Ben Zhou'), 'a key with a name in it is sent without spaces');
     const att = await api.uploadAttachment(Buffer.from('JPEGDATA'), 'image/jpeg', 'v1.jpg');
     const a2 = await api.uploadAttachment(Buffer.from('JPEG2'), 'image/jpeg', 'v1_85.jpg');
     await api.sendMessage({ spaceId: sp, senderId: agent, content: { type: 'group', parts: [{ type: 'attachment', attachmentId: att }, { type: 'attachment', attachmentId: a2 }] } });

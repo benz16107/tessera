@@ -743,7 +743,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
         {photoBack && photo && <img className="st-backplate" src={photo.url || photo.thumb} alt="" style={{ left: fit.rect.x, top: fit.rect.y, width: fit.rect.w, height: fit.rect.h }} />}
         {view !== 'shot' && photo && shotRow && <img className="st-backplate" src={photo.thumb} alt="" style={{ left: pip.x, top: pip.y, width: pip.w, height: pip.h, borderRadius: 4 }} />}
         <div className="st-canvas">
-          <Canvas shadows="percentage" gl={{ antialias: true, alpha: true }} frameloop={view === 'map' ? 'demand' : 'always'} camera={{ fov: 50, near: 0.1, far: 20000, position: enuToThree(startCam.pos).toArray() }}
+          <Canvas shadows="percentage" gl={{ antialias: true, alpha: true }} frameloop={view === 'map' ? 'never' : 'always'} camera={{ fov: 50, near: 0.1, far: 20000, position: enuToThree(startCam.pos).toArray() }}
             onPointerMissed={e => {
               if (e.type !== 'click' || gizmoBusy.current || tool === 'measure' || document.pointerLockElement) return;
               if (view === 'walk') walkInput.current.lock?.(); else setSelected(null);
@@ -754,7 +754,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               {photo && <PhotoEnv url={photo.url || photo.thumb} />}
               <SunLight dir={sunDir} color={sunColor} strength={sunStrength(sun.altitude) * 3} center={startCam.target} />
               <group rotation={ENU_TO_THREE} name="enu">
-                {here && (
+                {here && view !== 'map' && ( // unmounted under the map: two big WebGL scenes at once lose the GPU on laptops
                   <Tiles apiKey={cfg.mapsKey} origin={here} probes={probes} visible={showTiles} extraCamera={view === 'shot' ? shotCam : null}
                     contextOnly={showSplat && splatState.loaded} groundAt={explore ? undefined : gz} onAttribution={setAttribution} onGround={setGroundOffset} />
                 )}
@@ -774,7 +774,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                   return (
                     <ObjectNode key={String(r.id)} row={r} selected={r.id === selected} lockedBy={lk?.name ?? null} lockColor={lk?.color} dragging={scene.draggingId() === r.id}
                       expo={expo} optics={o} isShot={r.id === shotRow?.id} lookingThrough={view === 'shot'} focusM={shot.focusM} camName={camName(r)}
-                      showLabels={view !== 'shot' && !explore} onSelect={(id, pt, alt) => pick(id, pt, alt)} register={register} />
+                      showLabels={view !== 'shot' && view !== 'map' && !explore} onSelect={(id, pt, alt) => pick(id, pt, alt)} register={register} />
                   );
                 })}
                 <SetEventMarks ev={ev} />
@@ -982,7 +982,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
           </div>
         )}
         {addOpen && <AddDrawer onAdd={i => addItem(i)} sessionId={sid} onGenerated={onGenerated} genFile={genFile} onClose={() => setAddOpen(false)} startTab={genFile ? 'Generate' : undefined} />}
-        {!focus && <BuildCard spotName={spot?.name} solved={solved ? { f35: solved.pose.f35, heading: solved.pose.heading, inliers: solved.inliers, alt: solved.pose.alt, pitch: solved.pose.pitch, secs: solved.secs } : null}
+        {!focus && view !== 'map' && <BuildCard spotName={spot?.name} solved={solved ? { f35: solved.pose.f35, heading: solved.pose.heading, inliers: solved.inliers, alt: solved.pose.alt, pitch: solved.pose.pitch, secs: solved.secs } : null}
           hasCam={!!shotRow} worldReady={world === 'clay' || world === 'clayPhoto' ? !!layers.data?.layers.buildings : splatState.loaded || attribution !== ''}
           worldNote={world === 'clay' || world === 'clayPhoto' ? `Clay massing from ${layers.data?.layers.buildings?.features.length ?? 'the'} building footprints${world === 'clayPhoto' ? ', your photo projected on it' : ''}` : undefined}
           splat={world === 'splat' && !!splatUrl} progress={splatState.progress} />}

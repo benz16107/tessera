@@ -13,6 +13,7 @@ import liveVersions from '../assets/shots/photon-live-telegram-versions.png';
 import liveCheckin from '../assets/shots/photon-live-telegram-checkin.png';
 import liveProp from '../assets/shots/photon-live-telegram-prop.png';
 import liveFanout from '../assets/shots/photon-live-telegram-fanout.png';
+import liveAlert from '../assets/shots/photon-live-telegram-alert.png';
 import studioCheckin from '../assets/shots/photon-live-studio-checkin.png';
 import studioPanel from '../assets/shots/photon-live-studio-panel.png';
 
@@ -25,10 +26,10 @@ export default {
   order: 3,
   oneLine: 'The shared set reaches every person on the app they already use, and a phone call can guide you to the mark and edit the set by voice.',
   noteTag: 'Live on Telegram',
-  note: 'Every mechanism that runs on Telegram is shown below from real screenshots: Photon\'s live API and the managed bot @ShotMatchSetBot, Sunday Nov 8, 12:42 to 1:03 AM CT. iMessage, SMS, voice calls, email and WhatsApp Business each need a number, DNS or Meta signup, so the phone call, the golden-hour alert and those channels are shown from our end-to-end run against a stand-in for the Photon Beta API and tagged Stand-in.',
+  note: 'Every mechanism that runs on Telegram is shown below from real screenshots: Photon\'s live API and the managed bot @ShotMatchSetBot, Sunday Nov 8, 12:42 to 1:18 AM CT. iMessage, SMS, voice calls, email and WhatsApp Business each need a number, DNS or Meta signup, so the phone call, the fallback between channels and those channels are shown from our end-to-end run against a stand-in for the Photon Beta API and tagged Stand-in.',
   hero: { img: liveLocate, alt: 'The live Telegram chat with the ShotMatch bot: a photo of the Manhattan Bridge from Washington St goes in; the reply says Solid, 1600 matches, where to stand, facing north 4 degrees, 54 mm equivalent or about 2.2x on an iPhone, and the next golden hour.', caption: 'Live on Telegram, Nov 8, 12:51 AM CT: a texted photo comes back located, with where to stand, the heading, the lens and the next good light.', frame: 'none' },
   headline: [
-    { value: '8', label: 'live round trips on Telegram, 12:42 to 1:03 AM CT: hello, locate, v1, fork to v1.1, versions, check-in, prop, fan-out', check: 'web/screenshots/photon-live-*.png; message @ShotMatchSetBot' },
+    { value: '9', label: 'live round trips on Telegram, 12:42 to 1:18 AM CT: hello, locate, v1, fork to v1.1, versions, check-in, prop, fan-out, golden-hour alert', check: 'web/screenshots/photon-live-*.png; message @ShotMatchSetBot' },
     { value: '29 of 29', label: 'end-to-end checks across all five mechanisms', check: 'cd crew && npx tsx scripts/photon-e2e.ts', standIn: true },
     { value: '6', label: 'channels, each in its own form: iMessage, Telegram, SMS, WhatsApp Business, email, phone', check: 'crew/src/channels/format.ts' },
   ],
@@ -98,6 +99,14 @@ export default {
       messages: [],
     },
     {
+      mechanism: '5. Messages at the moment of the shot',
+      channel: 'Telegram',
+      why: 'Live: the golden-hour alert arrives on the person\'s own channel at the moment the schedule fires; with the scout page open it adds the walking distance. Here a planner scheduled the module\'s reminder a minute out as a test, SpacetimeDB fired it and wrote the outbox row, and the crew sent one message per person through Photon. The fallback to the next channel when iMessage refuses a late send is still proven only against the stand-in.',
+      source: 'Photon live API, managed Telegram bot, Nov 8, 1:18 AM CT',
+      live: { when: '1:18 AM CT', shots: [{ img: liveAlert, alt: 'Telegram: after the v2 album, the bot sends Test of the golden-hour alert, sent early: at your mark in DUMBO, golden hour starts at 6:35 AM. Open the scout page to walk to the mark, with the scout link.' }] },
+      messages: [],
+    },
+    {
       mechanism: '1. The same set on iMessage, SMS, email and WhatsApp',
       channel: 'iMessage',
       why: 'Set up next: each channel gets its own form (iMessage the image and one line, email a full message, SMS a link). Ben\'s number is assigned on the shared iMessage line but has not texted it yet; SMS, email and WhatsApp Business need a number, DNS or Meta signup.',
@@ -124,16 +133,6 @@ export default {
         { from: 'note', text: 'Call ended. The framing and the latest render are sent to the caller\'s own thread (WhatsApp in this run), and the transcript is written into the session.' },
       ],
     },
-    {
-      mechanism: '5. Messages at the moment of the shot',
-      channel: 'WhatsApp',
-      why: 'The alert goes out 20 minutes before golden hour with each person\'s own walking time, on the channel that will deliver.',
-      source: SRC,
-      messages: [
-        { from: 'shotmatch', text: 'Golden hour starts in 20 min. You\'re 300 m away, about 4 min on foot.' },
-        { from: 'note', text: 'In the same run Maya\'s iMessage refused the late send (SHARED_LINE_INBOUND_REQUIRED), so her alert went to her email instead.' },
-      ],
-    },
   ],
   uses: [
     { name: 'Text a photo, get the spot', line: 'A photo sent to the bot is solved against the spot model; the reply names the spot, where to stand, the heading, the lens and the next good light.', where: 'crew/src/photon.ts (locate agent), solver POST /solve', status: 'live', img: liveLocate, alt: 'The live Telegram reply locating the Manhattan Bridge photo' },
@@ -147,14 +146,14 @@ export default {
     { name: 'Check in by photo', line: 'A texted photo is classified, solved against the spot and compared with the shot camera; the reply gives the correction (live: 9.3 m south, 12 paces forward).', where: 'crew/src/channels/photos.ts, marks.ts; checkin table', status: 'live', img: liveCheckin, alt: 'The live Telegram check-in reply' },
     { name: 'Photo to prop', line: 'A photo of one object becomes a prop through Nemotron and TRELLIS, placed where the reply says. Live run: TRELLIS returned an error, so the lamp became a flat cut-out from the photo.', where: 'crew/src/channels/photos.ts, /api/props/generate', status: 'live', img: liveProp, alt: 'The live Telegram lamp photo and the bot\'s reply' },
     { name: 'Channel fallback on problem codes', line: 'SHARED_LINE_INBOUND_REQUIRED, SPACE_NOT_SENDABLE and SMS_CAMPAIGN_NOT_ELIGIBLE move an alert to the next channel.', where: 'crew/src/channels/alerts.ts', status: 'stand-in' },
-    { name: 'Golden-hour alerts', line: 'The module\'s reminder schedule fires 20 minutes before golden hour; the crew writes one message per person with their live distance.', where: 'module reminder schedule, crew/src/channels/alerts.ts', status: 'stand-in' },
+    { name: 'Golden-hour alerts', line: 'The module\'s reminder schedule fires 20 minutes before golden hour; the crew writes one message per person, with their walking distance when their scout page is open (live: a test alert at 1:18 AM CT).', where: 'module reminder schedule, crew/src/channels/alerts.ts', status: 'live', img: liveAlert, alt: 'The live golden-hour test alert in Telegram' },
     { name: 'Voice notes in', line: 'Telegram and WhatsApp voice notes are transcribed by NVIDIA Parakeet and routed like typed text.', where: 'crew/src/speech.ts, crew/src/photon.ts', status: 'stand-in' },
     { name: 'Idempotency keys and typing indicator', line: 'Every send carries an idempotency key so a restarted crew never sends twice; a typing indicator shows while a render runs.', where: 'crew/src/channels/api.ts', status: 'stand-in' },
   ],
   proof: [
     { value: '29 of 29', label: 'checks in the end-to-end run of all five mechanisms and photo-to-prop', check: 'cd crew && npx tsx scripts/photon-e2e.ts (uses database shotmatch-photon, never production)', standIn: true },
     { value: '66 of 66', label: 'crew unit tests, including per-channel formats, guidance geometry, the version tree and channel order', check: 'cd crew && npm test' },
-    { value: '8 live', label: 'round trips through Photon\'s live API and @ShotMatchSetBot, 12:42 to 1:03 AM CT: hello, locate (Solid, 1600 matches, 54 mm), v1, fork to v1.1, versions, check-in (9.3 m south), lamp prop, studio render fanned out as an album', check: 'web/screenshots/photon-live-*.png; docs/PHOTON.md, Evidence; message @ShotMatchSetBot' },
+    { value: '9 live', label: 'round trips through Photon\'s live API and @ShotMatchSetBot, 12:42 to 1:18 AM CT: hello, locate (Solid, 1600 matches, 54 mm), v1, fork to v1.1, versions, check-in (9.3 m south), lamp prop, studio render fanned out as an album, golden-hour alert fired by the SpacetimeDB schedule', check: 'web/screenshots/photon-live-*.png; docs/PHOTON.md, Evidence; message @ShotMatchSetBot' },
     { value: 'live', label: 'ElevenLabs post-call webhook into SpacetimeDB: bad signature 401, valid one writes the transcript, retry is a no-op', check: 'docs/SPACETIME.md, section HTTP handlers' },
   ],
   ours: [
@@ -172,6 +171,7 @@ export default {
   limits: [
     'Telegram is live. iMessage (Ben\'s number is assigned on the shared line but has not texted yet), SMS, voice calls, email and WhatsApp Business still need a number, DNS or Meta signup (crew/PHOTON.md); SMS also needs a 10DLC campaign.',
     'In the live run the hosted photo-to-3D model returned an error, so the texted lamp became a flat cut-out, not a 3D mesh.',
+    'The live golden-hour alert was a test scheduled a minute out; falling back to the next channel when iMessage refuses a late send is proven only against the stand-in.',
     'Until those lines are connected, their proof is the stand-in run, not a live round trip.',
     'The shared iMessage line cannot message first, so iMessage invites ask the person to text JOIN <code>.',
     'MMS, reactions, polls and delivery-status events are not used.',

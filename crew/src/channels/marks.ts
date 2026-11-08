@@ -62,14 +62,20 @@ export function alertLead(kind: string, start: Date, now = new Date()): string {
   return min > 1 ? `${kind[0].toUpperCase()}${kind.slice(1)} starts in ${min} min.` : `${kind[0].toUpperCase()}${kind.slice(1)} is starting now.`;
 }
 
-export type ShotConditions = { colorChance: { score: number; label: string; why: string } | null; blockers: { label: string; m: number }[] };
+export type ShotConditions = {
+  colorChance: { score: number; label: string; why: string } | null; blockers: { label: string; m: number }[];
+  weather?: { cloud: number; rainPct: number; windMph: number; gustMph: number } | null; tide?: { note: string } | null;
+};
 
-/** The phone-sized conditions line for an alert: the colour chance, then at most two permits or closures near the mark. */
+/** The phone-sized conditions line for an alert: sky, colour chance, wind and the tide, then at most two permits near the mark. */
 export function conditionsLine(c: ShotConditions | null | undefined): string {
   if (!c) return '';
-  const parts: string[] = [];
-  if (c.colorChance) parts.push(`${c.colorChance.label[0].toUpperCase()}${c.colorChance.label.slice(1)} colour chance (${c.colorChance.score}/100): ${c.colorChance.why}.`);
+  const w = c.weather;
+  const sky = w ? (w.rainPct >= 50 ? 'rain likely' : w.cloud < 20 ? 'clear sky' : w.cloud < 60 ? 'partly cloudy' : w.cloud < 85 ? 'mostly cloudy' : 'overcast') : '';
+  const head = [sky, c.colorChance && `${c.colorChance.label} colour chance (${c.colorChance.score}/100)`,
+    w && `wind ${Math.round(w.windMph)} mph${w.gustMph >= w.windMph + 8 ? ` gusting ${Math.round(w.gustMph)}` : ''}`].filter(Boolean).join(', ');
+  const tide = c.tide?.note ? c.tide.note.split(':')[0].replace(/^(Low|High)/, m => m.toLowerCase()) : '';
+  const first = [head, tide].filter(Boolean).join('; ');
   const near = c.blockers.slice(0, 2).map(b => `${b.label.charAt(0).toLowerCase()}${b.label.slice(1)} ${Math.round(b.m)} m away`);
-  if (near.length) parts.push(`Watch for ${near.join(' and ')}.`);
-  return parts.join(' ');
+  return [first && `${first[0].toUpperCase()}${first.slice(1)}.`, near.length && `Watch for ${near.join(' and ')}.`].filter(Boolean).join(' ');
 }

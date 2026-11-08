@@ -63,7 +63,7 @@ for (const step of stepsArg.split(',')) {
     await page.waitForTimeout(5000); await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
     await page.waitForTimeout(3000); await S('-goto-cam');
   }
-  if (step === 'map') { await page.locator('.st-viewswitch [role="group"] button', { hasText: /^Map$/ }).click(); await page.waitForTimeout(9000); await S('-map'); }
+  if (step === 'map') { await page.keyboard.press('5'); await page.waitForTimeout(1500); await page.locator('.st-viewswitch [role="group"] button', { hasText: /^Map$/ }).click(); await page.waitForTimeout(9000); await S('-map'); }
   if (step === 'map3d') { // zoom the map in past street level: it hands over to the 3D set
     await page.mouse.move(732, 480);
     for (let i = 0; i < 14; i++) { await page.mouse.wheel(0, -400); await page.waitForTimeout(250); }

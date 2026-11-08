@@ -34,7 +34,8 @@ export async function api(method: string, path: string, body?: Body, idem: strin
   if (!c) throw new Error('Photon credentials not set');
   const raw = !!body && 'raw' in body;
   const key = idem === true ? randomUUID() : idem || '';
-  const headers: Record<string, string> = { authorization: `Bearer ${c.key}`, ...(key && { 'idempotency-key': key.slice(0, 255) }) };
+  // Photon takes printable ASCII without spaces (^[\x21-\x7e]{1,255}$); keys built from names would otherwise be refused with 400.
+  const headers: Record<string, string> = { authorization: `Bearer ${c.key}`, ...(key && { 'idempotency-key': key.replace(/[^\x21-\x7e]/g, '_').slice(0, 255) }) };
   if (body) headers['content-type'] = raw ? (body as any).type : 'application/json';
   for (let attempt = 0; ; attempt++) {
     const r = await fetch(`${PHOTON_API()}/v1/projects/${c.project}${path}`, {
