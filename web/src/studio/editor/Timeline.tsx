@@ -103,6 +103,8 @@ export default function Timeline({ at, lat, lon, zone, camHeading, camName, onCh
           <label className="st-date" title="Change the date: the sun's path and the golden hours follow the season">
             <span>{zoneDay}</span><Ico n="down" s={10} />
             <input type="date" aria-label="Date" value={ymd}
+              // Chromium only opens the picker from its own calendar icon; this field is invisible, so open it on any click.
+              onClick={e => { try { e.currentTarget.showPicker(); } catch { /* older browsers open it themselves */ } }}
               onChange={e => { const [yy, mm, dd] = e.target.value.split('-').map(Number); if (yy) onChange(setDayInZone(at, zone, yy, mm, dd)); }} />
           </label>
         </div>
