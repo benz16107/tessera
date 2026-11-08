@@ -27,7 +27,7 @@ export function colorChance({ low, mid, high, precip = 0, aod = 0 }: CloudHour):
   const score = Math.round(base * lowF * rainF * hazeF);
   const label = score >= 65 ? 'good' : score >= 35 ? 'fair' : 'poor';
   const why = [
-    canvas < 5 ? 'a clear sky gives a clean glow but little colour' : `${Math.round(canvas)}% mid and high cloud to catch the light`,
+    canvas < 5 ? (low > 15 ? 'no mid or high cloud to catch the light' : 'a clear sky gives a clean glow but little colour') : `${Math.round(canvas)}% mid and high cloud to catch the light`,
     low > 15 ? `${Math.round(low)}% low cloud in the way` : 'no low cloud in the way',
     ...(precip > 50 ? [`${Math.round(precip)}% chance of rain`] : []),
     ...(aod > 0.35 ? [`haze (AOD ${aod.toFixed(2)})`] : []),

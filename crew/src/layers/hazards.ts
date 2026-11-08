@@ -4,7 +4,7 @@ import { cached, getJson, TTL, at4 } from './cache.ts';
 import { metres } from './geom.ts';
 import { fc, fmtIn, dateIn, type Feature, type Geometry, type LayerOut, type Place } from './types.ts';
 
-export interface AlertSummary { count: number; alerts: { event: string; severity: string; headline: string; onset: string; ends: string; areaDesc: string }[] }
+export interface AlertSummary { count: number; alerts: { event: string; severity: string; headline: string; onset: string; ends: string; areaDesc: string }[]; note?: string }
 export interface QuakeSummary { count: number; nearest: { mag: number; place: string; km: number; time: string } | null; largest: { mag: number; place: string; km: number; time: string } | null }
 
 const NWS_SEV: Record<string, 'minor' | 'moderate' | 'severe' | 'info'> = { Extreme: 'severe', Severe: 'severe', Moderate: 'moderate', Minor: 'minor', Unknown: 'info' };
@@ -18,7 +18,14 @@ async function zoneGeometry(url: string): Promise<Geometry | null> {
 
 export async function alertsLayer(p: Place, at: Date): Promise<LayerOut<AlertSummary>> {
   const url = `https://api.weather.gov/alerts/active?point=${p.lat.toFixed(4)},${p.lon.toFixed(4)}`;
-  const got = await cached(`alerts-${at4(p.lat, p.lon)}`, TTL.alerts, () => getJson(url, { headers: { accept: 'application/geo+json' } }));
+  const src = { layer: 'alerts', name: 'National Weather Service active alerts', url: 'https://www.weather.gov/documentation/services-web-api', license: 'US government work, public domain' };
+  let got;
+  try { got = await cached(`alerts-${at4(p.lat, p.lon)}`, TTL.alerts, () => getJson(url, { headers: { accept: 'application/geo+json' } })); }
+  catch (e) {
+    // api.weather.gov answers 400 "Invalid Parameter" for a point outside the US (Niagara's Canadian side, say): no alerts, not an error.
+    if (!/HTTP 400/.test((e as Error).message)) throw e;
+    return { geojson: fc([]), summary: { count: 0, alerts: [], note: 'NWS alerts cover the United States only' }, sources: [{ ...src, fetchedAt: null, error: 'outside NWS coverage (US only)' }] };
+  }
   const fmt = fmtIn(p.zone), day = dateIn(p.zone);
   const feats: Feature[] = [];
   for (const f of got.data.features ?? []) {
@@ -38,7 +45,7 @@ export async function alertsLayer(p: Place, at: Date): Promise<LayerOut<AlertSum
   return {
     geojson: fc(feats),
     summary: { count: feats.length, alerts: (got.data.features ?? []).map((f: any) => ({ event: f.properties.event, severity: f.properties.severity, headline: f.properties.headline, onset: f.properties.onset, ends: f.properties.ends ?? f.properties.expires, areaDesc: f.properties.areaDesc })) },
-    sources: [{ layer: 'alerts', name: 'National Weather Service active alerts', url: 'https://www.weather.gov/documentation/services-web-api', license: 'US government work, public domain', fetchedAt: got.fetchedAt, stale: got.stale, error: got.error }],
+    sources: [{ ...src, fetchedAt: got.fetchedAt, stale: got.stale, error: got.error }],
   };
 }
 

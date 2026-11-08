@@ -20,6 +20,7 @@ test('colour chance: clear sky is poor, a broken mid deck with no low cloud is g
   assert.equal(overcast.label, 'fair');
   assert.equal(colorChance({ low: 0, mid: 40, high: 0, precip: 80 }).score, 70, 'rain likely takes 30% off');
   assert.ok(colorChance({ low: 0, mid: 40, high: 0, aod: 0.8 }).score < 75, 'thick haze mutes it');
+  assert.match(colorChance({ low: 89, mid: 0, high: 0 }).why, /^no mid or high cloud/, 'a low deck is not "a clear sky"');
 });
 
 test('haze follows the EPA PM2.5 breakpoints and aerosol optical depth', () => {
