@@ -1,21 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Entity, Cartesian3, Color, HeightReference, VerticalOrigin, ScreenSpaceEventType, PolygonHierarchy,
-  ClassificationType, JulianDate, LabelStyle, Cartesian2, defined,
+  ClassificationType, JulianDate, LabelStyle, Cartesian2, defined, BoundingSphere, HeadingPitchRange, Math as CMath,
 } from 'cesium';
 import type { Identity } from 'spacetimedb';
-import type { Camera, DevicePose, Participant, Person, Photo, Pose } from './module_bindings/types.ts';
-import { createScene, applyPose, readPose, setLens, flyToSpot, pickLatLon, type Scene } from './cesium.ts';
+import type { Camera, DevicePose, Participant, Person, Pose } from './module_bindings/types.ts';
+import { createScene, applyPose, readPose, setLens, flyToSpot, pickLatLon, groundAt, type Scene } from './cesium.ts';
 import { offset } from './geo.ts';
+
+export interface Frame { url: string; width: number; height: number; pose: Pose; key: string }
 
 export type PlaceMode = { kind: 'none' } | { kind: 'add' } | { kind: 'move'; id: bigint };
 
 interface Props {
   mapsKey: string;
   spot: { lat: number; lon: number } | undefined;
-  photo: Photo | undefined;
-  solved: Pose | undefined; // solved pose of the selected photo, if placed
-  solveKey: string; // changes when a new result should snap the camera
+  frame: Frame | undefined; // the photo on screen and its pose; the camera snaps when key changes
+  solved: Pose | undefined; // the user's mark, drawn as a point
+  route: readonly { lat: number; lon: number }[]; // shoot-day stops, numbered in order
+  overview: number; // bump to fly out over the route
   lens: number; // f35 currently shown
   opacity: number;
   people: readonly Person[];
@@ -44,6 +47,13 @@ const PERSON_IMG = PERSON_SVG('#f2ebdc');
 const PERSON_SEL = PERSON_SVG('#e8a33d');
 const SCOUT = Color.fromCssColorString('#e8a33d');
 const MARK = Color.fromCssColorString('#d2452c');
+const ROUTE = Color.fromCssColorString('#f2c46b');
+// Numbered route marker: a badge with a pointer, drawn as one SVG so the number never hides behind the dot.
+const stopBadge = (n: number) =>
+  'data:image/svg+xml;utf8,' + encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 30 30"><path d="M15 29 L10 22 A11 11 0 1 1 20 22 Z" fill="#f2c46b" stroke="#1c1a17" stroke-width="1.6"/>` +
+    `<text x="15" y="16" text-anchor="middle" dominant-baseline="middle" font-family="ui-monospace, monospace" font-weight="700" font-size="12" fill="#1c1a17">${n}</text></svg>`
+  );
 
 export default function SceneView(p: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -113,7 +123,7 @@ export default function SceneView(p: Props) {
   }, [p.mapsKey]);
 
   const viewer = () => (sceneRef.current && !sceneRef.current.viewer.isDestroyed() ? sceneRef.current.viewer : null);
-  const w = p.photo?.width || 16, h = p.photo?.height || 10;
+  const w = p.frame?.width || 16, h = p.frame?.height || 10;
 
   // First view: the shared camera if the session has one, else the spot overview.
   const placedOnce = useRef(false);
@@ -128,18 +138,36 @@ export default function SceneView(p: Props) {
   const spotKey = p.spot ? `${p.spot.lat},${p.spot.lon}` : '';
   useEffect(() => {
     const v = viewer();
-    if (v && tilesReady && p.spot && !p.solved && placedOnce.current) flyToSpot(v, p.spot.lat, p.spot.lon);
+    if (v && tilesReady && p.spot && !p.frame && placedOnce.current) flyToSpot(v, p.spot.lat, p.spot.lon);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spotKey]);
 
   // A new solve result (or a newly selected photo with one): snap to the solved pose.
   useEffect(() => {
     const v = viewer();
-    if (!v || !tilesReady || !p.solved) return;
+    if (!v || !tilesReady || !p.frame) return;
     placedOnce.current = true;
-    void applyPose(v, p.solved, w, h, true);
+    void applyPose(v, p.frame.pose, w, h, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [p.solveKey, tilesReady]);
+  }, [p.frame?.key, tilesReady]);
+
+  // Route overview: frame every stop from above, looking north.
+  useEffect(() => {
+    const v = viewer();
+    if (!v || !tilesReady || !p.overview || p.route.length === 0) return;
+    const r0 = p.route[0];
+    void groundAt(v, r0.lat, r0.lon).then(g => {
+      if (v.isDestroyed()) return;
+      const pts = p.route.map(r => Cartesian3.fromDegrees(r.lon, r.lat, g ?? 0));
+      const sphere = BoundingSphere.fromPoints(pts);
+      const range = Math.max(sphere.radius * 3.2, 140);
+      v.camera.flyToBoundingSphere(sphere, {
+        offset: new HeadingPitchRange(0, CMath.toRadians(-42), range),
+        duration: matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1.4,
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.overview, tilesReady]);
 
   // Remote camera moves, unless the local user is dragging or the update is our own echo.
   useEffect(() => {
@@ -214,17 +242,27 @@ export default function SceneView(p: Props) {
         label: { text: 'Mark', font: '500 13px "IBM Plex Mono", monospace', fillColor: Color.WHITE, outlineColor: Color.BLACK, outlineWidth: 3, style: LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cartesian2(0, -20), heightReference: HeightReference.CLAMP_TO_3D_TILE, disableDepthTestDistance: Number.POSITIVE_INFINITY },
       }), e => { e.position = Cartesian3.fromDegrees(p.solved!.lon, p.solved!.lat) as never; });
     }
+    p.route.forEach((r, i) => {
+      upsert(`stop:${i}`, () => ({
+        billboard: { image: stopBadge(i + 1), width: 30, height: 30, heightReference: HeightReference.CLAMP_TO_3D_TILE, disableDepthTestDistance: Number.POSITIVE_INFINITY, verticalOrigin: VerticalOrigin.BOTTOM, pixelOffset: new Cartesian2(0, -6) },
+      }), e => { e.position = Cartesian3.fromDegrees(r.lon, r.lat) as never; });
+    });
+    if (p.route.length > 1) {
+      upsert('route-path', () => ({
+        polyline: { width: 4, clampToGround: true, classificationType: ClassificationType.CESIUM_3D_TILE, material: ROUTE.withAlpha(0.9) },
+      }), e => { if (e.polyline) e.polyline.positions = Cartesian3.fromDegreesArray(p.route.flatMap(r => [r.lon, r.lat])) as never; });
+    }
     for (const e of [...ents.values]) if (!keep.has(String(e.id))) ents.remove(e);
-  }, [p.people, p.scouts, p.participants, p.solved, p.selectedPerson]);
+  }, [p.people, p.scouts, p.participants, p.solved, p.selectedPerson, p.route]);
 
-  const k = p.solved ? p.lens / p.solved.f35 : 1;
+  const k = p.frame ? p.lens / p.frame.pose.f35 : 1;
   return (
     <div className="scene-frame">
-      <div className="scene" style={p.photo ? { aspectRatio: `${w} / ${h}`, width: `min(100cqw, calc(100cqh * ${w / h}))`, height: 'auto' } : undefined} data-placing={p.placing.kind !== 'none' || undefined}>
+      <div className="scene" style={p.frame ? { aspectRatio: `${w} / ${h}`, width: `min(100cqw, calc(100cqh * ${w / h}))`, height: 'auto' } : undefined} data-placing={p.placing.kind !== 'none' || undefined}>
         <div ref={hostRef} className="scene-host" />
-        {p.photo && (
+        {p.frame && (
           <div className="overlay" aria-hidden="true" style={{ opacity: p.opacity }}>
-            <img src={p.photo.url || p.photo.thumb} alt="" style={{ transform: `scale(${k})` }} />
+            <img src={p.frame.url} alt="" style={{ transform: `scale(${k})` }} />
           </div>
         )}
         {!tilesReady && !failed && <div className="scene-skeleton" aria-label="Loading 3D tiles" />}

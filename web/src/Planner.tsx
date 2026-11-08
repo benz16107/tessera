@@ -5,7 +5,8 @@ import { tables, reducers } from './module_bindings/index.ts';
 import type { Pose, Session } from './module_bindings/types.ts';
 import { useConfig, NAME_KEY } from './config.ts';
 import { navigate, LoadBoundary } from './App.tsx';
-import type { PlaceMode } from './SceneView.tsx';
+import type { PlaceMode, Frame } from './SceneView.tsx';
+import { SimilarShots, RoutePanel, parseCredit, shotKey, type SpotShot, type ShotPose, type Stop } from './extras.tsx';
 
 // Cesium is ~4 MB, so the 3D view loads in its own chunk after the planner shell paints.
 const SceneView = lazy(() => import('./SceneView.tsx'));
@@ -192,6 +193,11 @@ function SessionView({ session, myName }: { session: Session; myName: string }) 
   const [shadows, setShadows] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const poseNow = useRef<((f35: number) => Pose) | null>(null);
+  const [lookAt, setLookAt] = useState<(Frame & { credit?: string }) | null>(null); // a spot photo shown in place of yours
+  const [snap, setSnap] = useState(0); // bump to fly back to your shot
+  const [starred, setStarred] = useState<Map<string, SpotShot>>(new Map());
+  const [route, setRoute] = useState<Stop[]>([]);
+  const [overview, setOverview] = useState(0); // non-zero while the route overview is on screen
 
   const sortedPhotos = useMemo(() => [...photos].sort((a, b) => Number(a.id - b.id)), [photos]);
   const photo = sortedPhotos.find(p => p.id === selected) ?? sortedPhotos[sortedPhotos.length - 1];
@@ -200,7 +206,10 @@ function SessionView({ session, myName }: { session: Session; myName: string }) 
   const solved = result && result.confidence !== 'none' ? result.pose : undefined;
   const spotId = job?.spotId || session.spotId;
   const spot = spots.find(s => s.id === spotId);
-  const lens = lensOverride ?? solved?.f35 ?? photo?.exifF35 ?? 26;
+  const frame: Frame | undefined = overview ? undefined : lookAt ?? (solved && photo
+    ? { url: photo.url || photo.thumb, width: photo.width, height: photo.height, pose: solved, key: `${photo.id}:${result?.jobId}:${snap}` }
+    : undefined);
+  const lens = lensOverride ?? frame?.pose.f35 ?? photo?.exifF35 ?? 26;
   const camera = cams[0];
 
   // A solve against a spot names the shoot's spot when it had none.
@@ -209,7 +218,8 @@ function SessionView({ session, myName }: { session: Session; myName: string }) 
   }, [session.spotId, job?.spotId, sid, setSessionSpot]);
 
   // New photo or new result: lens back to the solved value.
-  useEffect(() => { setLensOverride(null); }, [photo?.id, result?.jobId]);
+  useEffect(() => { setLensOverride(null); setLookAt(null); }, [photo?.id, result?.jobId]);
+  useEffect(() => { setRoute([]); setStarred(new Map()); setOverview(0); }, [photo?.id]);
 
   // Plan time: shared through the session row; local while the slider moves.
   const [planLocal, setPlanLocal] = useState<Date | null>(null);
@@ -227,6 +237,30 @@ function SessionView({ session, myName }: { session: Session; myName: string }) 
   const changeLens = (f: number) => {
     setLensOverride(f);
     if (poseNow.current) broadcast(poseNow.current(f));
+  };
+
+  // Show a spot photo (similar shot or route stop) at its registered pose; friends follow through the camera row.
+  const look = (url: string, p: ShotPose, credit?: string) => {
+    const img = new Image();
+    img.onload = () => {
+      const pose: Pose = { lat: p.lat, lon: p.lon, alt: p.alt ?? 1.6, heading: p.heading, pitch: p.pitch, roll: p.roll, f35: p.f35 };
+      setLensOverride(null);
+      setOverview(0);
+      setLookAt({ url, width: img.naturalWidth, height: img.naturalHeight, pose, key: `${url}:${Date.now()}`, credit });
+      broadcast(pose);
+    };
+    img.src = url;
+  };
+  const backToMine = () => { setOverview(0); setLookAt(null); setLensOverride(null); setSnap(n => n + 1); if (solved) broadcast(solved); };
+  const toggleStar = (shot: SpotShot) => setStarred(m => {
+    const n = new Map(m);
+    if (n.has(shotKey(shot))) n.delete(shotKey(shot)); else n.set(shotKey(shot), shot);
+    return n;
+  });
+  const showStop = (stop: Stop) => {
+    if (!stop.url) return backToMine();
+    const known = [...starred.values()].find(x => x.url === stop.url);
+    look(stop.url, known?.pose ?? { lat: stop.lat, lon: stop.lon, heading: stop.heading, pitch: 0, roll: 0, f35: stop.f35 }, stop.credit);
   };
 
   const onPick = (lat: number, lon: number) => {
@@ -267,9 +301,10 @@ function SessionView({ session, myName }: { session: Session; myName: string }) 
             <SceneView
               mapsKey={cfg.mapsKey}
               spot={spot}
-              photo={solved ? photo : undefined}
+              frame={frame}
               solved={solved}
-              solveKey={`${photo?.id}:${result?.jobId}`}
+              route={route}
+              overview={overview}
               lens={lens}
               opacity={opacity}
               people={people}
@@ -298,10 +333,22 @@ function SessionView({ session, myName }: { session: Session; myName: string }) 
           </PhotoDrop>
           <div className="stage-bar">
             {result && <ConfidenceBadge result={result} />}
-            {solved && (
+            {overview > 0 && (
+              <p className="looking">
+                <span className="mono">Route</span> {route.length} stops
+                <button className="btn small" onClick={backToMine}>Back to your shot</button>
+              </p>
+            )}
+            {lookAt && (
+              <p className="looking">
+                <span className="mono">Spot photo</span> {lookAt.credit ? parseCredit(lookAt.credit).by : ''}
+                <button className="btn small" onClick={backToMine}>Back to your shot</button>
+              </p>
+            )}
+            {frame && (
               <label className="slider inline">
                 <span>3D</span>
-                <input type="range" min={0} max={1} step={0.01} value={opacity} onChange={e => setOpacity(+e.target.value)} aria-label="Photo overlay opacity, 0 shows the 3D view, 1 shows your photo" />
+                <input type="range" min={0} max={1} step={0.01} value={opacity} onChange={e => setOpacity(+e.target.value)} aria-label="Photo overlay opacity, 0 shows the 3D view, 1 shows the photo" />
                 <span>Photo</span>
               </label>
             )}
@@ -353,7 +400,12 @@ function SessionView({ session, myName }: { session: Session; myName: string }) 
                 </section>
                 {photo && job && <section className="block"><h2>Solve</h2><JobStatus job={job} result={result} photo={photo} spots={spots} /></section>}
                 {photo && !job && <section className="block"><h2>Solve</h2><JobStatus photo={photo} spots={spots} /></section>}
-                {result && photo && solved && spot && <AnswerCard pose={solved} photo={photo} spot={spot} />}
+                {result && photo && solved && spot && <AnswerCard sessionId={sid} pose={solved} photo={photo} spot={spot} />}
+                {photo && solved && (
+                  <SimilarShots photoUrl={photo.url} starred={new Set(starred.keys())} onStar={toggleStar} looking={lookAt?.url}
+                    onLook={s => look(s.url, s.pose, s.credit)} />
+                )}
+                {photo && solved && <RoutePanel sessionId={sid} starred={[...starred.keys()]} ownThumb={photo.thumb} onStops={st => { setRoute(st); setLookAt(null); setOverview(Date.now()); }} onStop={showStop} onOverview={() => { setLookAt(null); setOverview(Date.now()); }} />}
                 {steps.length > 0 && <Trace steps={steps} />}
               </>
             )}
@@ -373,7 +425,7 @@ function SessionView({ session, myName }: { session: Session; myName: string }) 
       </div>
       <Footer />
       <Toasts sessionId={sid} />
-      {shareOpen && <ShareDialog code={session.code} onClose={() => setShareOpen(false)} />}
+      {shareOpen && <ShareDialog code={session.code} sessionId={sid} isOwner={!!identity && session.owner.isEqual(identity)} onClose={() => setShareOpen(false)} />}
     </div>
   );
 }

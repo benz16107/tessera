@@ -19,7 +19,7 @@ export default defineConfig({
     host: true,
     allowedHosts: true,
     fs: { allow: ['..'] }, // Credits reads ../spots/*/CREDITS.tsv
-    proxy: { '/api': crew, '/photo': crew, '/preview': crew },
+    proxy: { '/api': crew, '/photo': crew, '/preview': crew, '/spot-photo': crew },
   },
   build: { outDir: 'dist', chunkSizeWarningLimit: 6000 },
 });

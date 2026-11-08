@@ -8,6 +8,8 @@ import type { AgentStep, DevicePose, Message, Participant, Person, Photo, Pose, 
 import { useConfig, shareBase } from './config.ts';
 import { compassWord, phoneZoom, hfovDeg, lightWindows, spotZone, fmtTime, sunRelation, metersBetween, angleDiff } from './geo.ts';
 import type { PlaceMode } from './SceneView.tsx';
+import { Reminder } from './extras.tsx';
+import { navigate } from './App.tsx';
 
 export function Footer() {
   return (
@@ -52,9 +54,12 @@ function Qr({ url, label }: { url: string; label: string }) {
   );
 }
 
-export function ShareDialog({ code, onClose }: { code: string; onClose: () => void }) {
+export function ShareDialog({ code, sessionId, isOwner, onClose }: { code: string; sessionId: bigint; isOwner: boolean; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
   const base = shareBase(useConfig());
+  const del = useReducer(reducers.deleteSession);
+  const [confirming, setConfirming] = useState(false);
+  const [err, setErr] = useState('');
   useEffect(() => { ref.current?.showModal(); }, []);
   return (
     <dialog ref={ref} className="sheet share" onClose={onClose} aria-labelledby="share-title">
@@ -63,7 +68,20 @@ export function ShareDialog({ code, onClose }: { code: string; onClose: () => vo
         <Qr url={`${base}/s/${code}`} label="Scout at the spot (phone)" />
         <Qr url={`${base}/p/${code}`} label="Plan together" />
       </div>
-      <form method="dialog"><button className="btn">Done</button></form>
+      <div className="share-foot">
+        <form method="dialog"><button className="btn">Done</button></form>
+        {isOwner && !confirming && <button className="btn danger" onClick={() => setConfirming(true)}>Delete shoot</button>}
+      </div>
+      {confirming && (
+        <div className="confirm" role="alertdialog" aria-labelledby="del-title">
+          <p id="del-title"><strong>Delete this shoot for everyone?</strong> Photos, solves, previews, people, messages and reminders go with it. This cannot be undone.</p>
+          <div className="row-actions">
+            <button className="btn danger-solid" onClick={() => del({ sessionId }).then(() => { ref.current?.close(); navigate('/'); }).catch(e => setErr(String(e?.message ?? e)))}>Delete shoot</button>
+            <button className="btn" onClick={() => setConfirming(false)} autoFocus>Keep it</button>
+          </div>
+          {err && <p className="error" role="alert">{err}</p>}
+        </div>
+      )}
     </dialog>
   );
 }
@@ -74,7 +92,7 @@ export function Toasts({ sessionId }: { sessionId: bigint }) {
   const onInsert = useCallback((t: { kind: string; text: string }) => {
     const id = Math.random();
     setItems(xs => [...xs.slice(-3), { id, kind: t.kind, text: t.text }]);
-    setTimeout(() => setItems(xs => xs.filter(x => x.id !== id)), 6000);
+    setTimeout(() => setItems(xs => xs.filter(x => x.id !== id)), t.kind === 'reminder' ? 20000 : 6000);
   }, []);
   useTable(tables.toast.where(r => r.sessionId.eq(sessionId)), { onInsert });
   return (
@@ -216,7 +234,7 @@ const relDays = (d: Date, zone: string) => {
   return day(d) === today ? 'Today' : day(d) === tomorrow ? 'Tomorrow' : new Intl.DateTimeFormat('en-US', { timeZone: zone, weekday: 'long' }).format(d);
 };
 
-export function AnswerCard({ pose, photo, spot }: { pose: Pose; photo: Photo; spot: Spot }) {
+export function AnswerCard({ sessionId, pose, photo, spot }: { sessionId: bigint; pose: Pose; photo: Photo; spot: Spot }) {
   const zone = spotZone(spot.id, spot.lon);
   const hfov = hfovDeg(pose.f35, photo.width, photo.height);
   const windows = useMemo(() => {
@@ -225,6 +243,7 @@ export function AnswerCard({ pose, photo, spot }: { pose: Pose; photo: Photo; sp
     const blue = all.filter(w => w.kind === 'Blue hour').slice(0, 1);
     return [...golden, ...blue].sort((a, b) => a.start.getTime() - b.start.getTime());
   }, [pose.lat, pose.lon, pose.heading, hfov]);
+  const firstGolden = windows.find(w => w.kind === 'Golden hour');
   const walk = `https://www.google.com/maps/dir/?api=1&destination=${pose.lat},${pose.lon}&travelmode=walking`;
   return (
     <section className="block answer" aria-label="Answer">
@@ -248,7 +267,11 @@ export function AnswerCard({ pose, photo, spot }: { pose: Pose; photo: Photo; sp
           <li key={w.start.getTime()}>
             <span className="lk" data-k={w.kind}>{w.kind}</span>
             <span className="mono">{relDays(w.start, zone)} {fmtTime(w.start, zone)} to {fmtTime(w.end, zone)}</span>
-            <span>sun {w.relation}</span>
+            <span className="rel">sun {w.relation}</span>
+            {w === firstGolden && (
+              <Reminder sessionId={sessionId} start={w.start} zone={zone}
+                text={`Golden hour at ${spot.name} starts ${fmtTime(w.start, zone)}. Stand at the mark facing ${compassWord(pose.heading)}, ${Math.round(pose.f35)} mm.`.slice(0, 300)} />
+            )}
           </li>
         ))}
       </ul>
