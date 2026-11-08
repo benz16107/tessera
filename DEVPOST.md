@@ -85,7 +85,7 @@ Drop a photo of a place. Tessera finds where the photographer stood, which way t
 | SpacetimeDB | The whole shared set is one module: every object, job, version and message is a row; no other backend | 900 of 900 edits at 10 Hz, median 42 to 50 ms; an outsider sees 0 rows until they join | [Detailed page](https://tesseraphoto.com/tracks/spacetime/) |
 | Photon | The set on the apps people already use: a photo located by text, versions as reply threads, check-ins, props, alerts; a phone call that guides you | 9 live round trips on Telegram; the other channels 29 of 29 against a stand-in | [Detailed page](https://tesseraphoto.com/tracks/photon/) |
 | HackUTD Virality | Built on what people already post: "where was this photo taken?" threads and recreate-the-photo posts. Every shoot is a share link that opens on a phone, and the set answers in Telegram, so a recreation spreads the way the original photo did | 103 of 1,949 Reddit posts asked where a photo was taken from, which lens, or how to recreate it; the top one has 858 points | [Research page](https://tesseraphoto.com/docs/research/) |
-| MLH Vultr | Production on a Vultr VM in Dallas, Object Storage for photos and props, Serverless Inference for safety, speech and the render | Content Safety on Vultr in 0.51 s per text; the app and the site on one VM with automatic HTTPS | [Detailed page](https://tesseraphoto.com/tracks/vultr/) |
+| MLH Vultr | Production on a Vultr VM in Dallas, Object Storage for photos and props, Serverless Inference for safety, speech and the render | Content Safety on Vultr in 0.51 s per text; the app and the site on one VM with automatic HTTPS | [Detailed page](https://tesseraphoto.com/tracks/vultr/) · [Video](https://youtu.be/fsq3ry87EZ8) |
 
 ### The problem
 
