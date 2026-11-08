@@ -16,3 +16,10 @@ spots/*/sfm/
 checkpoints/
 *.safetensors
 data/
+
+# video production media (renders, voice, captures)
+video/**/*.mp4
+video/**/*.mp3
+video/**/*.wav
+video/**/*.webm
+video/**/captures/
