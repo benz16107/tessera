@@ -89,7 +89,7 @@ to stand.
 
 ## Videos
 
-Ben does not film himself. Every track video is a screen recording of the live app (https://104-238-146-229.sslip.io,
+Ben does not film himself. Every track video is a screen recording of the live app (https://app.tesseraphoto.com,
 session A9TVAN and the test session ZJNNGP), recorded after the build, with narration added later (typed captions or
 a voice track). Each track page carries its shot list: timestamps, what is on screen, the narration line, and the
 sponsor criterion each beat shows. Videos run 1 to 3 minutes. Photon lines that need Ben's dashboard steps (SMS,
@@ -204,10 +204,6 @@ Omni, Qwen-Image 2.1 (the render generator while FLUX is down) and Whisper. This
 Limit: Vultr refused the GPU instance (no credit, then the monthly fee limit), so the lens fine-tune ran on a Brev
 A100 from the HackUTD NVIDIA credit.
 
-### MLH Best Domain Name from GoDaddy Registry
-
-Only if Ben buys a domain. Steps in `ops/DOMAIN.md`. Until then the app and site run on sslip.io names.
-
 ### Overall (automatic)
 
 Lead with the problem and the honest solver, then the set, then one live moment that crosses tracks: a judge's phone
@@ -222,4 +218,3 @@ joins, the scout walks, Nemotron edits from a sentence, the render lands in the 
 | Photon | decided | Photon dashboard lines (Ben, `crew/PHOTON.md`) |
 | HackUTD Best Design | decided | nothing |
 | MLH Vultr | decided | nothing |
-| MLH GoDaddy | not entered | a domain (Ben) |

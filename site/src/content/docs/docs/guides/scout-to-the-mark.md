@@ -11,7 +11,7 @@ Pick one:
 
 - **In Simple on your phone:** go to **Take me there** and press **Open camera and compass**.
 - **From a laptop:** Take me there shows a QR code: "Scan this with your phone to open the camera there. Your walk shows up here live."
-- **From a link:** open `/s/<code>` (for the demo, https://104-238-146-229.sslip.io/s/A9TVAN), type **Your name** and press **Join as scout**.
+- **From a link:** open `/s/<code>` (for the demo, https://app.tesseraphoto.com/s/A9TVAN), type **Your name** and press **Join as scout**.
 
 The scout page has its own identity in the browser, so one phone can plan and scout as two people.
 

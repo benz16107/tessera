@@ -24,6 +24,7 @@ export declare class AerialPerspectiveEffect extends Effect implements EcefParam
   normalBuffer: Texture | null; reconstructNormal: boolean;
   sunLight: boolean; skyLight: boolean; albedoScale: number; sky: boolean; transmittance: boolean; inscatter: boolean;
   worldToECEFMatrix: Matrix4; sunDirection: Vector3; moonDirection: Vector3; correctAltitude: boolean; correctGeometricError: boolean;
+  lightingMask: { map: Texture; channel: 'r' | 'g' | 'b' | 'a' } | null;
 }
 
 export declare class SkyMaterial extends ShaderMaterial implements EcefParams {
@@ -50,6 +51,7 @@ export declare class LightingMaskPass extends Pass {
   constructor(scene: Scene, camera: Camera);
   selectionLayer: number; inverted: boolean;
   set mainCamera(value: Camera);
+  readonly texture: Texture;
 }
 
 export declare function getECIToECEFRotationMatrix(date: number | Date, result?: Matrix4): Matrix4;

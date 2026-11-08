@@ -91,7 +91,7 @@ Nemotron embeddings plus the VL reranker search the asset library (including pro
 
 ## HTTP contracts
 
-The crew serves these on the public URL (`https://104-238-146-229.sslip.io`). `sessionId` is the session's numeric id as a string. Errors are `{ "error": "..." }` with a 4xx or 5xx status. The studio's panels in `web/src/nvidia/` and the Photon thread use them.
+The crew serves these on the public URL (`https://app.tesseraphoto.com`). `sessionId` is the session's numeric id as a string. Errors are `{ "error": "..." }` with a 4xx or 5xx status. The studio's panels in `web/src/nvidia/` and the Photon thread use them.
 
 ### `POST /api/set/command` (stable; the phone agent and text threads call it)
 Request: `{ "sessionId": "18", "text": "move the bike to the left", "offline": false }`

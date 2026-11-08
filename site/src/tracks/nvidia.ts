@@ -17,7 +17,7 @@ export default {
     alt: "Studio's Through Cam A view of the DUMBO photo with two mannequins composited in, beside the AI render of the same two people walking up Washington St, labelled AI interpretation, and Nemotron's physics check listing what to fix",
     caption: 'Through Cam A on the left (your photo with your objects and lights), the render on the right, labelled "AI interpretation". The render panel names its steps: composite, harmonize, Nemotron check.',
     frame: 'browser',
-    url: '104-238-146-229.sslip.io/studio/A9TVAN',
+    url: 'app.tesseraphoto.com/studio/A9TVAN',
   },
   headline: [
     { value: '16 rows', label: 'placed in the set from one sentence, in 6.6 s and 13.1 s (two runs)', check: 'docs/NVIDIA.md, "Text to set"' },
@@ -160,7 +160,7 @@ export default {
     { value: '72.4% / 36.8% / 16.7%', label: 'Lens reader: long-lens recall, balanced bin accuracy, median error on 480 unseen-landmark photos', check: 'lens/RESULTS.md; lens/eval.py' },
     { value: '0.6 to 1.0 s', label: 'Parakeet transcription of a 4 s clip; Magpie speaks a sentence in 0.8 to 1.1 s', check: 'POST /api/voice/transcribe and /api/voice/speak' },
     { value: '30.8 s', label: 'A full set command on Bolt on CPU, no hosted model', check: 'POST /api/set/command with "offline": true' },
-    { value: '0.51 s / 1.9 s', label: 'Content Safety on text, and with an image', check: 'GET https://104-238-146-229.sslip.io/api/nvidia/models (live ledger)' },
+    { value: '0.51 s / 1.9 s', label: 'Content Safety on text, and with an image', check: 'GET https://app.tesseraphoto.com/api/nvidia/models (live ledger)' },
     { value: '121 to 126 ms', label: 'Nemotron call made from inside SpacetimeDB to title a shoot', check: 'spacetime logs shotmatch; docs/SPACETIME.md section 3' },
   ],
   ours: [

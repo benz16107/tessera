@@ -4,9 +4,9 @@ Stand where the photo was taken, then make the shot yours. Drop a photo of a pla
 
 ![Studio looking through the solved camera, Cam A: the original photo as the backplate, two placed people, a 53 mm lens at f/2.8 focused on a person, and the golden hour band on the timeline](site/public/devpost/1-studio-camera.jpg)
 
-- **Try it:** the demo shoot at the Manhattan Bridge view in DUMBO, in [Simple](https://104-238-146-229.sslip.io/p/A9TVAN) or in [Studio](https://104-238-146-229.sslip.io/studio/A9TVAN)
-- **Site and docs:** https://site.104-238-146-229.sslip.io
-- **Track pages:** [NVIDIA](https://site.104-238-146-229.sslip.io/tracks/nvidia/), [SpacetimeDB](https://site.104-238-146-229.sslip.io/tracks/spacetime/), [Photon](https://site.104-238-146-229.sslip.io/tracks/photon/), [Best Design](https://site.104-238-146-229.sslip.io/tracks/design/), [Vultr](https://site.104-238-146-229.sslip.io/tracks/vultr/)
+- **Try it:** the demo shoot at the Manhattan Bridge view in DUMBO, in [Simple](https://app.tesseraphoto.com/p/A9TVAN) or in [Studio](https://app.tesseraphoto.com/studio/A9TVAN)
+- **Site and docs:** https://tesseraphoto.com
+- **Track pages:** [NVIDIA](https://tesseraphoto.com/tracks/nvidia/), [SpacetimeDB](https://tesseraphoto.com/tracks/spacetime/), [Photon](https://tesseraphoto.com/tracks/photon/), [Best Design](https://tesseraphoto.com/tracks/design/), [Vultr](https://tesseraphoto.com/tracks/vultr/)
 
 ## The problem
 
@@ -45,12 +45,12 @@ Two views edit the same live set: **Simple** (`/p/<code>`), light and phone firs
 |---|---|---|
 | SpacetimeDB module `shotmatch` ([module/src/index.ts](module/src/index.ts)) | Maincloud | `wss://maincloud.spacetimedb.com` |
 | Library database `shotmatch-library` ([module/library/src/index.ts](module/library/src/index.ts)) | Maincloud | inter-database calls from the module only |
-| crew ([crew/](crew/)) | Vultr VM `shotmatch-app`, Dallas | `127.0.0.1:8790`, public through Caddy at https://104-238-146-229.sslip.io |
+| crew ([crew/](crew/)) | Vultr VM `shotmatch-app`, Dallas | `127.0.0.1:8790`, public through Caddy at https://app.tesseraphoto.com |
 | web ([web/](web/)) | built to `web/dist`, served by the crew | Vite dev server `5173`, proxies `/api`, `/photo`, `/preview` to `8790` |
 | solver ([solver/](solver/)) | same VM | `127.0.0.1:8791`, never public |
 | lens model ([lens/](lens/)) | Brev A100 (vLLM) | `:8000`, reached through an ssh tunnel on the VM at `127.0.0.1:18000` (`LENS_URL`) |
 | Ollama with Nemotron 3.5 Bolt | same VM | `127.0.0.1:11434`, the offline command parser |
-| site ([site/](site/)) | same VM, Caddy | https://site.104-238-146-229.sslip.io |
+| site ([site/](site/)) | same VM, Caddy | https://tesseraphoto.com |
 
 The HTTP contracts between the pieces are in [CONTRACTS.md](CONTRACTS.md); the full reference is on the site under Docs.
 
@@ -69,7 +69,7 @@ Nemotron does the work between your words and the set as tool-calling workflows,
 - Studio panels: [web/src/nvidia/](web/src/nvidia/)
 - Lens fine-tune: [lens/train.py](lens/train.py), [lens/eval.py](lens/eval.py), [lens/serve.sh](lens/serve.sh)
 - Nemotron called from inside the database: `titleSession` in [module/src/index.ts](module/src/index.ts)
-- Write-up: [docs/NVIDIA.md](docs/NVIDIA.md); page: [/tracks/nvidia/](https://site.104-238-146-229.sslip.io/tracks/nvidia/)
+- Write-up: [docs/NVIDIA.md](docs/NVIDIA.md); page: [/tracks/nvidia/](https://tesseraphoto.com/tracks/nvidia/)
 
 ### SpacetimeDB: it powers the primary function
 
@@ -80,7 +80,7 @@ The product is a shared set, and SpacetimeDB is its only backend. There is no se
 - **Private by default.** Row-level security delivers a session's rows only to its members (`session_member`).
 - **Also in the module:** scene history with undo and restore by anyone, text threads as a version tree (`restoreToVersion`), event tables for cursors and laser pings (`sendSetEvent`), schedules for presence, the live sun and golden-hour reminders, a procedure that calls Nemotron, HTTP routes (health, share links, the phone agent's signed webhook), and inter-database calls to the library.
 - **Proof:** [module/scripts/proof.ts](module/scripts/proof.ts) (feature checks with two users and a crew) and [module/scripts/loadtest.ts](module/scripts/loadtest.ts) (3 clients at 10 Hz for 30 s: 900 of 900 edits committed, median round trip 42 to 50 ms).
-- Write-up with line references: [docs/SPACETIME.md](docs/SPACETIME.md); page: [/tracks/spacetime/](https://site.104-238-146-229.sslip.io/tracks/spacetime/)
+- Write-up with line references: [docs/SPACETIME.md](docs/SPACETIME.md); page: [/tracks/spacetime/](https://tesseraphoto.com/tracks/spacetime/)
 
 ### Photon: the set in your texts
 
@@ -91,7 +91,7 @@ Most people on a shoot will never open a 3D editor, so the set comes to the app 
 - The phone call's tools: [crew/src/voice.ts](crew/src/voice.ts)
 - Studio panel: [web/src/photon/](web/src/photon/)
 - End-to-end run and the stand-in: [crew/scripts/photon-e2e.ts](crew/scripts/photon-e2e.ts), [crew/test/fake-photon.ts](crew/test/fake-photon.ts)
-- Write-up: [docs/PHOTON.md](docs/PHOTON.md); page: [/tracks/photon/](https://site.104-238-146-229.sslip.io/tracks/photon/)
+- Write-up: [docs/PHOTON.md](docs/PHOTON.md); page: [/tracks/photon/](https://tesseraphoto.com/tracks/photon/)
 
 ### Vultr
 
@@ -100,7 +100,7 @@ Production runs on one Vultr VM in Dallas (12 vCPU, 24 GB): Caddy with automatic
 - VM services and deploys: [ops/](ops/) (`Caddyfile`, `deploy-vultr.sh`, `deploy-site.sh`, `shotmatch-*.service`, `ollama.sh`)
 - Object Storage client: [crew/src/s3.ts](crew/src/s3.ts)
 - Serverless Inference calls: `VULTR_INFERENCE_BASE` in [crew/src/config.ts](crew/src/config.ts), used in [crew/src/models.ts](crew/src/models.ts) and [crew/src/speech.ts](crew/src/speech.ts)
-- Page: [/tracks/vultr/](https://site.104-238-146-229.sslip.io/tracks/vultr/)
+- Page: [/tracks/vultr/](https://tesseraphoto.com/tracks/vultr/)
 
 ## Run it locally
 
@@ -166,7 +166,7 @@ cd module && npm run check                   # HMAC used by the webhook, against
 
 ## Credits and licences
 
-Tessera is built from other people's work; the full list is on the [credits page](https://site.104-238-146-229.sslip.io/credits/).
+Tessera is built from other people's work; the full list is on the [credits page](https://tesseraphoto.com/credits/).
 
 - Wikimedia Commons photographers, for the spot model and the lens dataset: each photo with its author and licence in [spots/nyc_dumbo/CREDITS.tsv](spots/nyc_dumbo/CREDITS.tsv) and [lens/CREDITS.tsv](lens/CREDITS.tsv)
 - People and most props: Quaternius, CC0; also Kenney (CC0) and Zsky (CC BY 3.0) via Poly Pizza ([web/src/studio/catalog/CREDITS.md](web/src/studio/catalog/CREDITS.md))

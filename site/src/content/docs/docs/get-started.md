@@ -5,8 +5,8 @@ description: Open Tessera, drop a photo of a mapped spot, read the answer, invit
 
 Tessera runs in the browser. There is nothing to install.
 
-- **Simple:** https://104-238-146-229.sslip.io
-- **The demo shoot:** https://104-238-146-229.sslip.io/p/A9TVAN in Simple, https://104-238-146-229.sslip.io/studio/A9TVAN in Studio
+- **Simple:** https://app.tesseraphoto.com
+- **The demo shoot:** https://app.tesseraphoto.com/p/A9TVAN in Simple, https://app.tesseraphoto.com/studio/A9TVAN in Studio
 
 One spot is mapped today: **Manhattan Bridge from Washington St, DUMBO** in Brooklyn. Tessera can only place photos taken at a spot it has a 3D model of. A photo from anywhere else gets an honest "Couldn't place" instead of a guess.
 

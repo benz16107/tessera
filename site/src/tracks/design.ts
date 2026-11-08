@@ -28,7 +28,7 @@ export default {
     alt: 'Tessera Studio looking through Cam A on the demo shoot: the Manhattan Bridge photo with two placed figures, a thirds grid, the focus label on a person, the horizon label in the right margin, and the camera inspector with a Tamron 28-75mm lens at 53 mm, f/2.8.',
     caption: 'Studio, built from the Darkroom direction: looking through the shot camera with a real lens, focus on a person, and every label kept clear of the picture.',
     frame: 'browser',
-    url: '104-238-146-229.sslip.io/studio/A9TVAN',
+    url: 'app.tesseraphoto.com/studio/A9TVAN',
   },
   headline: [
     { value: '3', label: 'design directions drawn in Figma before any code', check: 'Figma file QrpLuCwKGGFFBSDRMd7VqS, pages A, B and C; exports in design/directions/A-*.png, B-*.png, C-*.png' },
@@ -143,7 +143,7 @@ export default {
   proof: [
     { value: '3 x 4', label: 'directions by screens in round 1 (Drop, Found it, Make it yours, Scout)', check: 'design/directions/A-1 to C-4; node ids in design/REPORT.md' },
     { value: '7', label: 'round 3 frames for the virtual set', check: 'design/directions/V-1-enter.png to V-7-vr.png; node ids in design/REPORT.md' },
-    { value: '2 views', label: 'over one shoot, switched by one toggle', check: 'https://104-238-146-229.sslip.io/p/A9TVAN and /studio/A9TVAN' },
+    { value: '2 views', label: 'over one shoot, switched by one toggle', check: 'https://app.tesseraphoto.com/p/A9TVAN and /studio/A9TVAN' },
     { value: '44 px', label: 'minimum height of Simple\'s buttons (48 px for fields)', check: 'web/src/simple/simple.css lines 38, 63 and 70' },
     { value: '75 matches', label: 'on the held-out photo d0473.jpg, which gets the designed "Couldn\'t place" screen', check: 'spots/nyc_dumbo/eval.md, row T3' },
     { value: '0', label: 'AI images without the "AI interpretation" label', check: 'Simple: Make it yours, then Make it; Studio: Render. Every result carries the label' },

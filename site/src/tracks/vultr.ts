@@ -16,10 +16,10 @@ export default {
     alt: 'Tessera Studio on the production URL: the Clay + photo world of Washington St with the user\'s photo projected onto clay buildings, two placed figures, a bicycle, the Cam A frustum, and the camera inspector on the right.',
     caption: 'Studio on the production URL, served by Caddy and the crew on the Vultr VM in Dallas.',
     frame: 'browser',
-    url: '104-238-146-229.sslip.io/studio/A9TVAN',
+    url: 'app.tesseraphoto.com/studio/A9TVAN',
   },
   headline: [
-    { value: '0.51 s', label: 'Nemotron Content Safety on Vultr Serverless Inference, per text (1.9 s with an image)', check: 'docs/NVIDIA.md; the live ledger at https://104-238-146-229.sslip.io/api/nvidia/models names Vultr per model' },
+    { value: '0.51 s', label: 'Nemotron Content Safety on Vultr Serverless Inference, per text (1.9 s with an image)', check: 'docs/NVIDIA.md; the live ledger at https://app.tesseraphoto.com/api/nvidia/models names Vultr per model' },
     { value: '30.8 s', label: 'a full set command with no hosted model, on the VM\'s CPU', check: 'Studio command bar: tick Offline (Bolt), then send "add a park bench on the right and one person sitting on it"' },
     { value: '900 of 900', label: 'live edits committed in the load test run from the VM', check: 'node module/scripts/loadtest.ts shotmatch 3 10 30 on the VM; table in docs/SPACETIME.md' },
   ],
@@ -42,7 +42,7 @@ export default {
       line: 'Two site blocks on one Caddy: the app, proxied to the crew, and this site, served as static files, each with a certificate Caddy fetched and renews by itself.',
       where: 'ops/Caddyfile, ops/deploy-site.sh',
       status: 'live',
-      detail: 'The site block has no access log. Certificates come from Let\'s Encrypt. Moving to a real domain adds names to the same blocks (ops/DOMAIN.md).',
+      detail: 'The site block has no access log. Certificates come from Let\'s Encrypt. The app block answers for app.tesseraphoto.com and the site block for tesseraphoto.com and www; the old sslip.io names sit in the same blocks, so earlier links still work.',
     },
     {
       name: 'The crew and the solver, side by side',
@@ -104,8 +104,8 @@ export default {
   ],
   proof: [
     { value: 'AS20473', label: 'the VM\'s IP belongs to The Constant Company, the company behind Vultr', check: 'curl -s ipinfo.io/104.238.146.229/org' },
-    { value: 'Caddy', label: 'answers for both hostnames, with valid certificates', check: 'curl -sI https://site.104-238-146-229.sslip.io | grep -i server; open https://104-238-146-229.sslip.io' },
-    { value: '0.51 s', label: 'Content Safety per text on Vultr (1.9 s with an image)', check: 'docs/NVIDIA.md; live ledger GET https://104-238-146-229.sslip.io/api/nvidia/models' },
+    { value: 'Caddy', label: 'serves the site at tesseraphoto.com and the app at app.tesseraphoto.com, with valid certificates', check: 'curl -sI https://tesseraphoto.com | grep -i server; open https://app.tesseraphoto.com' },
+    { value: '0.51 s', label: 'Content Safety per text on Vultr (1.9 s with an image)', check: 'docs/NVIDIA.md; live ledger GET https://app.tesseraphoto.com/api/nvidia/models' },
     { value: '1.2 s', label: 'Nano Omni\'s render physics check on Vultr, reasoning off', check: 'docs/NVIDIA.md, workflow 3' },
     { value: '29 s', label: 'a physics-checked render with Qwen-Image 2.1 on Vultr as the generator', check: 'docs/NVIDIA.md, workflow 3' },
     { value: '30.8 s', label: 'a full offline set command with Nemotron Bolt on the VM\'s CPU (routing 1.67 s)', check: 'Studio command bar, Offline (Bolt); docs/NVIDIA.md, workflow 8' },
@@ -136,11 +136,11 @@ export default {
     shots: [
       { t: '0:00 to 0:15', screen: 'Simple /p/A9TVAN on the production URL: the answer for the DUMBO photo', say: 'Tessera tells you where to stand for a photo you saw. All of it runs on Vultr.', criterion: 'Problem first' },
       { t: '0:15 to 0:35', screen: 'Terminal: ssh ben@104.238.146.229 \'systemctl --user status shotmatch-*\': crew, solver, Ollama and the lens tunnel active', say: 'One VM in Dallas: the crew, the solver and Nemotron Bolt on the CPU, behind Caddy with automatic HTTPS.', criterion: 'Vultr compute' },
-      { t: '0:35 to 0:50', screen: 'Browser: the app at 104-238-146-229.sslip.io and this site at site.104-238-146-229.sslip.io, the padlock on both', say: 'Two hostnames, one Caddy, certificates issued automatically.', criterion: 'Hosting' },
+      { t: '0:35 to 0:50', screen: 'Browser: the app at app.tesseraphoto.com and this site at tesseraphoto.com, the padlock on both', say: 'Two hostnames, one Caddy, certificates issued automatically.', criterion: 'Hosting' },
       { t: '0:50 to 1:10', screen: 'Studio: drop a photo in a test set; the agent trace shows the safety check; then GET /api/nvidia/models with the Vultr rows highlighted', say: 'Every upload is screened by Nemotron Content Safety on Vultr Serverless Inference, in about half a second.', criterion: 'Vultr Serverless Inference' },
       { t: '1:10 to 1:30', screen: 'Studio: tick Offline (Bolt), send "add a park bench on the right"; the bench appears', say: 'When the hosted API is down, Nemotron runs on the VM\'s own CPU.', criterion: 'Edge inference on Vultr' },
     ],
-    notes: 'Use a test session, not A9TVAN, for uploads and edits. The offline command takes about 30 seconds; cut the wait. Record the terminal for real over ssh. Switch the hostnames to the real domain only if one is live by recording time (ops/DOMAIN.md).',
+    notes: 'Use a test session, not A9TVAN, for uploads and edits. The offline command takes about 30 seconds; cut the wait. Record the terminal for real over ssh.',
   },
   docs: [
     { label: 'How it works: which machine runs what', href: '/docs/how-it-works/overview/' },

@@ -19,11 +19,11 @@ Drop a photo of a place. Tessera finds where the photographer stood, the heading
 ## Video
 
 **TODO:** the main video link (2 to 3 min screen recording). The shot list for each track's video is on its site page
-under "Video": https://site.104-238-146-229.sslip.io/tracks/
+under "Video": https://tesseraphoto.com/tracks/
 
 ## Image gallery (upload in this order)
 
-All in `site/public/devpost/` and served at https://site.104-238-146-229.sslip.io/devpost/. The first is the thumbnail.
+All in `site/public/devpost/` and served at https://tesseraphoto.com/devpost/. The first is the thumbnail.
 Regenerate with `node site/scripts/devpost-images.mjs`.
 
 1. `1-studio-camera.jpg`. Caption: "Studio, looking through Cam A: your photo as the backplate, two placed people, focus on a person, the horizon marked in the margin".
@@ -37,9 +37,9 @@ Regenerate with `node site/scripts/devpost-images.mjs`.
 
 In this order, so the app is first:
 
-- https://104-238-146-229.sslip.io/p/A9TVAN (the app, opened on the Manhattan Bridge demo shoot)
-- https://site.104-238-146-229.sslip.io (the product, every track and the docs)
-- https://site.104-238-146-229.sslip.io/tracks/ (every track in detail)
+- https://app.tesseraphoto.com/p/A9TVAN (the app, opened on the Manhattan Bridge demo shoot)
+- https://tesseraphoto.com (the product, every track and the docs)
+- https://tesseraphoto.com/tracks/ (every track in detail)
 - **TODO:** the GitHub repo once Ben makes it public (the Spacetime Track requires a public repo)
 - https://www.figma.com/design/QrpLuCwKGGFFBSDRMd7VqS (the design file; private: **TODO** Ben, share it as "anyone with the link can view" before pasting, or leave it out)
 
@@ -55,7 +55,7 @@ By their exact names in HackUTD's prize list (read through the Devpost API on No
 
 Nvidia Track, Spacetime Track, Photon Track (its Voice Call Winner prize is part of the same track), Design Track -- HackUTD Track, [MLH] Best Use of Vultr.
 
-Add [MLH] Best Domain Name from GoDaddy Registry once tessera.photo is claimed (`ops/DOMAIN.md`). General Track is automatic.
+General Track is automatic.
 
 ---
 
@@ -63,11 +63,11 @@ Add [MLH] Best Domain Name from GoDaddy Registry once tessera.photo is claimed (
 
 <!-- DEVPOST SHORT START -->
 
-**Try it live: https://104-238-146-229.sslip.io/p/A9TVAN**
+**Try it live: https://app.tesseraphoto.com/p/A9TVAN**
 
-- Try it live: the Manhattan Bridge demo shoot in [Simple](https://104-238-146-229.sslip.io/p/A9TVAN) or [Studio](https://104-238-146-229.sslip.io/studio/A9TVAN); drop your own photo of that view, or text one to @ShotMatchSetBot on Telegram
-- Product and docs: https://site.104-238-146-229.sslip.io
-- Every track in detail: https://site.104-238-146-229.sslip.io/tracks/
+- Try it live: the Manhattan Bridge demo shoot in [Simple](https://app.tesseraphoto.com/p/A9TVAN) or [Studio](https://app.tesseraphoto.com/studio/A9TVAN); drop your own photo of that view, or text one to @ShotMatchSetBot on Telegram
+- Product and docs: https://tesseraphoto.com
+- Every track in detail: https://tesseraphoto.com/tracks/
 - Code: **TODO** (the GitHub link, once the repo is public)
 - Video: **TODO**
 
@@ -79,7 +79,7 @@ Drop a photo of a place. Tessera finds where the photographer stood, which way t
 
 You saw a great shot of a place and want your own version of it. Today that takes Google Maps, Street View, a lens calculator and a group chat full of screenshots, and none of them know where the photographer stood. Tessera solves it from the photo: the standing spot, the heading and the lens, checked against our own 3D model of the place. Then your crew plans the shot together in a 3D set with real cameras, people, props and light, renders it into your photo, and walks to the mark with the original as a ghost over the camera. It works from a browser, a phone, or a Telegram chat.
 
-![Studio, looking through the solved camera at the Manhattan Bridge](https://site.104-238-146-229.sslip.io/devpost/1-studio-camera.jpg)
+![Studio, looking through the solved camera at the Manhattan Bridge](https://tesseraphoto.com/devpost/1-studio-camera.jpg)
 
 ### How it works: think of a film set
 
@@ -90,7 +90,7 @@ You saw a great shot of a place and want your own version of it. Today that take
 - **The call sheet.** Date, sun, golden hour, tide and conditions on one plan. For the demo spot: golden hour 6:35 to 7:15 AM, sunrise colour chance 20 out of 100, low tide 1:47 PM (0.2 ft), a scaffold 41 m from the mark. cuOpt orders the walk between shots.
 - **The walkie-talkie.** Every person, prop, light and camera is a SpacetimeDB row that every screen shares live (900 of 900 edits committed at 10 Hz, median round trip 42 to 50 ms). Texts, photo check-ins and alerts arrive through Photon, live on Telegram.
 
-![Through Cam A beside the AI render, with Nemotron's physics check](https://site.104-238-146-229.sslip.io/devpost/3-render.jpg)
+![Through Cam A beside the AI render, with Nemotron's physics check](https://tesseraphoto.com/devpost/3-render.jpg)
 
 ### Why it is better
 
@@ -112,9 +112,9 @@ You saw a great shot of a place and want your own version of it. Today that take
 - **Our own model:** a LoRA on Nemotron Nano 12B v2 VL, trained in 44 minutes on an A100, flags 72.4% of long-lens photos on landmarks it never saw (OpenAI zero-shot 48.3%, the base model 12.6%). It does not beat "always wide" on plain bin accuracy (55.6% against 57.5%), so only its long-lens reads narrow the solver.
 - **Cost:** one Vultr VM runs the app; the GPU was a Brev A100 at $1.62 an hour from the HackUTD NVIDIA credit, projected at $23.60 through judging. Vultr refused a GPU instance, so Vultr GPU spend was $0.
 
-![Two people on one set, with the live SpacetimeDB feed](https://site.104-238-146-229.sslip.io/devpost/5-live-data.jpg)
+![Two people on one set, with the live SpacetimeDB feed](https://tesseraphoto.com/devpost/5-live-data.jpg)
 
-![Conditions at the mark on one map](https://site.104-238-146-229.sslip.io/devpost/6-conditions.jpg)
+![Conditions at the mark on one map](https://tesseraphoto.com/devpost/6-conditions.jpg)
 
 ### Questions judges ask
 
@@ -124,20 +124,19 @@ You saw a great shot of a place and want your own version of it. Today that take
 - **What is core and what is per track?** The solver, the set, the camera, the render and the live geodata are core. Each sponsor's product does one job inside them: Nemotron the AI work, SpacetimeDB the live set, Photon the texts and calls, Vultr production.
 - **What is next?** More spots, starting with one we shoot ourselves at UTD; a calibrated confidence score; the lens reader on the phone; the other Photon lines.
 
-![The four steps on a phone](https://site.104-238-146-229.sslip.io/devpost/4-phones.jpg)
+![The four steps on a phone](https://tesseraphoto.com/devpost/4-phones.jpg)
 
 ## Sponsor tracks
 
-Every track has its own page with what we built, where it runs, the proof, the limits and the video plan: https://site.104-238-146-229.sslip.io/tracks/
+Every track has its own page with what we built, where it runs, the proof, the limits and the video plan: https://tesseraphoto.com/tracks/
 
 | Track | What we built | Strongest proof | Page |
 |---|---|---|---|
-| NVIDIA | Nemotron runs the set: words to objects, the photo rebuilt as stand-ins, a render that checks its own physics, props at real size, call sheet, voice, offline on CPU; plus our LoRA lens reader | 16 objects from one sentence in 6.6 s; 72.4% long-lens recall on unseen landmarks | [page](https://site.104-238-146-229.sslip.io/tracks/nvidia/) |
-| SpacetimeDB | The whole shared set is one module: every object, job, version and message is a row; no other backend | 900 of 900 edits at 10 Hz, median 42 to 50 ms; an outsider sees 0 rows until they join | [page](https://site.104-238-146-229.sslip.io/tracks/spacetime/) |
-| Photon | The set on the apps people already use: a photo located by text, versions as reply threads, check-ins, props, alerts; a phone call that guides you | 9 live round trips on Telegram; the other channels 29 of 29 against a stand-in | [page](https://site.104-238-146-229.sslip.io/tracks/photon/) |
-| HackUTD Best Design | Three directions in Figma before code; Darkroom became Studio and Viewfinder became Simple, over one live set | Studio's tokens, fonts and icons came out of the Figma frames through Figma's MCP server | [page](https://site.104-238-146-229.sslip.io/tracks/design/) |
-| MLH Vultr | Production on a Vultr VM in Dallas, Object Storage for photos and props, Serverless Inference for safety, speech and the render | Content Safety on Vultr in 0.51 s per text; the app and the site on one VM with automatic HTTPS | [page](https://site.104-238-146-229.sslip.io/tracks/vultr/) |
-| MLH GoDaddy Registry | tessera.photo for the site and the app | Pending: claimed with MLH's promo code, then DNS and Caddy (`ops/DOMAIN.md`) | |
+| NVIDIA | Nemotron runs the set: words to objects, the photo rebuilt as stand-ins, a render that checks its own physics, props at real size, call sheet, voice, offline on CPU; plus our LoRA lens reader | 16 objects from one sentence in 6.6 s; 72.4% long-lens recall on unseen landmarks | [page](https://tesseraphoto.com/tracks/nvidia/) |
+| SpacetimeDB | The whole shared set is one module: every object, job, version and message is a row; no other backend | 900 of 900 edits at 10 Hz, median 42 to 50 ms; an outsider sees 0 rows until they join | [page](https://tesseraphoto.com/tracks/spacetime/) |
+| Photon | The set on the apps people already use: a photo located by text, versions as reply threads, check-ins, props, alerts; a phone call that guides you | 9 live round trips on Telegram; the other channels 29 of 29 against a stand-in | [page](https://tesseraphoto.com/tracks/photon/) |
+| HackUTD Best Design | Three directions in Figma before code; Darkroom became Studio and Viewfinder became Simple, over one live set | Studio's tokens, fonts and icons came out of the Figma frames through Figma's MCP server | [page](https://tesseraphoto.com/tracks/design/) |
+| MLH Vultr | Production on a Vultr VM in Dallas, Object Storage for photos and props, Serverless Inference for safety, speech and the render | Content Safety on Vultr in 0.51 s per text; the app and the site on one VM with automatic HTTPS | [page](https://tesseraphoto.com/tracks/vultr/) |
 
 ### NVIDIA: Nemotron, beyond a chatbot
 **Best shown in:** Studio's command bar and render panel, Simple's "Describe a change", and the Telegram thread.
@@ -169,4 +168,3 @@ Most people on a shoot will never open a 3D editor, and the scout's hands are fu
 - Make the repo public after a full-history gitleaks scan, then add the GitHub link here, in `site/src/site.ts` (`REPO`) and on Devpost.
 - A licence for the code (the README says none is chosen yet).
 - Photon dashboard lines (`crew/PHOTON.md`), so the iMessage, SMS, voice, email and WhatsApp beats can go live.
-- tessera.photo: claim it with MLH's promo code, then follow `ops/DOMAIN.md`.

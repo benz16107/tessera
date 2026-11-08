@@ -23,6 +23,8 @@ interface Props {
   contextOnly?: boolean; // the splat is the set: show tiles only when the camera is far from the spot
   /** 'live': relit by the scene's sun and sky, casting and receiving its shadows; 'captured' (default): Google's photos as shot. */
   light?: 'live' | 'captured';
+  /** Put the tile meshes on this layer too (world/Atmosphere.tsx lights that layer in post). */
+  postLitLayer?: number;
 }
 
 /** Live sun for the tiles. Google's meshes are unlit photogrammetry (daylight baked into the textures) without normals, so
@@ -81,9 +83,11 @@ export function tileGroundAt(x: number, y: number, fromZ: number): number | null
   return hit ? hit.point.applyMatrix4(enu.matrixWorld.clone().invert()).z : null;
 }
 
-export default function Tiles({ apiKey, origin, probes, visible, extraCamera, onAttribution, onGround, groundAt, contextOnly, light = 'captured' }: Props) {
+export default function Tiles({ apiKey, origin, probes, visible, extraCamera, onAttribution, onGround, groundAt, contextOnly, light = 'captured', postLitLayer }: Props) {
   const liveRef = useRef(light === 'live');
   liveRef.current = light === 'live';
+  const layerRef = useRef(postLitLayer);
+  layerRef.current = postLitLayer;
   const { camera, gl } = useThree();
   const ground = useRef<number | null>(null);
 
@@ -113,6 +117,7 @@ export default function Tiles({ apiKey, origin, probes, visible, extraCamera, on
         }
       });
       if (liveRef.current) applyLight(scene, true);
+      if (layerRef.current !== undefined) scene.traverse(o => o.layers.enable(layerRef.current!));
     });
     t.group.matrixAutoUpdate = false;
     tilesRef.current = t;
@@ -120,6 +125,11 @@ export default function Tiles({ apiKey, origin, probes, visible, extraCamera, on
   }, [apiKey, gl]);
   useEffect(() => () => { tiles.dispose(); if (tilesRef.current === tiles) tilesRef.current = null; }, [tiles]);
   useEffect(() => { applyLight(tiles.group, light === 'live'); }, [tiles, light]);
+  useEffect(() => {
+    if (postLitLayer === undefined) return;
+    tiles.group.traverse(o => o.layers.enable(postLitLayer));
+    return () => tiles.group.traverse(o => o.layers.disable(postLitLayer));
+  }, [tiles, postLitLayer]);
 
   // ECEF -> local east-north-up of the spot, then down by the ground offset.
   const place = (offset: number) => {

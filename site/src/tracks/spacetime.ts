@@ -16,7 +16,7 @@ export default {
     alt: 'Studio on production looking through Cam A at the Manhattan Bridge photo, with two placed people, the scene outline listing Cam A, the sun, two people, a bicycle and a chair, and the camera inspector',
     caption: 'Studio on production. Cam A, the sun, the two people, the bicycle and the chair in the outline are rows in SpacetimeDB; everyone in the shoot sees them change within a network round trip.',
     frame: 'browser',
-    url: '104-238-146-229.sslip.io/studio/A9TVAN',
+    url: 'app.tesseraphoto.com/studio/A9TVAN',
   },
   headline: [
     { value: '900 of 900', label: 'edits committed by 3 clients dragging at 10 Hz for 30 s; median round trip 42 to 50 ms', check: 'cd module && node scripts/loadtest.ts shotmatch 3 10 30' },

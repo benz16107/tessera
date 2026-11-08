@@ -3,7 +3,7 @@ title: HTTP API
 description: Every HTTP route the crew serves on the app's public address, plus the solver's private API, with requests and responses.
 ---
 
-The crew serves the web app and these routes at https://104-238-146-229.sslip.io (Caddy on the Vultr VM, to the crew on `127.0.0.1:8790`). The solver listens on `127.0.0.1:8791` and is never public. The SpacetimeDB module's own routes are in [SpacetimeDB reference](/docs/reference/spacetimedb/#http-routes).
+The crew serves the web app and these routes at https://app.tesseraphoto.com (Caddy on the Vultr VM, to the crew on `127.0.0.1:8790`). The solver listens on `127.0.0.1:8791` and is never public. The SpacetimeDB module's own routes are in [SpacetimeDB reference](/docs/reference/spacetimedb/#http-routes).
 
 Conventions:
 
@@ -18,7 +18,7 @@ Conventions:
 What the browser needs to connect.
 
 ```json
-{ "spacetimeHost": "wss://maincloud.spacetimedb.com", "dbName": "shotmatch", "mapsKey": "...", "publicUrl": "https://104-238-146-229.sslip.io" }
+{ "spacetimeHost": "wss://maincloud.spacetimedb.com", "dbName": "shotmatch", "mapsKey": "...", "publicUrl": "https://app.tesseraphoto.com" }
 ```
 
 `mapsKey` is the browser key for Google's Map Tiles API, restricted to that API. It is the only key ever sent to a browser.

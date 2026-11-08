@@ -26,6 +26,7 @@ import { makeObject, newUid, parseParams, stateOf, withParams, fmtParams, type A
 import { optics as opticsOf, frameFromPhoto, fitFrame, type Fit } from './camera/shot.ts';
 import { bodyById, lensById } from './catalog/index.ts';
 import Tiles, { tilesRef, tileGroundAt, TILE_LIGHT } from './world/Tiles.tsx';
+import Atmosphere, { POST_LIT_LAYER, atmosphereRender } from './world/Atmosphere.tsx';
 import PlaceSearch, { type Place } from './editor/PlaceSearch.tsx';
 import Splat, { useSplatUrl, sparkRef } from './world/Splat.tsx';
 import Catchers from './world/Catchers.tsx';
@@ -709,6 +710,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const skyLit: [number, number, number] = [day.tint[0] * lvl, day.tint[1] * lvl, day.tint[2] * lvl];
   TILE_LIGHT.tileSky.value.setRGB(0.62 * skyLit[0], 0.62 * skyLit[1], 0.62 * skyLit[2]);
   const grade = previewGrade(sun.altitude);
+  // Takram's atmosphere (world/Atmosphere.tsx): switched off until it beats the interim relight; ?atmosphere=1 tries it.
+  const takram = useMemo(() => new URLSearchParams(location.search).has('atmosphere'), []);
   const graded = lvl < 0.97 || Math.abs(grade.rgb[0] - 1) > 0.02 || Math.abs(grade.rgb[2] - 1) > 0.02 || grade.desat > 0.02;
   const objectsForLayers = () => scene.rows.filter(r => r.visible && r.kind !== 'camera' && r.kind !== 'light' && groups.current.get(r.id))
     .map(r => ({ id: r.id, name: r.name, kind: r.kind, root: groups.current.get(r.id)! }));
@@ -767,6 +770,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const showSplat = !explore && world === 'splat' && !!splatUrl && !photoBack;
   const showTiles = (!!explore || world === 'tiles' || (world === 'splat' && !splatState.loaded)) && !photoBack;
   const showClay = !explore && (world === 'clay' || world === 'clayPhoto') && !photoBack;
+  const atmo = takram && lightMode === 'live' && showTiles && (view === 'persp' || view === 'walk');
   // Clay + photo projects the user's photo from its solved pose (not Cam A's current one: the photo was taken there).
   const projector = useMemo((): Projector | null => {
     if (!solved || !origin || !photo || !frame) return null;
@@ -870,15 +874,17 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
             }}>
             <XR store={xrStore}>
               {photoBack && plateReady && <group userData={{ plate: true }}><Sky sunPosition={enuToThree({ x: sunDir[0], y: sunDir[1], z: sunDir[2] }).multiplyScalar(1000).toArray()} distance={4500} /></group>}
-              {!photoBack && <group userData={{ helper: true }}><Sky sunPosition={enuToThree({ x: sunDir[0], y: sunDir[1], z: sunDir[2] }).multiplyScalar(1000).toArray()} distance={4500} /></group>}
-              <hemisphereLight args={['#bcd3ff', '#3b342b', (photo ? 0.45 : 0.9) * lvl]} />
-              {photo && <PhotoEnv url={photo.url || photo.thumb} intensity={0.55 * lvl} />}
-              {!photoBack && day.stars > 0.05 && <group userData={{ helper: true }}><Stars radius={3000} depth={400} count={4000} factor={60 * day.stars} saturation={0} fade /></group>}
-              <SunLight dir={sunDir} color={sunColor} strength={sunStrength(sun.altitude) * 3} />
+              {!photoBack && !atmo && <group userData={{ helper: true }}><Sky sunPosition={enuToThree({ x: sunDir[0], y: sunDir[1], z: sunDir[2] }).multiplyScalar(1000).toArray()} distance={4500} /></group>}
+              {!atmo && <hemisphereLight args={['#bcd3ff', '#3b342b', (photo ? 0.45 : 0.9) * lvl]} />}
+              {atmo && here && <Atmosphere date={planTime} origin={here} groundOffset={groundOffset}
+                nightFill={[day.tint[0] * 0.02 * day.stars, day.tint[1] * 0.02 * day.stars, day.tint[2] * 0.02 * day.stars]} />}
+              {photo && !atmo && <PhotoEnv url={photo.url || photo.thumb} intensity={0.55 * lvl} />}
+              {!photoBack && !atmo && day.stars > 0.05 && <group userData={{ helper: true }}><Stars radius={3000} depth={400} count={4000} factor={60 * day.stars} saturation={0} fade /></group>}
+              {!atmo && <SunLight dir={sunDir} color={sunColor} strength={sunStrength(sun.altitude) * 3} />}
               <group rotation={ENU_TO_THREE} name="enu">
                 {here && view !== 'map' && ( // unmounted under the map: two big WebGL scenes at once lose the GPU on laptops
                   <Tiles apiKey={cfg.mapsKey} origin={here} probes={probes} visible={showTiles} extraCamera={view === 'shot' ? shotCam : null}
-                    contextOnly={showSplat && splatState.loaded} groundAt={explore ? undefined : gz} onAttribution={setAttribution} onGround={setGroundOffset} light={lightMode} />
+                    contextOnly={showSplat && splatState.loaded} groundAt={explore ? undefined : gz} onAttribution={setAttribution} onGround={setGroundOffset} light={atmo ? 'captured' : lightMode} postLitLayer={atmo ? POST_LIT_LAYER : undefined} />
                 )}
                 <group visible={!explore} name="set">
                 {splatUrl && world === 'splat' && (
@@ -1341,9 +1347,10 @@ function ShotCameraSync({ camera, group }: { camera: PerspectiveCamera; group: G
 function PipRenderer({ shotCam, o, rect, inset = true, overPhoto = true }: { shotCam: PerspectiveCamera; o: { frame: { w: number; h: number }; vfovDeg: number }; rect: { x: number; y: number; w: number; h: number }; inset?: boolean; overPhoto?: boolean }) {
   const { gl, scene, camera, size } = useThree();
   const pipCam = useMemo(() => new PerspectiveCamera(), []);
-  useFrame(() => {
+  useFrame((_, dt) => {
     gl.autoClear = true;
-    gl.render(scene, camera);
+    const atmo = atmosphereRender.current && !gl.xr.isPresenting ? atmosphereRender.current : null;
+    if (atmo) atmo(dt); else gl.render(scene, camera);
     if (gl.xr.isPresenting || !inset) return; // phones: no room for the inset, the main view still renders here
     pipCam.position.copy(shotCam.position); pipCam.quaternion.copy(shotCam.quaternion);
     pipCam.fov = o.vfovDeg; pipCam.aspect = o.frame.w / o.frame.h; pipCam.near = 0.1; pipCam.far = 5000;
@@ -1360,7 +1367,11 @@ function PipRenderer({ shotCam, o, rect, inset = true, overPhoto = true }: { sho
     gl.setScissorTest(true);
     gl.setScissor(rect.x, y, rect.w, rect.h); gl.setViewport(rect.x, y, rect.w, rect.h);
     gl.setClearColor(0x000000, 0); gl.clear();
+    // Under the atmosphere, objects are lit in physical units: give the inset the same exposure as the main view.
+    const ex = gl.toneMappingExposure;
+    if (atmo) gl.toneMappingExposure = atmosphereRender.exposure;
     gl.render(scene, pipCam);
+    gl.toneMappingExposure = ex;
     gl.setScissorTest(false);
     gl.setViewport(0, 0, size.width, size.height);
     scene.background = bg;
