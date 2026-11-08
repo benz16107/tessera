@@ -287,6 +287,17 @@ Send ShotMatch a photo of a place you love. It finds where the photographer stoo
 
 Photo credits: every Creative Commons photo used for a 3D model or training is on the app's credits page and in `spots/*/CREDITS.tsv` and `lens/CREDITS.tsv`.
 
+## Direction change, Sat ~9:00 PM CT: the virtual set
+
+Ben's call: entering a location builds a virtual world of the spot, and you work in it like Blender. You place 3D models, people, characters, props, lights and cameras, then render the image with AI on top. VR comes later. The sponsors stay: NVIDIA for the AI, SpacetimeDB for the shared set, Photon for iMessage.
+
+- **Engine:** three.js with @react-three/fiber, `postprocessing` and @react-three/xr (WebXR), replacing Cesium for the editor. Google Photorealistic 3D Tiles render inside three.js through `3d-tiles-renderer`, for display and editing only, with Google's attribution on screen.
+- **Shared set:** every object is a `scene_object` row (position in metres east/north/up from the spot, quaternion, scale, light settings, gizmo lock), edited live by everyone in the session.
+- **Render:** the shot camera renders only the user's objects and lights (beauty, depth, object mask). The crew composites them over the user's original photo from the same camera and runs an AI render pass. Map tile pixels and depth never enter a render, an export or an AI step, which keeps us inside Google's Map Tiles policy.
+- **NVIDIA:** Nemotron 3.5 Super VL turns "two friends walking toward camera, a red bike on the left" into scene edits. TRELLIS (hosted, checked: a GLB in 11 s) generates props from words or a photo. FLUX.1-dev (hosted, with depth and canny modes) is the candidate render pass; its first test call returned a 500. The lens fine-tune still waits on a GPU.
+- **Photoreal set (needs a GPU):** a Gaussian-splat world trained from the spot's photos would make the set our own data, renderable and VR-ready. It needs CUDA, so it waits on Vultr's limit or Brev.
+- **Design:** round 3 in the same Figma file draws the set editor in the B (dark) and A (light) languages.
+
 ## Build log
 
 Ben said go at 5:20 PM CT Saturday ("just build everything"). Status as of 6:50 PM CT:
