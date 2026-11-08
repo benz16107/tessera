@@ -5,7 +5,7 @@
 // `tileGroundAt`, which keeps a walking eye above the ground.
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { CompressedTexture, LinearMipmapLinearFilter, Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, Raycaster, Vector3, type Camera } from 'three';
+import { BufferAttribute, Color, CompressedTexture, LinearMipmapLinearFilter, Matrix4, Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshStandardMaterial, Raycaster, Vector3, type Camera, type Material } from 'three';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { TilesRenderer } from '3d-tiles-renderer';
 import { GoogleCloudAuthPlugin, GLTFExtensionsPlugin, TileCompressionPlugin, TilesFadePlugin } from '3d-tiles-renderer/plugins';
@@ -21,6 +21,49 @@ interface Props {
   onGround?: (offsetM: number) => void;
   groundAt?: (x: number, y: number) => number; // our street geometry's ground height; tiles are moved to match it
   contextOnly?: boolean; // the splat is the set: show tiles only when the camera is far from the spot
+  /** 'live': relit by the scene's sun and sky, casting and receiving its shadows; 'captured' (default): Google's photos as shot. */
+  light?: 'live' | 'captured';
+}
+
+/** Live sun for the tiles. Google's meshes are unlit photogrammetry (daylight baked into the textures) without normals, so
+ *  each one gets a flat-shaded Lambert copy: the face normal comes from screen-space derivatives (three's flatShading), and
+ *  the light is texture x (sky + sun x N.L x shadow), with the sky term the floor that keeps the photo texture readable.
+ *  The studio sets the sky colour and the sun's weight each frame (light/sun.ts daylight). */
+export const TILE_LIGHT = { tileSky: { value: new Color(0.62, 0.62, 0.62) }, tileSunK: { value: 0.6 } };
+
+function litMaterial(base: MeshBasicMaterial): MeshLambertMaterial {
+  const m = new MeshLambertMaterial({ map: base.map, color: base.color, transparent: base.transparent, opacity: base.opacity, side: base.side, alphaTest: base.alphaTest, flatShading: true });
+  m.onBeforeCompile = sh => {
+    sh.uniforms.tileSky = TILE_LIGHT.tileSky; sh.uniforms.tileSunK = TILE_LIGHT.tileSunK;
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform vec3 tileSky;\nuniform float tileSunK;')
+      // directDiffuse is the sun (with its shadow) and any placed lights; the scene's sky lights are tuned for objects.
+      .replace('vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + totalEmissiveRadiance;',
+        'vec3 outgoingLight = diffuseColor.rgb * tileSky + reflectedLight.directDiffuse * tileSunK;');
+  };
+  m.customProgramCacheKey = () => 'tile-live-sun';
+  return m;
+}
+
+/** Swap every tile mesh under `root` to the live or the captured material (creating the live one on first use). */
+function applyLight(root: { traverse: (f: (o: unknown) => void) => void }, live: boolean) {
+  root.traverse(o => {
+    const mesh = o as Mesh;
+    if (!mesh.isMesh) return;
+    const u = mesh.userData as { captured?: Material; lit?: Material };
+    if (!u.captured) {
+      if (!(mesh.material instanceof MeshBasicMaterial)) return;
+      u.captured = mesh.material;
+    }
+    if (live && !u.lit) {
+      const g = mesh.geometry;
+      // Shadow bias reads a vertex normal; the lighting itself uses face normals, so a constant one is enough.
+      if (!g.getAttribute('normal')) { const n = new Float32Array(g.getAttribute('position').count * 3); for (let i = 2; i < n.length; i += 3) n[i] = 1; g.setAttribute('normal', new BufferAttribute(n, 3)); }
+      u.lit = litMaterial(u.captured as MeshBasicMaterial);
+    }
+    mesh.material = (live ? u.lit : u.captured)!;
+    mesh.castShadow = mesh.receiveShadow = live;
+  });
 }
 
 export const tilesRef: { current: TilesRenderer | null } = { current: null };
@@ -38,7 +81,9 @@ export function tileGroundAt(x: number, y: number, fromZ: number): number | null
   return hit ? hit.point.applyMatrix4(enu.matrixWorld.clone().invert()).z : null;
 }
 
-export default function Tiles({ apiKey, origin, probes, visible, extraCamera, onAttribution, onGround, groundAt, contextOnly }: Props) {
+export default function Tiles({ apiKey, origin, probes, visible, extraCamera, onAttribution, onGround, groundAt, contextOnly, light = 'captured' }: Props) {
+  const liveRef = useRef(light === 'live');
+  liveRef.current = light === 'live';
   const { camera, gl } = useThree();
   const ground = useRef<number | null>(null);
 
@@ -67,12 +112,14 @@ export default function Tiles({ apiKey, origin, probes, visible, extraCamera, on
           material.map.needsUpdate = true;
         }
       });
+      if (liveRef.current) applyLight(scene, true);
     });
     t.group.matrixAutoUpdate = false;
     tilesRef.current = t;
     return t;
   }, [apiKey, gl]);
   useEffect(() => () => { tiles.dispose(); if (tilesRef.current === tiles) tilesRef.current = null; }, [tiles]);
+  useEffect(() => { applyLight(tiles.group, light === 'live'); }, [tiles, light]);
 
   // ECEF -> local east-north-up of the spot, then down by the ground offset.
   const place = (offset: number) => {

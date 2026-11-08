@@ -6,7 +6,7 @@
 // Run: node scripts/proof.ts [db]    (crew steps need the owner's CLI login to set a crew code)
 import { execFileSync } from 'node:child_process';
 import { createHmac, randomBytes } from 'node:crypto';
-import { Identity } from 'spacetimedb';
+import { Identity, Timestamp } from 'spacetimedb';
 import { DbConnection, type EventContext } from './module_bindings/index.ts';
 
 const DB = process.argv[2] ?? 'shotmatch-scratch';
@@ -48,7 +48,7 @@ await subscribe(jun, SESSION_Q);
 jun.db.setEvent.onInsert((_c: EventContext, e) => seenByJun.push(`${e.kind}:${e.name}`));
 
 // 1. Maya makes a session; Jun, not a participant, sees none of it.
-await maya.reducers.createSession({ spotId: 'nyc_dumbo', title: 'Untitled shoot', name: 'Maya' });
+await maya.reducers.createSession({ spotId: 'nyc_dumbo', title: 'New shoot', name: 'Maya' });
 const s = await until(() => [...maya.db.mySessions.iter()][0]);
 check('my_sessions view returns the new session to its owner', !!s, s?.code);
 if (!s) process.exit(1);
@@ -121,6 +121,13 @@ await sleep(3200);
 const t1 = maya.db.session.id.find(s.id)?.planTime?.microsSinceUnixEpoch ?? 0n;
 await maya.reducers.setSunClock({ sessionId: s.id, rate: 0 });
 const movedMin = Number(t1 - t0) / 60e6;
+await maya.reducers.setSunClock({ sessionId: s.id, rate: 1 });
+await until(() => [...maya.db.sunClock.iter()].some(c => c.sessionId === s.id));
+await maya.reducers.setPlanTime({ sessionId: s.id, at: new Timestamp(BigInt(Date.UTC(2026, 10, 8, 21, 30)) * 1000n) });
+const liveOff = await until(() => ![...maya.db.sunClock.iter()].some(c => c.sessionId === s.id) || undefined, 5000);
+await sleep(2500);
+const kept = maya.db.session.id.find(s.id)?.planTime?.toDate().toISOString();
+check('a manual time turns Live sun off and stays put', !!liveOff && kept === '2026-11-08T21:30:00.000Z', kept);
 check('sun_clock schedule: 600x time-lapse advances the set clock', movedMin >= 15 && movedMin <= 45, `${movedMin.toFixed(1)} set minutes in 3.2 s`);
 
 // 6. Crew identity: owner sets a code, a third client registers, sees every session, joins as crew.
@@ -235,7 +242,7 @@ await maya.reducers.addPhoto({ sessionId: s.id, spotId: 'nyc_dumbo', url: '/phot
 const sj2 = await until(() => [...crew.db.solveJob.iter()].find(j => j.sessionId === s.id && j.state === 'queued'));
 await crew.reducers.claimJob({ jobId: sj2!.id });
 await crew.reducers.finishJob({ jobId: sj2!.id, ok: true, error: '', pose: { lat: 40.7033, lon: -73.9894, alt: 1.6, heading: 4, pitch: 2, roll: 0, f35: 53 }, inliers: 1690, confidence: 'solid', reason: 'proof', lensReadF35: undefined, secs: 1 });
-const titled = await until(() => { const x = maya.db.session.id.find(s.id); return x && x.title !== 'Untitled shoot' ? x : undefined; }, 30_000);
+const titled = await until(() => { const x = maya.db.session.id.find(s.id); return x && x.title !== 'New shoot' ? x : undefined; }, 30_000);
 const stepRow = [...maya.db.agentStep.iter()].find(a => a.sessionId === s.id && a.tool.startsWith('nemotron_lightning'));
 check('title_session procedure: Nemotron 3.5 Lightning titled the shoot from inside the database', !!titled, titled ? `"${titled.title}", ${stepRow?.ms ?? '?'} ms` : stepRow?.result);
 }

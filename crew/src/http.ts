@@ -7,7 +7,7 @@ import { IMAGE_TYPES, ensureLocal, ingest } from './images.ts';
 import { VOICE_TOOLS, toolAuthorized, voiceEnded } from './voice.ts';
 import { similar } from './similar.ts';
 import { planShootDay } from './shootday.ts';
-import { conn, logStep } from './stdb.ts';
+import { conn, logStep, until } from './stdb.ts';
 import { setCommand } from './setagent.ts';
 import { SET_TOOLS, runTool, type StepLog } from './settools.ts';
 import { callSheet, critique, readPhoto, sessionLight } from './vision.ts';
@@ -61,9 +61,13 @@ async function readJson(req: IncomingMessage, max = 200_000): Promise<any | null
 }
 
 /** The session a request names, when it exists. */
-const sessionOf = (v: unknown) => {
+/** The session a request names, when it exists. A well-formed id that is not in the cache yet (the first seconds after a
+ *  crew restart, before the subscription has loaded, or a session created a moment ago) waits up to 8 s for it. */
+const sessionOf = async (v: unknown) => {
   const s = String(v ?? '');
-  return /^\d{1,19}$/.test(s) && conn.db.session.id.find(BigInt(s)) ? BigInt(s) : null;
+  if (!/^\d{1,19}$/.test(s)) return null;
+  const id = BigInt(s);
+  return (await until(() => conn.db.session.id.find(id), 8_000, 'the session').then(() => id).catch(() => null));
 };
 
 /** A stored image this server holds (/photo/ or /preview/), as a data URL for a vision model. */
@@ -82,14 +86,14 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
   if (p === '/api/nvidia/models' && req.method === 'GET') { json(res, 200, { models: NVIDIA_CATALOG, usage: usage() }); return true; }
 
   if (p === '/api/set/command' && post) {
-    const b = await readJson(req), sid = sessionOf(b?.sessionId);
+    const b = await readJson(req), sid = await sessionOf(b?.sessionId);
     if (!sid || typeof b.text !== 'string') { json(res, 400, { error: 'give {sessionId, text}' }); return true; }
     try { json(res, 200, await setCommand(sid, b.text, { offline: b.offline === true, channel: 'studio' })); } catch (e) { fail(502, e); }
     return true;
   }
 
   if (p === '/api/set/apply' && post) {
-    const b = await readJson(req), sid = sessionOf(b?.sessionId);
+    const b = await readJson(req), sid = await sessionOf(b?.sessionId);
     if (!sid || !Array.isArray(b.steps)) { json(res, 400, { error: 'give {sessionId, steps: [{tool, args}]}' }); return true; }
     const steps: StepLog[] = [], results = [];
     for (const st of b.steps.slice(0, 12)) {
@@ -101,7 +105,7 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
   }
 
   if ((p === '/api/set/rebuild' || p === '/api/set/read') && post) {
-    const b = await readJson(req), sid = sessionOf(b?.sessionId);
+    const b = await readJson(req), sid = await sessionOf(b?.sessionId);
     if (!sid) { json(res, 400, { error: 'give {sessionId}' }); return true; }
     try {
       if (p === '/api/set/rebuild') json(res, 200, await runTool(sid, 'rebuild_from_photo', { replace: b.replace === true }));
@@ -116,7 +120,7 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
 
   // The light Nemotron read from the session's photo, and the 3D sun that reproduces it (for the studio's sun).
   if (p === '/api/set/light' && req.method === 'GET') {
-    const sid = sessionOf(url.searchParams.get('session'));
+    const sid = await sessionOf(url.searchParams.get('session'));
     if (!sid) { json(res, 400, { error: 'give ?session=<id>' }); return true; }
     const ctx = setContext(sid), light = sessionLight(sid);
     json(res, 200, { light: light ?? null, sun: ctx ? sunFromRead(light, ctx.cam.heading) : null, shadow: light ? shadowParams(light.hardness, 1000) : null, model: light ? 'nvidia/nemotron-3.5-super-vl-120b-a12b' : null });
@@ -124,7 +128,7 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
   }
 
   if (p === '/api/set/critique' && post) {
-    const b = await readJson(req), sid = sessionOf(b?.sessionId), img = await imageOf(b?.imageUrl);
+    const b = await readJson(req), sid = await sessionOf(b?.sessionId), img = await imageOf(b?.imageUrl);
     if (!sid || !img) { json(res, 400, { error: 'give {sessionId, imageUrl: /preview/<file>}' }); return true; }
     const t0 = Date.now();
     try {
@@ -136,21 +140,21 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
   }
 
   if (p === '/api/set/check' && post) {
-    const b = await readJson(req), sid = sessionOf(b?.sessionId), img = await imageOf(b?.imageUrl);
+    const b = await readJson(req), sid = await sessionOf(b?.sessionId), img = await imageOf(b?.imageUrl);
     if (!sid || !img) { json(res, 400, { error: 'give {sessionId, imageUrl}' }); return true; }
     try { json(res, 200, await physicalCheck(img)); } catch (e) { fail(502, e); }
     return true;
   }
 
   if (p === '/api/set/callsheet' && post) {
-    const b = await readJson(req), sid = sessionOf(b?.sessionId);
+    const b = await readJson(req), sid = await sessionOf(b?.sessionId);
     if (!sid) { json(res, 400, { error: 'give {sessionId}' }); return true; }
     try { json(res, 200, await callSheet(sid)); } catch (e) { fail(502, e); }
     return true;
   }
 
   if ((p === '/api/search' || p === '/api/assets/search') && req.method === 'GET') {
-    const q = (url.searchParams.get('q') ?? '').slice(0, 300), sid = sessionOf(url.searchParams.get('session')) ?? undefined;
+    const q = (url.searchParams.get('q') ?? '').slice(0, 300), sid = await sessionOf(url.searchParams.get('session')) ?? undefined;
     if (!q.trim()) { json(res, 400, { error: 'give ?q=<words>' }); return true; }
     try { json(res, 200, p === '/api/search' ? await searchAll(q, sid) : await searchAssets(q, sid, 8)); } catch (e) { fail(503, e); }
     return true;
@@ -158,7 +162,7 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
 
   // Generation into the set (contract in docs/NVIDIA.md): words, a generated image or a photo become a scene object at real size.
   if (p === '/api/props/generate' && post) {
-    const b = await readJson(req, 16_000_000), sid = b?.sessionId !== undefined && b?.sessionId !== null ? sessionOf(b.sessionId) : undefined;
+    const b = await readJson(req, 16_000_000), sid = b?.sessionId !== undefined && b?.sessionId !== null ? await sessionOf(b.sessionId) : undefined;
     if (!b || sid === null) { json(res, 400, { error: 'give {prompt} or {image | imageUrl}, optional sessionId, mode, mount, frame_x, distance_m' }); return true; }
     const mode = ['auto', 'text3d', 'image3d', 'photo3d', 'flat'].includes(b.mode) ? b.mode : 'auto';
     const mount = ['ground', 'wall', 'stand', 'screen'].includes(b.mount) ? b.mount : undefined;
@@ -183,7 +187,7 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
     if (!body) { json(res, 413, { error: 'layers larger than 60 MB' }); return true; }
     let form: FormData;
     try { form = await new Request('http://x/', { method: 'POST', headers: { 'content-type': ct }, body }).formData(); } catch { json(res, 400, { error: 'bad multipart body' }); return true; }
-    const sid = sessionOf(form.get('sessionId')), beauty = form.get('beauty'), shadow = form.get('shadow'), mask = form.get('mask'), photoId = String(form.get('photoId') ?? '');
+    const sid = await sessionOf(form.get('sessionId')), beauty = form.get('beauty'), shadow = form.get('shadow'), mask = form.get('mask'), photoId = String(form.get('photoId') ?? '');
     let legend: { id: string; name: string; kind: string; color: string }[] | undefined;
     try {
       const l = JSON.parse(String(form.get('legend') ?? '[]'));
@@ -262,7 +266,7 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
     try {
       const heard = await transcribe(body);
       if (!heard) { json(res, 503, { error: 'no speech model configured' }); return true; }
-      const sid = sessionOf(url.searchParams.get('session'));
+      const sid = await sessionOf(url.searchParams.get('session'));
       if (!sid || url.searchParams.get('run') !== '1' || !heard.text) { json(res, 200, heard); return true; }
       const r = await setCommand(sid, heard.text, { channel: 'voice' });
       const speak = url.searchParams.get('speak') === '1' ? (await magpie(r.reply).catch(() => null))?.toString('base64') : undefined;

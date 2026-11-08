@@ -1,6 +1,6 @@
 // SpacetimeDB hooks for the set: session lookup by code, presence, ephemeral set events, the live sun clock and scene
 // history. Every value here is a subscription to the shotmatch module; nothing goes through the crew server.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useSpacetimeDB, useTable, useReducer } from 'spacetimedb/react';
 import type { Identity } from 'spacetimedb';
 import { tables, reducers, type DbConnection } from '../module_bindings/index.ts';
@@ -72,6 +72,12 @@ export type Cursor = Point & { name: string; color: string; at: number };
 export type Ping = Point & { name: string; color: string; objectId: bigint; at: number; key: number };
 export type View = { eye: Point; target: Point; name: string; at: number };
 
+// Whom this browser follows, shared by every useSetEvents call: the presence bar sets it, the studio's camera reads it.
+let followTarget: string | null = null;
+const followSubs = new Set<() => void>();
+const setFollowTarget = (v: string | null) => { followTarget = v; followSubs.forEach(f => f()); };
+const subscribeFollow = (f: () => void) => { followSubs.add(f); return () => { followSubs.delete(f); }; };
+
 /**
  * Ephemeral collaboration in the 3D set: cursors, laser-pointer pings, camera views and follow requests. Rows come
  * through the set_event event table: each reaches the session's members once and is never stored.
@@ -86,8 +92,9 @@ export function useSetEvents(sessionId: bigint, me?: Identity) {
   const [pings, setPings] = useState<Ping[]>([]);
   const [views, setViews] = useState<Map<string, View>>(new Map());
   const [followers, setFollowers] = useState<Set<string>>(new Set());
-  const [following, setFollowing] = useState<string | null>(null);
-  const [invite, setInvite] = useState<{ from: string; name: string } | null>(null);
+  const following = useSyncExternalStore(subscribeFollow, () => followTarget);
+  const setFollowing = setFollowTarget;
+  const [invite, setInvite] = useState<{ from: string; name: string; identity: Identity } | null>(null);
   const meHex = me?.toHexString();
   const key = useRef(0);
 
@@ -100,7 +107,7 @@ export function useSetEvents(sessionId: bigint, me?: Identity) {
     else if (e.kind === 'view' && !mine) setViews(m => new Map(m).set(from, { eye: { x: e.x, y: e.y, z: e.z }, target: { x: e.tx, y: e.ty, z: e.tz }, name: e.name, at }));
     else if (e.kind === 'follow' && !mine) {
       if (e.target && e.target.toHexString() === meHex) setFollowers(s => new Set(s).add(from)); // someone follows me
-      else if (!e.target) setInvite({ from, name: e.name });                                    // "follow me"
+      else if (!e.target) setInvite({ from, name: e.name, identity: e.from });                  // "follow me"
     } else if (e.kind === 'unfollow' && !mine) setFollowers(s => { const n = new Set(s); n.delete(from); return n; });
   }, [meHex]);
   useTable(tables.setEvent.where(r => r.sessionId.eq(sessionId)), { onInsert });
@@ -131,7 +138,11 @@ export function useSetEvents(sessionId: bigint, me?: Identity) {
       return send({ sessionId, kind: 'follow', x: 0, y: 0, z: 0, ...zero, target: target ?? undefined });
     },
     unfollow(target: Identity) { setFollowing(null); return send({ sessionId, kind: 'unfollow', x: 0, y: 0, z: 0, ...zero, target }); },
-    acceptInvite() { if (invite) setFollowing(invite.from); setInvite(null); },
+    // Accepting tells the inviter, so their studio starts sending its view (it only sends while it has followers).
+    acceptInvite() {
+      if (invite) { setFollowing(invite.from); send({ sessionId, kind: 'follow', x: 0, y: 0, z: 0, ...zero, target: invite.identity }).catch(() => {}); }
+      setInvite(null);
+    },
     dismissInvite() { setInvite(null); },
   }), [send, sessionId, invite]); // eslint-disable-line react-hooks/exhaustive-deps
 

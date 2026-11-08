@@ -31,9 +31,9 @@ export function PoweredBy() {
             const calls = uses.reduce((s, u) => s + u.calls, 0), med = uses.find(u => u.medianMs !== null)?.medianMs ?? null;
             return (
               <li key={m.model}>
-                <div className="nv-row"><strong>{m.family}</strong><span className="nv-num nv-muted">{calls ? `${ms(med)} · ${calls} calls` : 'not called yet'}</span></div>
+                <div className="nv-row"><strong>{m.family}</strong><span className="nv-num nv-muted">{calls ? [ms(med), `${calls} call${calls === 1 ? '' : 's'}`].filter(Boolean).join(' · ') : 'not called yet'}</span></div>
                 <p className="nv-muted">{m.does.join('; ')}</p>
-                <p className="nv-dim nv-num">{m.model} · {m.where}</p>
+                <p className="nv-dim nv-num nv-id" title={`${m.model} · ${m.where}`}>{m.model} · {m.where}</p>
               </li>
             );
           })}

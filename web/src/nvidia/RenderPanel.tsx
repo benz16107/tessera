@@ -64,13 +64,11 @@ export function RenderPanel({ sessionId, photoId, getLayers, settings, onSunFix 
     <section className="nv nv-card" aria-label="AI render">
       <header><h3>AI render</h3><span className="nv-muted">composite, harmonize, Nemotron check</span></header>
       <input className="nv-input" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.stopPropagation()} placeholder="Anything to add: light rain, film grain" aria-label="Render instruction" />
-      <div className="nv-row">
-        <select className="nv-input" value={mode} onChange={e => setMode(e.target.value as 'depth' | 'canny')} aria-label="Conditioning">
-          <option value="depth">Depth (keeps distances)</option>
-          <option value="canny">Canny (keeps edges)</option>
-        </select>
-        <button className="nv-btn primary" onClick={go} disabled={!!busy}>Render</button>
-      </div>
+      <select className="nv-input" value={mode} onChange={e => setMode(e.target.value as 'depth' | 'canny')} aria-label="Conditioning">
+        <option value="depth">Depth (keeps distances)</option>
+        <option value="canny">Canny (keeps edges)</option>
+      </select>
+      <button className="nv-btn primary wide" onClick={go} disabled={!!busy}>Render</button>
       {busy && <div className="nv-skel tall"><span className="nv-num">{busy}, {secs} s</span></div>}
       {out && (
         <figure className="nv-render">

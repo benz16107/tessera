@@ -60,8 +60,9 @@ function arrive(): string {
   return location.pathname;
 }
 
-// Studio's keyboard shortcuts listen on window. While Studio is mounted but hidden behind Simple, they must not fire.
-const STUDIO_KEYS = new Set(['g', 'r', 's', 'w', 'q', 'm', 'x', 'f', 'l', 'h', 'a', 'z', 'y', '0', '1', '3', '5', '7', 'delete', 'home', 'escape']);
+// Studio's shortcuts and Walk mode listen for keys on window. While Studio is mounted but hidden behind Simple, no key may
+// reach window: keys inside the app stop at #root after React has handled them, keys aimed at the page body stop at window.
+const KEY_EVENTS = ['keydown', 'keyup'] as const;
 
 export default function App() {
   const [path, setPath] = useState(arrive);
@@ -81,12 +82,11 @@ export default function App() {
   const studioHidden = r.kind === 'set' && r.view !== 'studio' && !!kept.current?.views.has('studio');
   useEffect(() => {
     if (!studioHidden) return;
-    const guard = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement | null)?.closest?.('input, select, textarea, [contenteditable]')) return;
-      if (STUDIO_KEYS.has(e.key.toLowerCase())) e.stopPropagation();
-    };
-    addEventListener('keydown', guard, true);
-    return () => removeEventListener('keydown', guard, true);
+    const root = document.getElementById('root');
+    const stop = (e: Event) => e.stopPropagation();
+    const outside = (e: Event) => { if (!root?.contains(e.target as Node)) e.stopPropagation(); };
+    for (const t of KEY_EVENTS) { root?.addEventListener(t, stop); addEventListener(t, outside, true); }
+    return () => { for (const t of KEY_EVENTS) { root?.removeEventListener(t, stop); removeEventListener(t, outside, true); } };
   }, [studioHidden]);
 
   if (r.kind === 'credits') return <Credits />;

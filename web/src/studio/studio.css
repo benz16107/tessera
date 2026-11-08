@@ -71,10 +71,10 @@
 .ico.s10 { width: 10px; height: 10px; } .ico.s12 { width: 12px; height: 12px; } .ico.s16 { width: 16px; height: 16px; } .ico.s18 { width: 18px; height: 18px; }
 
 /* Buttons */
-.st-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 32px; padding: 0 12px !important; border-radius: var(--r) !important; background: var(--raise) !important; font: 500 13px var(--sans) !important; color: var(--text); white-space: nowrap; transition-property: background-color, scale; transition-duration: 120ms; transition-timing-function: ease-out; }
+.st-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: var(--control-h, 36px); padding: 0 12px !important; border-radius: var(--r) !important; background: var(--raise) !important; font: 500 13px var(--sans) !important; color: var(--text); white-space: nowrap; transition-property: background-color, scale; transition-duration: 120ms; transition-timing-function: ease-out; }
 .st-btn.primary { background: var(--amber) !important; color: var(--amber-ink) !important; font-weight: 600 !important; }
 .st-btn.ghost { background: transparent !important; color: var(--text-2); pointer-events: auto; mix-blend-mode: normal; inset: auto; width: auto; height: 32px; } /* undoes styles.css .ghost (the old planner's): absolute, full size, no pointer events */
-.st-btn.small { height: 28px; padding: 0 10px !important; border-radius: var(--r-sm) !important; }
+.st-btn.small { height: var(--control-h-dense, 28px); padding: 0 10px !important; border-radius: var(--r-sm) !important; }
 .st-btn.wide { width: 100%; }
 .st-btn[aria-pressed='true'] { background: var(--line-2) !important; }
 .st-btn:not(:disabled):active { scale: 0.96; }
@@ -83,7 +83,7 @@
 .st-icon-btn::after { content: ''; position: absolute; inset: -4px; }
 @media (hover: hover) { .st-icon-btn:hover { color: var(--text); background: var(--raise); } }
 .st-icon-btn[aria-pressed='true'], .st-icon-btn[aria-expanded='true'] { color: var(--text); background: var(--line-2); }
-.st-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r); background: var(--glass); flex: none; }
+.st-seg { display: inline-flex; gap: 2px; padding: 4px; border-radius: var(--radius-panel, 10px); background: var(--glass); flex: none; }
 .st-seg.flat { background: var(--field); }
 .st-seg > button { height: 28px; padding: 0 10px !important; border-radius: var(--r-sm); font-size: 13px; color: var(--text-2); white-space: nowrap; }
 .st-seg > button[aria-pressed='true'] { background: var(--line-2); color: var(--text); }
@@ -136,7 +136,7 @@
 .st-empty-note { padding: 8px 16px; font-size: 13px; color: var(--text-3); text-wrap: pretty; }
 
 /* Add drawer: asset library and Generate, opened by + or Shift+A */
-.st-drawer-add { position: absolute; left: 8px; top: 8px; bottom: 8px; width: 336px; display: flex; flex-direction: column; background: var(--panel); border-radius: 12px; box-shadow: var(--shadow); z-index: 30; overflow: hidden; transform-origin: top left; animation: st-pop 180ms cubic-bezier(0.2, 0, 0, 1); }
+.st-drawer-add { position: absolute; left: 60px; top: 56px; bottom: 8px; width: 336px; display: flex; flex-direction: column; background: var(--panel); border-radius: var(--radius-panel, 10px); box-shadow: var(--shadow); z-index: var(--z-panel, 30); overflow: hidden; transform-origin: top left; animation: st-pop 180ms cubic-bezier(0.2, 0, 0, 1); }
 @keyframes st-pop { from { opacity: 0; scale: 0.97; translate: -6px 0; } }
 @media (prefers-reduced-motion: reduce) { .st-drawer-add { animation: none; } }
 .st-drawer-add header { display: flex; align-items: center; gap: 8px; padding: 12px 8px 8px 16px; }
@@ -268,19 +268,19 @@
 .st-backplate { position: absolute; object-fit: fill; pointer-events: none; }
 .st-chrome { position: absolute; inset: 0; pointer-events: none; }
 .st-chrome > * { pointer-events: auto; }
-.st-float { background: var(--glass); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35); }
+.st-float { background: var(--glass); border-radius: var(--radius-panel, 10px); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35); }
 .st-viewswitch { position: absolute; left: 12px; top: 12px; display: flex; gap: 8px; align-items: center; }
 .st-rail { position: absolute; left: 12px; top: 56px; display: flex; flex-direction: column; gap: 2px; padding: 4px; }
 .st-rail button { position: relative; width: 36px; height: 36px; border-radius: var(--r-sm); display: grid; place-items: center; color: var(--text-2); }
 .st-rail button[aria-pressed='true'], .st-rail button[aria-expanded='true'] { background: var(--text); color: var(--bg); }
 .st-rail hr { width: 24px; height: 1px; border: 0; background: var(--line-2); margin: 4px auto; }
 @media (hover: hover) { .st-rail button:not([aria-pressed='true']):not([aria-expanded='true']):hover { background: var(--line-2); color: var(--text); } }
-.st-menu { position: absolute; z-index: 25; min-width: 200px; padding: 4px; background: var(--panel); border-radius: 10px; box-shadow: var(--shadow); display: flex; flex-direction: column; }
+.st-menu { position: absolute; z-index: var(--z-popover, 40); min-width: 200px; padding: 4px; background: var(--panel); border-radius: var(--radius-panel, 10px); box-shadow: var(--shadow); display: flex; flex-direction: column; }
 .st-menu > button, .st-menu > label { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 8px !important; border-radius: var(--r-sm); font-size: 13px; color: var(--text); text-align: left; cursor: pointer; }
 .st-menu > hr { border: 0; height: 1px; margin: 4px 0; background: var(--line); }
 .st-menu > button[aria-checked='true']::after, .st-menu > button[aria-pressed='true']::after { content: ''; margin-left: auto; width: 6px; height: 6px; border-radius: 3px; background: var(--text); }
 @media (hover: hover) { .st-menu > button:hover, .st-menu > label:hover { background: var(--raise); } }
-.st-cmd { position: absolute; right: 120px; top: 12px; width: min(420px, calc(100% - 500px)); min-width: 260px; z-index: 22; }
+.st-cmd { position: absolute; left: 452px; right: 112px; top: 12px; max-width: 420px; z-index: var(--z-controls, 22); }
 .st-cmd-pill { display: flex; align-items: center; gap: 8px; width: 100%; height: 36px; padding: 0 8px 0 14px !important; color: var(--text-2); font-size: 13px; text-align: left; }
 .st-cmd-pill .st-meta { margin-left: auto; padding: 2px 6px; border-radius: 4px; background: var(--line-2); color: var(--text-2); }
 @media (hover: hover) { .st-cmd-pill:hover { color: var(--text); } }
@@ -294,11 +294,11 @@
 .st-cmd-tools { display: flex; justify-content: flex-end; gap: 4px; }
 .st-pip { position: absolute; right: 16px; bottom: 32px; border-radius: var(--r-sm); cursor: pointer; pointer-events: auto; background: transparent; box-shadow: 0 0 0 1px oklch(1 0 0 / 0.12), 0 6px 20px rgba(0, 0, 0, 0.5); }
 .st-pip-label { position: absolute; padding: 2px 6px; border-radius: 4px; background: var(--glass); font: 11px var(--mono); color: var(--text-2); white-space: nowrap; pointer-events: none; }
-.st-credits { position: absolute; left: 0; right: 0; bottom: 0; height: 24px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: linear-gradient(to top, rgba(5, 5, 5, 0.75), rgba(5, 5, 5, 0)); font-size: 11px; color: #d6d2ca; pointer-events: none; }
+.st-credits { position: absolute; z-index: var(--z-overlay, 21); left: 0; right: 0; bottom: 0; height: 24px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: linear-gradient(to top, rgba(5, 5, 5, 0.75), rgba(5, 5, 5, 0)); font-size: 11px; color: #d6d2ca; pointer-events: none; }
 .st-credits img { height: 14px; width: auto; flex: none; }
 .st-credits .gcred { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .st-credits .right { margin-left: auto; white-space: nowrap; color: var(--text-2); }
-.st-corner { position: absolute; left: 12px; bottom: 32px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; pointer-events: none; max-width: 50%; }
+.st-corner { position: absolute; z-index: var(--z-overlay, 21); left: 12px; bottom: 32px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; pointer-events: none; max-width: 50%; }
 .st-chip { padding: 4px 8px; border-radius: var(--r-sm); background: var(--glass); font-size: 11px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .st-chip.mono { font-family: var(--mono); }
 .st-chip.err { color: var(--red); pointer-events: auto; cursor: pointer; white-space: normal; }
@@ -320,7 +320,7 @@
 .st-dropzone-hint { position: absolute; inset: 12px; border: 1.5px dashed var(--text-2); border-radius: 12px; display: grid; place-items: center; color: var(--text); font: 500 13px var(--sans); background: rgba(0, 0, 0, 0.25); pointer-events: none; z-index: 15; }
 
 /* Through the camera */
-.st-camctl { position: absolute; left: 12px; top: 12px; right: 12px; display: flex; align-items: center; gap: 8px; }
+.st-camctl { position: absolute; left: 12px; top: 12px; right: 12px; display: flex; align-items: center; gap: 8px; z-index: var(--z-controls, 22); overflow-x: auto; scrollbar-width: none; }
 .st-overlays { position: absolute; inset: 0; pointer-events: none; }
 .st-overlays svg { position: absolute; inset: 0; }
 .st-ov-label { font: 11px var(--mono); fill: var(--z); }
@@ -358,7 +358,7 @@
 .st-track .horizon { position: absolute; left: 20px; font: 11px var(--mono); color: var(--text-3); pointer-events: none; }
 .st-playhead { position: absolute; top: 18px; width: 1.5px; bottom: 0; background: var(--text); pointer-events: none; }
 .st-playhead::before { content: ''; position: absolute; top: -4px; left: -4.25px; width: 10px; height: 8px; background: var(--text); clip-path: polygon(0 0, 100% 0, 50% 100%); }
-.st-sunread { position: absolute; top: 62px; padding: 0 8px; display: flex; flex-direction: column; pointer-events: none; }
+.st-sunread { position: absolute; top: 62px; padding: 2px 8px; border-radius: var(--r-sm); background: var(--glass); display: flex; flex-direction: column; pointer-events: none; }
 .st-sunread b { font: 400 11px var(--mono); color: var(--text); }
 .st-sunread span { font-size: 11px; color: var(--text-2); }
 .st-key { position: absolute; top: 154px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-2); white-space: nowrap; }
@@ -389,7 +389,7 @@
 .st-textin input { height: 36px; padding: 0 12px; border-radius: var(--r); background: var(--field); border: 0; color: var(--text); font-size: 16px; }
 
 /* Building-your-set card (V-1), quiet and in the corner */
-.st-build { position: absolute; left: 60px; bottom: 32px; width: 320px; padding: 16px; border-radius: 12px; z-index: 12; display: flex; flex-direction: column; gap: 12px; }
+.st-build { position: absolute; left: 60px; bottom: 32px; width: 320px; padding: 16px; border-radius: var(--radius-panel, 10px); z-index: var(--z-panel, 30); background: var(--panel) !important; display: flex; flex-direction: column; gap: 12px; }
 .st-build ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .st-build li { display: grid; grid-template-columns: 16px 1fr; gap: 0 8px; align-items: baseline; }
 .st-build li > b { width: 8px; height: 8px; border-radius: 4px; background: var(--y); grid-row: span 2; align-self: center; }
@@ -449,5 +449,38 @@
 .st-sharper { position: absolute; left: 50%; top: 60px; translate: -50% 0; z-index: 22; }
 /* The physical camera's readouts on the frame: histogram (top right) and warnings under it. */
 .st-hist { position: absolute; pointer-events: none; }
-.st-camwarn { position: absolute; translate: -100% 0; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin: 0; pointer-events: none; }
+.st-camwarn { position: absolute; translate: -100% -100%; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin: 0; pointer-events: none; }
 .st-camwarn span { padding: 2px 6px; border-radius: 4px; background: var(--glass); font: 11px var(--mono); color: var(--amber); white-space: nowrap; }
+/* The date beside the clock: looks like a control, a native calendar on click. */
+.st-date { position: relative; display: inline-flex; align-items: center; gap: 4px; min-width: 0; padding: 2px 6px; border-radius: var(--r-sm); background: var(--raise); cursor: pointer; }
+.st-date span { color: var(--text) !important; }
+.st-date input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.st-doy { display: grid; grid-template-columns: auto minmax(0, 1fr) 52px; align-items: center; gap: 8px; }
+.st-doy input { width: 100%; accent-color: var(--text); }
+.st-transport b { white-space: nowrap; }
+.st-date { flex: 0 1 auto; }
+.st-lightsw { pointer-events: auto; margin-bottom: 4px; }
+.st-expose { position: absolute; z-index: 22; }
+
+/* UI audit rows (docs/UI-AUDIT.md). */
+.st-camgroup { display: flex; align-items: center; gap: 4px; padding: 4px; flex: none; }
+.st-camgroup > span:not([style]) { font-size: 11px; color: var(--text-3); padding: 0 2px 0 6px; }
+.st-camgroup .st-seg { background: none; padding: 0; }
+.st-cmd-pill .st-cmd-who { margin-left: auto; background: none; }
+.st-cmd.compact { left: auto; width: auto; }
+.st-cmd.compact .st-cmd-text, .st-cmd.compact .st-cmd-who { display: none; }
+.st-cmd.compact .st-cmd-pill { padding: 0 10px !important; }
+.st-btn.primary:disabled { background: var(--raise) !important; color: var(--text-3) !important; opacity: 1; filter: none; }
+.st-transport b { white-space: nowrap; flex: none; }
+.st-date { min-width: 0; overflow: hidden; }
+.st-date span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st-track { padding-right: 40px; }
+.st-ol-row .st-meta, .st-ol-row .st-tag { flex-shrink: 8; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-page h2 { font: 500 16px var(--sans); margin: 0; text-transform: none; letter-spacing: 0; }
+.st-page-note { margin: 4px 0 16px; font-size: 13px; color: var(--text-2); }
+.st-sec-head + .st-note { white-space: normal; font-family: var(--sans); }
+@media (max-width: 720px) { .st-camctl { flex-wrap: nowrap; } }
+/* Row 22: the name keeps its room (up to two thirds of the row); metadata shrinks first. */
+.st-ol-row > .name, .st-ol-row > button > span { flex-shrink: 0; max-width: 66%; }
+/* Row 1 at narrow viewports: the camera controls wrap to a second row under the view switch. */
+.st-camctl.wrap { flex-wrap: wrap; overflow: visible; row-gap: 4px; }

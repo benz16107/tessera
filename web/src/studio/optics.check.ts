@@ -114,3 +114,23 @@ console.log(`optics ok (${BODIES.length} bodies, ${LENSES.length} lenses)`);
   near(m.tintGains(0)[1], 1, 1e-9); assert.ok(m.tintGains(30)[1] < 1 && m.tintGains(-30)[1] > 1, 'tint');
   console.log('physical camera formulas ok');
 }
+
+// ---- Live sun: light curves and the date control ----
+{
+  const l = await import('./light/sun.ts');
+  assert.equal(l.sunStrength(-1), 0); near(l.sunStrength(90), 1, 1e-9, 'noon sun');
+  assert.ok(l.sunStrength(5) > 0.7 && l.sunStrength(2) > 0.6, 'golden hour sun stays strong');
+  near(l.daylight(45).level, 1, 1e-9, 'day level'); near(l.daylight(-20).level, 0.12, 1e-9, 'night level');
+  assert.ok(l.daylight(-3).level < l.daylight(0).level && l.daylight(0).level < l.daylight(6).level, 'twilight rises smoothly');
+  assert.ok(l.daylight(-20).tint[2] > l.daylight(-20).tint[0], 'night is blue'); near(l.daylight(-20).stars, 1, 1e-9); near(l.daylight(10).stars, 0, 1e-9);
+  const g = l.previewGrade(3).rgb, n = l.previewGrade(-15).rgb;
+  assert.ok(g[0] > g[2], 'golden is warm'); assert.ok(n[2] > n[0], 'night is blue');
+  near(0.2126 * n[0] + 0.7152 * n[1] + 0.0722 * n[2], 1, 1e-9, 'grade keeps luminance');
+  near(l.previewGrade(40).rgb[0], 1, 1e-9, 'day grade is neutral');
+  // 4:28 PM in New York on Nov 7 (EST) moved to June 21 (EDT) stays 4:28 PM local: 20:28 UTC.
+  const at = new Date('2026-11-07T21:28:00Z');
+  assert.equal(l.setDayInZone(at, 'America/New_York', 2027, 6, 21).toISOString(), '2027-06-21T20:28:00.000Z');
+  assert.equal(l.setDayInZone(at, 'America/New_York', 2026, 11, 8).toISOString(), '2026-11-08T21:28:00.000Z');
+  assert.equal(l.setDayInZone(new Date('2026-11-07T23:30:00Z'), 'Europe/Paris', 2026, 7, 1).toISOString(), '2026-06-30T22:30:00.000Z');
+  console.log('live sun ok');
+}

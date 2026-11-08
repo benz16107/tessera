@@ -142,8 +142,6 @@ hr { border: 0; border-top: 1px dashed var(--rule); margin: 20px 0; }
 .topbar .btn { background: transparent; color: var(--on-ink); border-color: var(--ink-3); }
 .presence { display: flex; gap: 12px; list-style: none; margin: 0; padding: 0; font-size: 13px; color: var(--on-ink-muted); }
 .presence li { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: transparent; border: 1.5px solid currentColor; flex: none; }
-.dot[data-on='true'] { background: #5fbf5a; border-color: #5fbf5a; }
 
 .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 400px; min-height: 0; }
 .stage { position: relative; display: grid; grid-template-rows: 1fr auto; min-height: 0; min-width: 0; }
@@ -274,7 +272,6 @@ hr { border: 0; border-top: 1px dashed var(--rule); margin: 20px 0; }
 
 .roster { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .roster li { display: grid; grid-template-columns: 10px 1fr auto; gap: 2px 10px; align-items: center; font-size: 14px; }
-.roster .dot { color: var(--muted); }
 .roster .role { font: 11px var(--mono); text-transform: uppercase; color: var(--muted); }
 .roster li > span:last-child { grid-column: 2 / 4; font-size: 12px; }
 .messages { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; max-height: 46vh; overflow-y: auto; overscroll-behavior: contain; }
@@ -323,31 +320,6 @@ dialog::backdrop { background: rgb(28 26 23 / 0.6); }
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
 th, td { text-align: left; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--paper-2); vertical-align: top; }
 th { font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
-
-/* Scout (phone first) */
-.scout { position: fixed; inset: 0; background: #000; color: #fff; overflow: hidden; touch-action: manipulation; }
-.feed, .ghost { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.ghost { pointer-events: none; mix-blend-mode: normal; }
-.scout-start { position: absolute; inset: 0; display: grid; align-content: center; gap: 16px; padding: 24px max(24px, env(safe-area-inset-left)); background: var(--ink); color: var(--on-ink); }
-.scout-start .wordmark { color: var(--on-ink); }
-.scout-start h1 { font-size: 26px; }
-.start-thumb { max-height: 34vh; width: auto; justify-self: start; border-radius: 2px; outline: 1px solid rgb(255 255 255 / 0.1); outline-offset: -1px; }
-.scout-start .btn.primary, .scout-wait .btn.primary { background: var(--amber); color: var(--ink); border-color: var(--amber); }
-.scout-wait { min-height: 100%; display: grid; align-content: center; gap: 16px; padding: 24px; background: var(--ink); color: var(--on-ink); }
-.scout-wait .field > span, .scout-start .muted, .scout-wait .muted { color: var(--on-ink-muted); }
-.scout-wait .field input { background: var(--ink-2); color: var(--on-ink); border-color: #7d7466; }
-.scout-wait h1 { font-size: 26px; }
-.hud-top { position: absolute; top: 0; left: 0; right: 0; padding: max(14px, env(safe-area-inset-top)) 16px 14px; background: rgb(0 0 0 / 0.55); font-size: 16px; display: grid; gap: 4px; }
-.hud-top .big { font-size: 30px; color: var(--amber); margin-right: 4px; }
-.hud-top .muted { color: #cfc6b5; margin-left: 10px; font-size: 13px; }
-.hud-top .there { color: #9be38f; font-size: 20px; font-weight: 600; }
-.hud-top .error { color: #ffb4a2; }
-.hud-mid { position: absolute; top: 45%; left: 16px; right: 16px; text-align: center; background: rgb(0 0 0 / 0.55); padding: 10px; border-radius: 6px; }
-.arrow { position: absolute; left: 50%; top: 50%; width: 96px; height: 96px; margin: -48px 0 0 -48px; filter: drop-shadow(0 2px 6px rgb(0 0 0 / 0.6)); }
-@media (prefers-reduced-motion: no-preference) { .arrow { transition: transform 200ms ease-out; } }
-.arrow path { fill: var(--amber); stroke: var(--ink); stroke-width: 2; }
-.hud-bottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 16px max(18px, env(safe-area-inset-bottom)); background: rgb(0 0 0 / 0.55); }
-.hud-bottom .slider input { accent-color: var(--amber); }
 
 @media (max-width: 900px) {
   .home-main { grid-template-columns: 1fr; gap: 28px; padding: 28px 18px; }

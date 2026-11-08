@@ -5,6 +5,7 @@ import '@fontsource-variable/archivo/standard.css';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import './styles.css';
+import './ui/tokens.css';
 import { DbConnection } from './module_bindings/index.ts';
 import { ConfigContext, type AppConfig } from './config.ts';
 import App from './App.tsx';

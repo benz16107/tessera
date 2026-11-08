@@ -65,7 +65,8 @@ export default function RenderSection(p: Props) {
           <button className="st-btn small" onClick={again} disabled={!!busy || p.photoId === undefined}>Render again</button></div>
       )}
       {has && <NvidiaSlot name="RenderPanel" props={{ sessionId: p.sessionId, photoId: p.photoId, getLayers: p.getLayers, settings: JSON.parse(settings), onSunFix: p.onSunFix }} />}
-      <header className="st-sec-head"><span className="st-label">Render layers</span><span className="st-meta">your objects only, no map tiles</span></header>
+      <header className="st-sec-head"><span className="st-label">Render layers</span></header>
+      <p className="st-note">Your objects only, never map tiles.</p>
       <p className="st-note">Beauty, shadows, depth and an object mask from {''}
         the shot camera at the photo's size. {has ? 'The NVIDIA panel above sends them to the AI render.' : 'The crew composites them over your photo for the AI render.'}</p>
       <button className="st-btn small" onClick={make} disabled={!!busy}>{busy || 'Preview the layers'}</button>

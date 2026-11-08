@@ -83,8 +83,47 @@ export function lightQuality(sun: { azimuth: number; altitude: number }, cameraH
   return { hardness, direction, sunInFrame, colorK, text: `${note}; ${dirText}${sunInFrame ? '; sun in frame, expect flare' : ''}` };
 }
 
-/** Relative sun strength for the viewport's directional light (0 at the horizon, about 1 at midday). */
-export const sunStrength = (altitude: number) => (altitude <= 0 ? 0 : Math.min(1, Math.sin((altitude * Math.PI) / 180) * 1.25));
+const ss = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const lerp3 = (a: number[], b: number[], t: number) => a.map((v, i) => v + (b[i] - v) * t) as [number, number, number];
+
+/** Relative strength of direct sun on a surface facing it (0 below the horizon, 1 at midday). Low sun stays strong
+ *  through golden hour, as in photos: shadows there are long and deep, not washed out. */
+export const sunStrength = (altitude: number) =>
+  altitude <= -0.5 ? 0 : ss(-0.5, 2.5, altitude) * (0.8 + 0.2 * Math.min(1, Math.sin((Math.max(0, altitude) * Math.PI) / 180) / 0.5));
+
+/** The light as the eye adapts, for the World and Through Cam A: skylight level (1 by day, about 0.12 on a moonlit night, smooth through civil
+ *  and nautical twilight), its colour (neutral by day, deep blue at night), how many stars show (0 to 1), and how much
+ *  further the sky dims than the street (skyDim). */
+export function daylight(altitude: number): { level: number; tint: [number, number, number]; stars: number; skyDim: number } {
+  const pts: [number, number][] = [[-12, 0.12], [-6, 0.17], [-3, 0.22], [0, 0.26], [6, 0.5], [20, 1]];
+  let level = altitude <= pts[0][0] ? pts[0][1] : 1;
+  for (let i = 1; i < pts.length; i++) if (altitude < pts[i][0]) { const [a, la] = pts[i - 1], [b, lb] = pts[i]; level = la + (lb - la) * ss(0, 1, (altitude - a) / (b - a)); break; }
+  return { level, tint: lerp3([0.42, 0.58, 1.0], [1, 1, 1], ss(-7, 3, altitude)), stars: 1 - ss(-10, -4, altitude), skyDim: 0.3 + 0.7 * ss(-8, 0, altitude) };
+}
+
+/** Through Cam A's preview grade for the photo (the render relights it for real): warmer at golden hour, bluer and
+ *  less saturated after sunset. Colour only, with luminance kept: the camera's exposure already makes night dark. */
+export function previewGrade(altitude: number): { rgb: [number, number, number]; desat: number } {
+  const golden: [number, number, number] = [1.1, 0.98, 0.8], blue: [number, number, number] = [0.74, 0.86, 1.18], night: [number, number, number] = [0.66, 0.8, 1.3];
+  let rgb: [number, number, number] = [1, 1, 1];
+  if (altitude >= 0) rgb = lerp3(golden, [1, 1, 1], ss(3, 12, altitude));
+  else rgb = lerp3(night, lerp3(blue, golden, ss(-3, 0, altitude)), ss(-12, -6, altitude));
+  const l = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+  return { rgb: rgb.map(v => v / l) as [number, number, number], desat: 0.35 * (1 - ss(-12, -4, altitude)) };
+}
+
+/** The instant with the same clock time as `at` in `zone`, on another day (year, month 1-12, day). Uses the zone's offset
+ *  on the new day, so a date across a daylight-saving change keeps the clock time, not the UTC time. */
+export function setDayInZone(at: Date, zone: string, y: number, m: number, d: number): Date {
+  const parts = (t: Date) => Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: zone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' })
+    .formatToParts(t).filter(p => p.type !== 'literal').map(p => [p.type, +p.value]));
+  const p = parts(at);
+  const want = Date.UTC(y, m - 1, d, p.hour, p.minute, p.second);
+  const offset = (t: number) => { const q = parts(new Date(t)); return Date.UTC(q.year, q.month - 1, q.day, q.hour, q.minute, q.second) - t; };
+  let t = want - offset(want);
+  t = want - offset(t); // second pass settles a daylight-saving boundary
+  return new Date(t + (at.getTime() % 1000));
+}
 
 /** Unit vector toward the sun in the scene's east-north-up frame. */
 export function sunVector(azimuth: number, altitude: number): [number, number, number] {

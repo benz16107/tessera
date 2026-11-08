@@ -9,7 +9,7 @@ const browser = await chromium.launch({
   args: ['--use-angle=vulkan', '--enable-features=Vulkan', '--ignore-gpu-blocklist', '--enable-gpu-rasterization'],
 });
 // PHONE=1: a 390 x 844 touch phone (coarse pointer), for the phone layouts.
-const page = await browser.newPage(process.env.PHONE ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : { viewport: { width: 1512, height: 982 } });
+const page = await browser.newPage(process.env.PHONE ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : { viewport: { width: +(process.env.W ?? 1512), height: +(process.env.H ?? 982) } });
 page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') console.log(`[${m.type()}]`, m.text().slice(0, 300)); });
 await page.goto(new URL('/credits', url).href);
 await page.evaluate(() => localStorage.setItem('shotmatch/name', 'Studio'));
@@ -32,6 +32,39 @@ for (const step of stepsArg.split(/,(?![^{]*})/)) {
     await page.keyboard.down('ArrowRight'); await page.waitForTimeout(700); await page.keyboard.up('ArrowRight');
     await page.waitForTimeout(800); await S('-walk-moved');
   }
+  if (step.startsWith('time|')) { // time|<name>|<ISO>|<World style label>: the World view at that time, set locally (never saved)
+    const [, name, iso, style] = step.split('|');
+    await page.evaluate(i => window.__cam.time(i), iso);
+    await page.keyboard.press('5'); await page.waitForTimeout(800);
+    const cur = await page.locator('.st-viewswitch button[title="World style"]').textContent();
+    if (style && cur !== style) { await page.locator('.st-viewswitch button[title="World style"]').click(); await page.getByRole('menuitemradio', { name: style, exact: true }).click(); }
+    await page.waitForTimeout(style === 'Earth' ? 9000 : 5000);
+    console.log(name, 'fps', await fps());
+    await S(`-${name}`);
+  }
+  if (step.startsWith('walkat|')) { // walkat|<name>|<ISO>: street level in Walk at that time, looking up the street
+    const [, name, iso] = step.split('|');
+    await page.evaluate(i => window.__cam.time(i), iso);
+    await page.keyboard.press('5'); await page.waitForTimeout(1500);
+    await page.keyboard.press('Backquote'); await page.waitForTimeout(2000);
+    await page.locator('.st-walk-help button').click().catch(() => {});
+    await page.keyboard.down('Shift'); await page.keyboard.down('e'); await page.waitForTimeout(1600); await page.keyboard.up('e'); await page.keyboard.up('Shift');
+    await page.waitForTimeout(9000);
+    console.log(name, 'fps', await fps());
+    await S(`-${name}`); await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+  }
+  if (step.startsWith('shotat|')) { // shotat|<name>|<ISO>: Through Cam A at that time (set locally, never saved)
+    const [, name, iso] = step.split('|');
+    await page.evaluate(i => window.__cam.time(i), iso);
+    await page.keyboard.press('0'); await page.waitForTimeout(5000);
+    await S(`-${name}`);
+  }
+  if (step.startsWith('light|')) { // light|<Live sun|As captured>, then measure where we are
+    await page.locator('.st-lightsw button', { hasText: step.slice(6) }).click();
+    await page.waitForTimeout(6000);
+    console.log(step.slice(6), 'fps', await fps());
+  }
+  if (step === 'fps') { await page.keyboard.press('5'); await page.waitForTimeout(20000); console.log('fps World', await fps(), await page.evaluate(() => document.querySelector('.st-chip.mono')?.textContent)); }
   if (step === 'earth') { await page.keyboard.press('5'); await page.waitForTimeout(35000); await S('-earth'); }
   if (step === 'earthwalk') { // Walk from the aerial: land on the street ahead, walk forward
     await page.keyboard.press('Backquote'); await page.waitForTimeout(6000);
@@ -90,7 +123,7 @@ for (const step of stepsArg.split(/,(?![^{]*})/)) {
   if (step.startsWith('style:')) { // style:<World style label>, from the World view's default camera
     const label = step.slice(6);
     await page.keyboard.press('5'); await page.waitForTimeout(1000);
-    await page.locator('.st-viewswitch button[aria-expanded]').click();
+    await page.locator('.st-viewswitch button[title="World style"]').click();
     await page.getByRole('menuitemradio', { name: label, exact: true }).click();
     await page.waitForTimeout(label === 'Splat' ? 25000 : 6000);
     await S(`-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`);

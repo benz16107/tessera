@@ -1,53 +1,72 @@
-/* SpacetimeDB panels. Button rules carry the container class so a host's button reset (e.g. .studio button) doesn't win.
-   Colors come from the studio's tokens when mounted there, with dark fallbacks elsewhere. */
-.stdb-presence, .stdb-inspector {
-  --s-bg: var(--st-panel, #111110); --s-raise: var(--st-raise, #191816); --s-line: var(--st-line-2, #34312b);
-  --s-text: var(--st-text, #ece6d8); --s-muted: var(--st-muted, #8f877a); --s-accent: var(--st-amber, #e8a33d);
-  --s-ink: var(--st-amber-ink, #1a1208); --s-red: var(--st-red, #e0644c); --s-r: var(--st-r, 6px);
-  --s-mono: var(--mono, 'IBM Plex Mono', ui-monospace, monospace);
-  color: var(--s-text); font-size: 12px;
+/* SpacetimeDB panels, on the shared tokens (web/src/ui/tokens.css) and the studio's colours, with dark fallbacks.
+   The studio mounts Presence, LiveInspector, HistoryScrubber, SharedLibrary and SunClock separately, so every one of
+   their roots carries the variables, and button rules name the root so `.studio button` cannot reset them. */
+:is(.stdb-presence, .stdb-inspector, .stdb-history, .stdb-library, .stdb-sun) {
+  --s-bg: var(--st-panel, #111110); --s-raise: var(--st-raise, #191816); --s-hover: var(--st-line-2, #34312b); --s-line: var(--st-line, #22211e);
+  --s-text: var(--st-text, #ece6d8); --s-muted: var(--st-muted, #8f877a); --s-dim: var(--st-dim, #5f594f); --s-accent: var(--st-amber, #e8a33d);
+  --s-ink: var(--st-amber-ink, #1a1208); --s-red: var(--st-red, #e0644c);
+  --s-mono: var(--font-mono);
+  color: var(--s-text); font: var(--text-sm)/1.45 var(--font-sans);
 }
-.stdb-presence { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; min-width: 0; }
-.stdb-people { display: flex; flex-wrap: nowrap; gap: 6px; min-width: 0; overflow: hidden; list-style: none; margin: 0; padding: 0; }
-.stdb-person { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px 0 3px; border: 1px solid var(--s-line); border-radius: 13px; background: var(--s-raise); }
+.stdb-presence { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+.stdb-people { display: flex; flex-wrap: wrap; gap: var(--space-2); min-width: 0; list-style: none; margin: 0; padding: 0; }
+.stdb-person { display: inline-flex; align-items: center; gap: var(--space-2); height: var(--control-h-dense); padding: 0 var(--space-1) 0 var(--space-1); border-radius: var(--radius-control); background: var(--s-raise); }
 .stdb-person[data-status='idle'] { opacity: 0.55; }
-.stdb-dot { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--who); color: #111; font-weight: 600; font-size: 11px; }
-.stdb-name { max-width: 6em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-:is(.stdb-inspector, .stdb-presence) .stdb-link { background: none; border: 0; padding: 0 2px; color: var(--s-accent); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
-.stdb-label { color: var(--s-muted); margin-right: 2px; }
-.stdb-sun { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-.stdb-select { height: 24px; background: var(--s-raise); color: var(--s-text); border: 1px solid var(--s-line); border-radius: var(--s-r); font: inherit; }
-:is(.stdb-inspector, .stdb-presence) .stdb-seg { height: 24px; padding: 0 8px; background: var(--s-raise); color: var(--s-text); border: 1px solid var(--s-line); border-radius: var(--s-r); font: inherit; cursor: pointer; }
-:is(.stdb-inspector, .stdb-presence) .stdb-seg[aria-pressed='true'], :is(.stdb-inspector, .stdb-presence) .stdb-seg[aria-selected='true'] { border-color: var(--s-accent); color: var(--s-accent); }
-:is(.stdb-inspector, .stdb-presence) .stdb-seg.primary { background: var(--s-accent); color: var(--s-ink); border-color: var(--s-accent); font-weight: 600; }
-.stdb-invite { position: absolute; top: 100%; right: 0; margin: 4px 0 0; padding: 6px 8px; background: var(--s-bg); border: 1px solid var(--s-line); border-radius: var(--s-r); color: var(--s-muted); white-space: nowrap; z-index: 5; }
-.stdb-presence { position: relative; }
+.stdb-dot { display: grid; place-items: center; width: 20px; height: 20px; border-radius: var(--radius-round); background: var(--who); color: #111; font: 600 var(--text-xs) var(--font-sans); }
+.stdb-name { max-width: 8em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: var(--space-1); }
+.stdb-label { color: var(--s-muted); }
+.stdb-sun { display: inline-flex; align-items: center; gap: var(--space-2); white-space: nowrap; }
 
-.stdb-inspector { display: flex; flex-direction: column; min-height: 0; padding: 0 12px; }
-:is(.stdb-inspector, .stdb-presence) .stdb-toggle { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; height: 28px; padding: 0 10px; background: var(--s-raise); color: var(--s-text); border: 1px solid var(--s-line); border-radius: var(--s-r); font: inherit; font-weight: 600; cursor: pointer; }
-.stdb-live { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--s-muted); }
+/* One button shape: the studio's dense ghost or secondary button, 28 px, no border. */
+:is(.stdb-presence, .stdb-inspector, .stdb-history, .stdb-library, .stdb-sun) :is(.stdb-seg, .stdb-toggle, .stdb-link) {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); flex: none;
+  height: var(--control-h-dense); padding: 0 var(--control-pad-dense); border: 0; border-radius: var(--radius-control);
+  background: var(--s-raise); color: var(--s-text); font: 500 var(--text-sm)/1 var(--font-sans); white-space: nowrap; cursor: pointer; text-decoration: none;
+  transition-property: background-color, scale; transition-duration: 120ms; transition-timing-function: ease-out;
+}
+:is(.stdb-presence, .stdb-inspector, .stdb-history, .stdb-library, .stdb-sun) .stdb-link { background: transparent; color: var(--s-muted); padding: 0 var(--space-2); }
+:is(.stdb-presence, .stdb-inspector, .stdb-history, .stdb-library) :is(.stdb-seg[aria-pressed='true'], .stdb-seg[aria-selected='true']) { background: var(--s-hover); color: var(--s-text); }
+:is(.stdb-presence, .stdb-inspector, .stdb-history, .stdb-library) .stdb-seg.primary { background: var(--s-accent); color: var(--s-ink); font-weight: 600; }
+:is(.stdb-presence, .stdb-inspector, .stdb-history, .stdb-library, .stdb-sun) :is(.stdb-seg, .stdb-toggle, .stdb-link):not(:disabled):active { scale: 0.96; }
+@media (hover: hover) {
+  :is(.stdb-presence, .stdb-inspector, .stdb-history, .stdb-library, .stdb-sun) :is(.stdb-seg:not(.primary), .stdb-toggle, .stdb-link):hover { background: var(--s-hover); color: var(--s-text); }
+}
+:is(.stdb-presence, .stdb-inspector, .stdb-history, .stdb-library, .stdb-sun) :is(.stdb-seg, .stdb-toggle, .stdb-link, .stdb-select):focus-visible { outline: 2px solid var(--s-text); outline-offset: 2px; }
+.stdb-select { height: var(--control-h-dense); padding: 0 var(--space-2); background: var(--s-raise); color: var(--s-text); border: 0; border-radius: var(--radius-control); font: inherit; }
+.stdb-invite { position: absolute; top: 100%; right: 0; margin: var(--space-1) 0 0; padding: var(--space-2) var(--space-3); display: flex; align-items: center; gap: var(--space-2); background: var(--s-bg); border-radius: var(--radius-panel); box-shadow: var(--shadow, 0 8px 24px rgba(0, 0, 0, 0.45)); color: var(--s-muted); white-space: nowrap; z-index: var(--z-popover); }
+
+.stdb-inspector { display: flex; flex-direction: column; min-height: 0; }
+.stdb-live { display: inline-block; width: 8px; height: 8px; border-radius: var(--radius-round); background: var(--s-muted); }
 .stdb-live[data-on='true'] { background: #5bd07a; box-shadow: 0 0 0 3px rgb(91 208 122 / 0.18); }
-.stdb-body { display: flex; flex-direction: column; gap: 8px; min-height: 0; margin-top: 8px; }
-.stdb-sub { margin: 0; color: var(--s-muted); line-height: 1.4; }
-.stdb-tabs, .stdb-tools { display: flex; flex-wrap: wrap; gap: 4px; }
-.stdb-stats { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--s-muted); font-family: var(--s-mono); font-size: 11px; }
+.stdb-body { display: flex; flex-direction: column; gap: var(--space-2); min-height: 0; margin-top: var(--space-2); }
+.stdb-sub { margin: 0; color: var(--s-muted); }
+.stdb-tabs, .stdb-tools { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.stdb-stats { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); color: var(--s-muted); font: var(--text-xs)/1.5 var(--s-mono); }
 .stdb-stats b { color: var(--s-text); font-weight: 500; font-variant-numeric: tabular-nums; }
-.stdb-log { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow: auto; font-family: var(--s-mono); font-size: 11px; border-top: 1px solid var(--s-line); }
-.stdb-log li { display: grid; grid-template-columns: auto auto auto 1fr auto; gap: 6px; align-items: baseline; padding: 3px 0; border-bottom: 1px solid var(--s-line); }
+.stdb-feed { display: flex; flex-direction: column; gap: var(--space-2); }
+
+/* Logs: one grid per list, fixed columns, so time, kind and the action line up row to row. */
+.stdb-log { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow: auto; overscroll-behavior: contain; font: var(--text-xs)/1.4 var(--s-mono); }
+.stdb-log li { display: grid; grid-template-columns: 64px 52px minmax(0, 1fr) auto; gap: var(--space-2); align-items: center; min-height: 24px; padding: 2px 0; border-bottom: 1px solid var(--s-line); }
+.stdb-feed .stdb-log li { grid-template-columns: 64px 52px 96px minmax(0, 1fr); }
 .stdb-log time { color: var(--s-muted); font-variant-numeric: tabular-nums; }
-.stdb-kind { color: var(--s-muted); min-width: 4.5em; }
+.stdb-kind { color: var(--s-muted); }
 .stdb-log li[data-kind='call'] .stdb-kind { color: var(--s-accent); }
 .stdb-log li[data-kind='delete'] .stdb-kind { color: var(--s-red); }
-.stdb-log code { color: var(--s-text); }
-.stdb-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.stdb-text em { font-style: normal; color: var(--s-accent); }
-.stdb-empty, .stdb-note { color: var(--s-muted); margin: 4px 0; font-family: inherit; }
-.stdb-log .stdb-empty { display: block; padding: 8px 0; white-space: normal; }
+.stdb-log code { color: var(--s-text); font: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stdb-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-family: var(--font-sans); font-size: var(--text-sm); }
+.stdb-text em { font-style: normal; color: var(--s-muted); }
+.stdb-empty, .stdb-note { color: var(--s-muted); margin: var(--space-1) 0; font-family: var(--font-sans); }
+.stdb-log .stdb-empty { display: block; padding: var(--space-2) 0; white-space: normal; }
 .stdb-err { color: var(--s-red); margin: 0; }
-.stdb-mono { font-family: var(--s-mono); font-size: 11px; color: var(--s-muted); }
-.stdb-scrub { display: grid; gap: 4px; }
-.stdb-scrub input { width: 100%; accent-color: var(--s-accent); }
-.stdb-library h4 { margin: 10px 0 4px; font-size: 12px; }
-.stdb-library h4 small { color: var(--s-muted); font-weight: 400; margin-left: 6px; }
+.stdb-mono { font: var(--text-xs)/1.5 var(--s-mono); color: var(--s-muted); margin: 0; }
+.stdb-history { display: flex; flex-direction: column; gap: var(--space-2); }
+.stdb-scrub { display: grid; gap: var(--space-1); }
+.stdb-scrub > span:first-child { font-weight: 500; }
+.stdb-scrub input { width: 100%; accent-color: var(--s-text); }
+.stdb-library { display: flex; flex-direction: column; gap: var(--space-1); }
+.stdb-library h4 { margin: var(--space-3) 0 var(--space-1); font: 500 var(--text-sm)/1.3 var(--font-sans); }
+.stdb-library h4 small { color: var(--s-muted); font-weight: 400; font-size: var(--text-xs); margin-left: var(--space-2); }
 .stdb-list { list-style: none; margin: 0; padding: 0; }
-.stdb-list li { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; border-bottom: 1px solid var(--s-line); }
+.stdb-list li { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); min-height: 32px; border-bottom: 1px solid var(--s-line); }
+.stdb-list li > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

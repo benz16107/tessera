@@ -1,0 +1,84 @@
+/* Tessera shape, size and layering tokens, shared by Simple (light) and Studio (Darkroom, dark).
+   Themes own colour; these own everything else. Rows in docs/UI-AUDIT.md point here.
+
+   Radius: two steps and a circle.
+     6 px  controls: buttons, inputs, selects, chips, tags, segmented buttons, menu items, small labels on the view.
+     10 px panels: cards, popovers, menus, drawers, floating bars, photos and thumbnails. A floating bar or segmented
+           track holds 6 px controls with 4 px padding, so its 10 px corner is concentric (6 + 4). Thumbnails smaller
+           than 64 px take the 6 px control radius, so they don't read as pills.
+     50%   avatars, status dots and the round play button only.
+   No 999 px pills anywhere: Simple's pill buttons were the only ones, and they move to 6 px like every other button.
+   The viewfinder frame and the AI render shown beside it stay square, like a print.
+
+   Buttons: one shape (no border on the dark theme), three variants: primary (amber in Studio, the theme accent in
+   Simple), secondary (raised surface), ghost (text only). Heights: 28 px in dense Studio panels, 36 px everywhere
+   else, 44 px for touch targets in Simple on phones. Label 13 px/500. Icons 16 px, one stroke.
+
+   Type: the Darkroom scale. Archivo for words, Martian Mono for numbers. Studio panels use 11 (labels, metadata),
+   13 (body, values) and 16 (names, drawer titles) only. Simple adds 20 and 28 for its headings.
+
+   Spacing: a 4 px grid.
+
+   Layers (z-index), lowest first:
+     scene    the 3D canvas and what stands in for it (Map view, the map overview). drei <Html> labels use 0 to 20.
+     overlay  view overlays: frame readout, histogram, guides, captions, corner chips, credits strip.
+     controls viewport controls: view row, tool rail, command bar, walk bar, picture-in-picture.
+     panel    drawers over the viewport: Add, People and live data, Conditions.
+     popover  menus and popovers, including ones opened from a drawer.
+     toast    toasts.
+     modal    dialogs with a backdrop.
+
+   Viewport slots, so two overlays never claim the same place:
+     top-left      view row (the same five views in every view; the camera controls follow it in Through Cam A)
+     left edge     tool rail, under the view row
+     top-centre    command bar, between the view row and the axis gizmo
+     top-right     axis gizmo (World, Walk, Top); MapLibre's zoom buttons (Map)
+     bottom-left   corner chips: Light switch, eye height, status, toasts; Map view: the map hint
+     bottom-centre hints and the Walk bar
+     bottom-right  picture-in-picture; Map view: attribution
+     bottom edge   credits strip (hidden in Map view, which draws its own attribution)
+   Inside the Through Cam A frame: readout top-left, histogram and warnings bottom-right, photo credit bottom-left,
+   focus label at the subject, horizon label inside the right edge. */
+:root {
+  --radius-control: 6px;
+  --radius-panel: 10px;
+  --radius-round: 50%;
+
+  --control-h-dense: 28px;
+  --control-h: 36px;
+  --control-h-touch: 44px;
+  --control-pad: 12px;
+  --control-pad-dense: 10px;
+  --icon: 16px;
+
+  --font-sans: 'Archivo Variable', 'Archivo', system-ui, sans-serif;
+  --font-mono: 'Martian Mono', ui-monospace, monospace;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 28px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --z-scene: 6;
+  --z-overlay: 21;
+  --z-controls: 22;
+  --z-panel: 30;
+  --z-popover: 40;
+  --z-toast: 50;
+  --z-modal: 60;
+}
+
+/* The old radius names, pointed at the new steps. `.studio.studio` outranks studio.css's own `.studio` declarations,
+   so every rule that reads --r, --r-sm or --st-r (and through it --nv-r and --s-r) gets the control radius. */
+:root, .studio.studio {
+  --r: var(--radius-control);
+  --r-sm: var(--radius-control);
+  --st-r: var(--radius-control);
+}

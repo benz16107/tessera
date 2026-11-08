@@ -81,10 +81,10 @@ export default function Overlays({ vw, vh, rect, aspect, overlays, pitchDeg, rol
           </g>
         )}
         {on('horizon') && (() => {
-          // In the margin where the horizon leaves the frame's right edge, clear of anything in the picture.
-          const ex = c.x + c.w, ey = hy - Math.tan((rollDeg * Math.PI) / 180) * (ex - cx), room = vw - ex > 110;
+          // Inside the frame's right edge, just above the line: clear of the margin, where a render or panel can sit.
+          const ex = c.x + c.w, ey = hy - Math.tan((rollDeg * Math.PI) / 180) * (ex - cx);
           return (
-            <text x={room ? ex + 8 : ex - 8} y={ey + 4} textAnchor={room ? 'start' : 'end'} className="st-ov-label" style={{ paintOrder: 'stroke', stroke: 'var(--bg)', strokeWidth: 3 }}>
+            <text x={ex - 8} y={Math.max(c.y + 16, Math.min(c.y + c.h - 8, ey - 6))} textAnchor="end" className="st-ov-label" style={{ paintOrder: 'stroke', stroke: 'var(--bg)', strokeWidth: 3 }}>
               Horizon {rollDeg >= 0 ? '+' : ''}{rollDeg.toFixed(1)}°
             </text>
           );

@@ -123,7 +123,7 @@ export default function MapView({ geo, sessionId, origin, at, zone, theme, compa
   const [card, setCard] = useState<{ p: Record<string, any>; lngLat: [number, number] } | null>(null);
   const [, setTick] = useState(0);
   const drag = useRef<{ id: string; moved: boolean } | null>(null);
-  const armed = useRef(true), applied = useRef('');
+  const armed = useRef(true), applied = useRef(''), layersRef = useRef<HTMLDetailsElement>(null);
   const latest = useRef({ shots, cones, byId, onCamera, onEnter3D, enter3DZoom, compact });
   latest.current = { shots, cones, byId, onCamera, onEnter3D, enter3DZoom, compact };
 
@@ -140,7 +140,6 @@ export default function MapView({ geo, sessionId, origin, at, zone, theme, compa
     m.addLayer({ id: 'map-world-count', type: 'symbol', source: 'map-world', maxzoom: 14, filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'text-allow-overlap': true }, paint: { 'text-color': '#1a1917' } });
     m.addLayer({ id: 'map-world-points', type: 'circle', source: 'map-world', maxzoom: 14, filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': 4, 'circle-color': '#e6d3a8', 'circle-stroke-color': halo, 'circle-stroke-width': 1 } });
     m.addLayer({ id: 'map-sun', type: 'line', source: 'map-sun', minzoom: 13, filter: ['==', ['geometry-type'], 'LineString'], paint: { 'line-color': '#e9cf7f', 'line-width': 1.5, 'line-dasharray': [2, 2] } });
-    m.addLayer({ id: 'map-sun-label', type: 'symbol', source: 'map-sun', minzoom: 13, filter: ['==', ['geometry-type'], 'Point'], layout: { ...text, 'text-offset': [0, 0], 'text-field': ['get', 'label'] }, paint: { 'text-color': '#e9cf7f', 'text-halo-color': halo, 'text-halo-width': 1.2 } });
     m.addLayer({ id: 'map-cones', type: 'fill', source: 'map-cones', paint: { 'fill-color': ['case', ['get', 'isShot'], '#f2a33a', '#a39f96'], 'fill-opacity': 0.18 } });
     m.addLayer({ id: 'map-cones-line', type: 'line', source: 'map-cones', paint: { 'line-color': ['case', ['get', 'isShot'], '#f2a33a', '#a39f96'], 'line-width': 1.2 } });
     m.addLayer({ id: 'map-dots', type: 'circle', source: 'map-shots', filter: ['in', ['get', 'kind'], ['literal', ['person', 'prop']]], minzoom: 15, paint: {
@@ -248,29 +247,40 @@ export default function MapView({ geo, sessionId, origin, at, zone, theme, compa
 
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setCard(null); }; addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, []);
   const m0 = map.current, pos = card && m0 ? m0.project(card.lngLat) : null;
+  // The sun's label, clamped inside the map so it never runs off an edge (it sits 240 m out along the sun's bearing).
+  const sunChip = (() => {
+    if (!m0 || !ready || sun.altitude <= 0 || m0.getZoom() < 13) return null;
+    const p = m0.project(offset(origin.lat, origin.lon, sun.azimuth, 240)), w = m0.getContainer().clientWidth, h = m0.getContainer().clientHeight;
+    let x = Math.min(w - 90, Math.max(90, p.x));
+    const y = Math.min(h - 56, Math.max(24, p.y)), lp = layersRef.current?.getBoundingClientRect(), cr = m0.getContainer().getBoundingClientRect();
+    if (lp && x - 75 < lp.right - cr.left + 8 && y + 14 > lp.top - cr.top && y - 14 < lp.bottom - cr.top) x = lp.right - cr.left + 8 + 75; // clear of the layer list
+    return { x, y, text: `Sun ${sun.altitude.toFixed(0)}° up, ${fmtTime(at, zone)}` };
+  })();
   const onScreen = !!pos && !!m0 && pos.x >= 0 && pos.y >= 0 && pos.x <= m0.getContainer().clientWidth && pos.y <= m0.getContainer().clientHeight;
   return (
     <div className="geo-mapview" data-theme={theme ?? (compact ? 'light' : 'dark')}>
       <Map2D geo={compact ? simpleGeo : geo} center={origin} height="100%" zoom={17} theme={theme ?? (compact ? 'light' : 'dark')} shadow={compact ? null : shadow} onMap={onMap} />
-      {!compact && <LayerList geo={geo} />}
+      {!compact && <LayerList geo={geo} innerRef={layersRef} />}
       {card && pos && onScreen && <ShotCard p={card.p} x={pos.x} y={pos.y} at={at} zone={zone} sun={sun} geo={geo} versions={card.p.isShot ? versions.filter(v => v.imageUrl) : []} photoUrl={card.p.isShot ? photo?.thumb || photo?.url : undefined}
         onClose={() => setCard(null)} onOpen={onOpenShot && (mode => onOpenShot({ objectId: card.p.id ? BigInt(card.p.id) : null, lat: card.lngLat[1], lon: card.lngLat[0], heading: Number(card.p.heading) || 0, pitch: Number(card.p.pitch) || 0 }, mode))} />}
-      {!compact && <p className="geo-mapview-hint">Drag a camera to move it · zoom in past street level for the 3D set</p>}
+      {!compact && <p className="st-chip geo-mapview-hint">Drag a camera to move it. Zoom in for 3D.</p>}
+      {sunChip && <p className="st-chip geo-sunchip" style={{ left: sunChip.x, top: sunChip.y }}>{sunChip.text}</p>}
     </div>
   );
 }
 
-function LayerList({ geo }: { geo: GeoLayers }) {
+function LayerList({ geo, innerRef }: { geo: GeoLayers; innerRef: React.RefObject<HTMLDetailsElement> }) {
   const ids: LayerId[] = ['weather', 'alerts', 'film', 'closures', 'construction', 'shadow', 'tides', 'pois', 'photographers', 'buildings'];
+  const [wide] = useState(() => matchMedia('(min-width: 720px)').matches); // phones start with the list folded
   return (
-    <section className="geo-maplayers" aria-label="Map layers">
-      <h2>Layers{geo.shared ? <small> · shared with the set</small> : null}</h2>
+    <details ref={innerRef} className="geo-maplayers" aria-label="Map layers" open={wide}>
+      <summary>Layers{geo.shared ? <small>shared with the set</small> : null}</summary>
       <ul className="geo-toggles one">
         {ids.map(id => { const l = LAYERS.find(x => x.id === id)!; const off = (id === 'film' || id === 'closures' || id === 'construction') && geo.data && !geo.data.nyc; return (
           <li key={id}><button aria-pressed={geo.on(id) && !off} disabled={!!off} onClick={() => geo.toggle(id)} title={l.note}><i style={{ background: l.color }} /><span>{l.name}</span><small>{off ? 'NYC only' : l.note}</small></button></li>
         ); })}
       </ul>
-    </section>
+    </details>
   );
 }
 

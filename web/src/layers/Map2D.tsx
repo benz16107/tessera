@@ -145,5 +145,5 @@ export default function Map2D({ geo, center, camera, height = 320, zoom = 16.2, 
 
   useEffect(() => { map.current?.easeTo({ center: [center.lon, center.lat], zoom, duration: 0 }); }, [center.lat, center.lon, zoom]);
 
-  return <div ref={el} className={`geo-map ${className ?? ''}`} style={{ height }} aria-label="2D map of the spot with the data layers" role="region" />;
+  return <div ref={el} className={`geo-map ${className ?? ''}`} data-theme={theme} style={{ height }} aria-label="2D map of the spot with the data layers" role="region" />;
 }

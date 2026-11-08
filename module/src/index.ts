@@ -517,7 +517,7 @@ const absUrl = (ctx: Ctx, u: string) =>
 
 // Default titles the title_session procedure may replace. Photon thread sessions ("photon:...") are never retitled:
 // the crew finds them by that title.
-const UNTITLED = new Set(['', 'Untitled shoot']);
+const UNTITLED = new Set(['', 'Untitled shoot', 'New shoot']); // planner default, drop page default
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newCode = (ctx: Ctx) => {
@@ -573,6 +573,10 @@ export const init = spacetimedb.init(ctx => {
 export const upgrade = spacetimedb.reducer(ctx => {
   if (!isOwner(ctx)) throw new SenderError('owner only');
   ensureSetup(ctx);
+  // Backfill: placed shoots still on a default title get a Nemotron title (drop-page shoots made before 'New shoot' counted).
+  for (const s of [...ctx.db.session.iter()])
+    if (UNTITLED.has(s.title) && [...ctx.db.solveResult.sessionId.filter(s.id)].some(r => r.confidence !== 'none'))
+      ctx.db.titleJob.insert({ scheduledId: 0n, scheduledAt: ScheduleAt.time(ctx.timestamp.microsSinceUnixEpoch), sessionId: s.id });
 });
 
 export const onConnect = spacetimedb.clientConnected(ctx => {
@@ -1074,7 +1078,10 @@ export const removePerson = spacetimedb.reducer({ id: t.u64() }, (ctx, { id }) =
 export const setPlanTime = spacetimedb.reducer({ sessionId: t.u64(), at: t.option(t.timestamp()) }, (ctx, { sessionId, at }) => {
   requireMember(ctx, sessionId);
   ctx.db.session.id.update({ ...ctx.db.session.id.find(sessionId)!, planTime: at });
-  trace(ctx, sessionId, 'setPlanTime');
+  // Picking a time by hand turns Live sun off (sun_tick would snap it back to now); a time-lapse keeps running from here.
+  const clock = ctx.db.sunClock.sessionId.find(sessionId);
+  if (clock && clock.rate === 1) ctx.db.sunClock.scheduledId.delete(clock.scheduledId);
+  trace(ctx, sessionId, 'setPlanTime', clock?.rate === 1 ? 'live sun off' : '');
 });
 
 export const pushDevicePose = spacetimedb.reducer(

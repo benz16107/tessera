@@ -3,7 +3,7 @@
 // horizon, a playhead that drives the set's sun, and saved shots as keyframes. Times read in the spot's time zone.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import SunCalc from 'suncalc';
-import { bands, solarDay, sunPath } from '../light/sun.ts';
+import { bands, setDayInZone, solarDay, sunPath } from '../light/sun.ts';
 import { fmtTime, sunAt, angleDiff } from '../../geo.ts';
 import { Ico, Seg } from './ui.tsx';
 
@@ -78,7 +78,11 @@ export default function Timeline({ at, lat, lon, zone, camHeading, camName, onCh
   })();
   const sunrise = win === 'evening' ? times.sunset : times.sunrise;
   const px = x(at);
-  const zoneDay = new Intl.DateTimeFormat('en-US', { timeZone: zone, weekday: 'long', month: 'short', day: 'numeric' }).format(at);
+  const zoneDay = new Intl.DateTimeFormat('en-US', { timeZone: zone, weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).format(at);
+  const ymd = new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(at); // YYYY-MM-DD at the spot
+  const [year, mon, dom] = ymd.split('-').map(Number);
+  const doy = Math.round((Date.UTC(year, mon - 1, dom) - Date.UTC(year, 0, 1)) / 86_400_000) + 1;
+  const daysIn = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0) ? 366 : 365;
 
   return (
     <div className="st-time" aria-label="Time of day" onMouseEnter={() => onHover(true)} onMouseLeave={() => onHover(false)}>
@@ -88,16 +92,22 @@ export default function Timeline({ at, lat, lon, zone, camHeading, camName, onCh
             {playing ? <span style={{ width: 8, height: 10, borderLeft: '3px solid currentColor', borderRight: '3px solid currentColor' }} /> : <Ico n="play" s={12} />}
           </button>
           <b>{fmtTime(at, zone)}</b>
-          <label style={{ position: 'relative', minWidth: 0 }}>
-            <span>{zoneDay}</span>
-            <input type="date" aria-label="Day" style={{ position: 'absolute', inset: 0, opacity: 0 }}
-              value={new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(at)}
-              onChange={e => { const [yy, mm, dd] = e.target.value.split('-').map(Number); if (yy) { const n = new Date(at); n.setFullYear(yy, mm - 1, dd); onChange(n); } }} />
+          {/* The date: a calendar on click. Moves the shared plan time to that day at the same clock time at the spot. */}
+          <label className="st-date" title="Change the date: the sun's path and the golden hours follow the season">
+            <span>{zoneDay}</span><Ico n="down" s={10} />
+            <input type="date" aria-label="Date" value={ymd}
+              onChange={e => { const [yy, mm, dd] = e.target.value.split('-').map(Number); if (yy) onChange(setDayInZone(at, zone, yy, mm, dd)); }} />
           </label>
         </div>
         <div className="st-time-more" aria-hidden={!open}>
           <Seg label="Window" value={win} onChange={setWin} flat options={[{ value: 'morning', label: 'Dawn' }, { value: 'evening', label: 'Dusk' }, { value: 'day', label: 'Day' }]} />
           {sunControl}
+          <label className="st-doy">
+            <span className="rowlab">Date</span>
+            <input type="range" min={1} max={daysIn} step={1} value={doy} aria-label="Day of the year"
+              onChange={e => { const d = new Date(Date.UTC(year, 0, +e.target.value)); onChange(setDayInZone(at, zone, year, d.getUTCMonth() + 1, d.getUTCDate())); }} />
+            <span className="rowlab mono">{new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' }).format(new Date(Date.UTC(year, 0, doy)))}</span>
+          </label>
           <span className="rowlab">Sun altitude and saved shots below</span>
         </div>
       </div>

@@ -76,7 +76,7 @@ export default function Home() {
       pending.current = { u, spotId, before: new Set(latest.current.mine.map(s => String(s.id))) };
       setPhase('creating');
       const nm = localStorage.getItem(NAME_KEY) || 'Guest';
-      await createSession({ spotId, title: 'New shoot', name: nm });
+      await createSession({ spotId, title: 'Untitled shoot', name: nm }); // the module's Nemotron title replaces this name after the solve
     } catch (e) {
       pending.current = null;
       setPhase('idle');

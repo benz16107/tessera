@@ -49,15 +49,19 @@ function groundQuad(gz: Gz) {
   return g;
 }
 
-/** Clay that shows the projected photo where the projector sees it. `matte`: show only the photo (sky and bridge), else discard. */
+/** Clay that shows the projected photo where the projector sees it. `matte`: show only the photo (sky and bridge), else discard.
+ *  World (uFade 1): the photo is the surface colour, lit by the sun and sky like the clay, so it relights with the time.
+ *  Plate (uFade 0, Through Cam A): the photo is the picture, unlit, with the preview grade (light/sun.ts previewGrade). */
 function projectedMaterial(color: string, lift: string, matte: boolean) {
   const u = {
     uProjTex: { value: null as Texture | null }, uProjDepth: { value: null as Texture | null }, uProjMat: { value: new Matrix4() },
     uProjPos: { value: new Vector3() }, uProjOn: { value: 0 }, uFade: { value: 1 },
+    uGrade: { value: new Vector3(1, 1, 1) }, uDesat: { value: 0 }, uSkyLit: { value: new Vector3(1, 1, 1) },
+    uLevel: { value: 1 }, uSkyDim: { value: 1 },
   };
   // Lambert, not Standard: the scene's image light comes from the photo and tints standard clay purple-brown.
   const mat = matte ? new MeshBasicMaterial({ color: '#000', toneMapped: false })
-    : new MeshLambertMaterial({ color, emissive: lift, side: 2, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }) // double-sided like the projector's depth map, or a wall facing away hides what the camera sees;
+    : new MeshLambertMaterial({ color, emissive: lift, side: 2, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }); // double-sided like the projector's depth map, or a wall facing away hides what the camera sees
   mat.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, u);
     sh.vertexShader = sh.vertexShader
@@ -70,10 +74,12 @@ vWNrm = ${matte ? 'vec3(0.0, 1.0, 0.0)' : 'normalize(mat3(modelMatrix) * objectN
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
 uniform sampler2D uProjTex; uniform sampler2D uProjDepth; uniform vec3 uProjPos; uniform float uProjOn; uniform float uFade;
+uniform vec3 uGrade; uniform float uDesat; uniform vec3 uSkyLit; uniform float uLevel; uniform float uSkyDim;
 varying vec4 vProj; varying vec3 vWPos; varying vec3 vWNrm;
-float projLinear(float d) { float z = d * 2.0 - 1.0; return 2.0 * ${NEAR.toFixed(1)} * ${FAR.toFixed(1)} / (${FAR.toFixed(1)} + ${NEAR.toFixed(1)} - z * (${FAR.toFixed(1)} - ${NEAR.toFixed(1)})); }`)
-      .replace('#include <dithering_fragment>', `#include <dithering_fragment>
-{
+float projLinear(float d) { float z = d * 2.0 - 1.0; return 2.0 * ${NEAR.toFixed(1)} * ${FAR.toFixed(1)} / (${FAR.toFixed(1)} + ${NEAR.toFixed(1)} - z * (${FAR.toFixed(1)} - ${NEAR.toFixed(1)})); }
+vec3 gradeIt(vec3 c) { float l = dot(c, vec3(0.2126, 0.7152, 0.0722)); return mix(c, vec3(l), uDesat) * uGrade; }
+// The photo (linear rgb) and how much of it this surface shows (a).
+vec4 projSample() {
   vec3 ndc = vProj.xyz / vProj.w;
   vec2 puv = ndc.xy * 0.5 + 0.5;
   vec2 e = min(puv, 1.0 - puv);
@@ -88,20 +94,31 @@ float projLinear(float d) { float z = d * 2.0 - 1.0; return 2.0 * ${NEAR.toFixed
   float vis = inside * step(dz, projLinear(stored) * 1.01 + 0.15);
   vec3 toP = normalize(uProjPos - vWPos);
   vis *= mix(1.0, smoothstep(0.0, 0.04, dot(normalize(vWNrm), toP)), uFade); // the street is always grazing from 1 m up: keep it`}
-  vis *= uProjOn;
-  vec4 photo = linearToOutputTexel(vec4(texture2D(uProjTex, puv).rgb, 1.0));
-  ${matte ? 'if (vis < 0.01) discard;\n  gl_FragColor = vec4(photo.rgb, 1.0);' : 'gl_FragColor.rgb = mix(gl_FragColor.rgb, photo.rgb, vis);'}
-}`);
+  return vec4(texture2D(uProjTex, puv).rgb, vis * uProjOn);
+}`)
+      .replace('#include <map_fragment>', `#include <map_fragment>
+vec4 pj = projSample();
+${matte ? '' : 'if (uFade > 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, pj.rgb, pj.a);'}`)
+      .replace('#include <dithering_fragment>', `#include <dithering_fragment>
+${matte
+    ? `if (pj.a < 0.01) discard;
+gl_FragColor = vec4(linearToOutputTexel(vec4((uFade > 0.5 ? pj.rgb * uSkyLit : gradeIt(pj.rgb) * uLevel) * uSkyDim, 1.0)).rgb, 1.0);`
+    : 'if (uFade < 0.5) gl_FragColor.rgb = mix(gl_FragColor.rgb, linearToOutputTexel(vec4(gradeIt(pj.rgb) * uLevel, 1.0)).rgb, pj.a);'}`);
+    if (!matte) sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\nif (uFade > 0.5) totalEmissiveRadiance *= 1.0 - pj.a;');
   };
   return { mat, u };
 }
 
-export default function Clay({ buildings, geo, origin, gz, projector, plate = false, onReady }: {
+export default function Clay({ buildings, geo, origin, gz, projector, plate = false, onReady, level = 1, sky = [1, 1, 1], grade, skyDim = 1 }: {
   buildings: FC | null; geo: StreetGeometry | null; origin: Origin; gz: Gz; projector: Projector | null;
   /** The photo backplate of Through Cam A: the projection is the picture (every surface the photo saw shows it, however
    *  grazing), so the camera chain (crop, depth of field, exposure) acts on the photo itself. Not a helper. */
   plate?: boolean;
   onReady?: (ready: boolean) => void; // the photo texture is loaded
+  level?: number; // the World's skylight level (light/sun.ts daylight): dims the clay's glow and, with `sky`, the sky matte
+  sky?: [number, number, number]; // skylight colour times level, for the far matte in the World
+  grade?: { rgb: [number, number, number]; desat: number }; // plate only: Through Cam A's preview grade
+  skyDim?: number; // the far matte (sky and bridge) dims further than the street after sunset (light/sun.ts daylight)
 }) {
   const { gl } = useThree();
   const bGeom = useMemo(() => (buildings ? buildingGeometry(buildings, origin, gz) : null), [buildings, origin.lat, origin.lon, gz]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -156,7 +173,13 @@ export default function Clay({ buildings, geo, origin, gz, projector, plate = fa
     if (proj) u.uProjPos.value.copy(proj.position);
     u.uProjOn.value = proj && tex ? 1 : 0;
     u.uFade.value = plate ? 0 : 1;
+    u.uGrade.value.set(...(grade?.rgb ?? [1, 1, 1]));
+    u.uDesat.value = grade?.desat ?? 0;
+    u.uSkyLit.value.set(...sky);
+    u.uLevel.value = level;
+    u.uSkyDim.value = skyDim;
   }
+  for (const m of [mats.building.mat, mats.ground.mat]) (m as MeshLambertMaterial).emissiveIntensity = level;
   useEffect(() => { onReady?.(!!(proj && tex)); }, [proj, tex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The far matte: a quad across the projector's frustum, MATTE_M out, carrying the sky and the bridge.

@@ -1,7 +1,7 @@
 // Tessera Simple: the friendly, phone-first view of a shoot (Figma round 1, direction A "Viewfinder"). It reads and writes
 // the same SpacetimeDB rows as Studio (scene_object, shot_settings, session.planTime, preview jobs, shot_version), so a
 // friend here and a photographer in Studio edit one shot together. Steps: Found it, Make it yours, Take me there.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSpacetimeDB, useTable, useReducer } from 'spacetimedb/react';
 import { Timestamp } from 'spacetimedb';
 import { Quaternion, Vector3 } from 'three';
@@ -218,6 +218,7 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
       </header>
       <main className="s-main">
         <section className="s-stage" aria-label={step === 'there' ? 'Camera' : 'Your photo over the 3D spot'}>
+          <StageBoundary key={step} fallback={photo ? <StagePhoto photo={photo} solving={false} note="The 3D view is off on this device. Everything else still works." /> : null}>
           {step === 'there' && stageReady ? <There.Stage session={session} result={result!} photo={photo!} live={active} />
             : stageReady ? (
               <ShotView mapsKey={cfg.mapsKey} origin={origin!} spotId={spotId} geo={geo} gz={gz} cam={cam!} optics={o} rows={step === 'found' ? NO_ROWS : scene.rows} shotId={shotRow?.id ?? null}
@@ -239,15 +240,19 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
                 </label>
               </ShotView>
             ) : photo ? <StagePhoto photo={photo} solving={!result || (job?.state === 'queued' || job?.state === 'running')} /> : <div className="s-stage-empty"><PhotoIcon width={40} height={40} /></div>}
+          </StageBoundary>
         </section>
-        <section className="s-panel">
-          {stageReady && (
+        {/* Its own grid row, so the tabs stay in one place on every step: under the top bar on a phone, atop the right column on a laptop. */}
+        {stageReady && (
+          <div className="s-stepsbar">
             <div className="s-steps" role="tablist" aria-label="Steps">
               {STEPS.map(([k, label]) => (
                 <button key={k} role="tab" aria-selected={step === k} onClick={() => setStep(k)}>{label}</button>
               ))}
             </div>
-          )}
+          </div>
+        )}
+        <section className="s-panel">
           <div className="s-panel-body" role={stageReady ? 'tabpanel' : undefined}>{panel}</div>
           <footer className="s-panel-foot"><LegalLinks /><span>Previews are AI interpretations of your photo.</span></footer>
         </section>
@@ -267,13 +272,21 @@ export function sunWords3(sun: { azimuth: number; altitude: number }, heading: n
   return d < 0 ? 'from the left' : 'from the right';
 }
 
-function StagePhoto({ photo, solving }: { photo: Photo; solving: boolean }) {
+function StagePhoto({ photo, solving, note }: { photo: Photo; solving: boolean; note?: string }) {
   return (
     <figure className="s-stage-photo" data-solving={solving || undefined}>
       <img src={photo.url || photo.thumb} alt="Your photo" />
       {solving && <span className="s-scan" aria-hidden="true" />}
+      {note && <figcaption className="s-float s-sunpill" role="status">{note}</figcaption>}
     </figure>
   );
+}
+
+/** A lost or refused WebGL context (a backgrounded phone tab, a blocked GPU) takes down only the 3D stage, not the page. */
+class StageBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
 const SOLVE_STEPS = ['Uploading your photo', 'Finding the place', 'Matching it with photos of the spot', 'Working out where they stood and the lens'];

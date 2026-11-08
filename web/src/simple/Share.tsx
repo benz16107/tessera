@@ -88,7 +88,9 @@ export default function ShareSheet({ session, myName, onClose }: { session: Sess
         {qr ? <img src={qr} alt={`QR code for ${url}`} width={132} height={132} /> : <span className="s-sk s-sk-qr" />}
         <div>
           <p className="s-label">Or send the link</p>
-          <p className="s-url">{url}</p>
+          <p className="s-sharecode" aria-label={`Shoot code ${session.code}`}>{session.code}</p>
+          {/* The link may break only before /p/, never inside the code. */}
+          <p className="s-url">{url.slice(0, -`/p/${session.code}`.length)}<wbr /><span>/p/{session.code}</span></p>
           <button type="button" className="s-btn" onClick={() => copy(url)}>{copied ? 'Copied' : 'Copy link'}</button>
           <p className="s-muted small">Anyone with it joins this shoot live. On a phone it opens here; on a laptop they can switch to Studio.</p>
         </div>
