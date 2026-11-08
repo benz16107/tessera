@@ -15,10 +15,8 @@ await page.goto(new URL('/credits', url).href);
 await page.evaluate(() => localStorage.setItem('shotmatch/name', 'Studio'));
 await page.goto(url, { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(40000);
-const fps = async () => {
-  const f = () => page.evaluate(() => window.__studio?.gl?.info?.render?.frame ?? 0);
-  const a = await f(); await page.waitForTimeout(2000); return ((await f()) - a) / 2;
-};
+// Frames per second from requestAnimationFrame (the renderer's frame counter overcounts when a composer renders passes).
+const fps = () => page.evaluate(() => new Promise(res => { let n = 0; const t0 = performance.now(); const f = () => { n++; if (performance.now() - t0 < 2000) requestAnimationFrame(f); else res(Math.round(n / 2)); }; requestAnimationFrame(f); }));
 console.log('renderer', await page.evaluate(() => { const gl = document.createElement('canvas').getContext('webgl2'); const d = gl?.getExtension('WEBGL_debug_renderer_info'); return d ? gl.getParameter(d.UNMASKED_RENDERER_WEBGL) : 'unknown'; }));
 console.log('fps', await fps(), 'world', await page.evaluate(() => document.querySelector('.st-panel-head .st-meta')?.textContent));
 await page.keyboard.press('Escape');

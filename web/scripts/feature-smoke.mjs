@@ -1,10 +1,10 @@
 // Feature smoke test on a live ShotMatch: re-runs the core paths in a fresh scratch shoot and prints PASS or FAIL per path.
 //   node scripts/feature-smoke.mjs [--render] [--keep]
-// Env: BASE (default production), PW (playwright-core dir), CHROME (default /usr/bin/google-chrome), GL=gpu for ANGLE on Vulkan.
+// Env: BASE (default production, https://app.tesseraphoto.com), PW (playwright-core dir), CHROME (default /usr/bin/google-chrome), GL=gpu for ANGLE on Vulkan.
 // SwiftShader is the default: headless Chrome on linuxbox's integrated GPU lost its WebGL context in Simple under load.
 // It creates its own shoot from the example photo and deletes it at the end with "Delete shoot" (unless --keep). It never opens
 // the demo shoot A9TVAN. --render adds one AI render (NVIDIA inference, about a minute).
-const BASE = process.env.BASE || 'https://104-238-146-229.sslip.io';
+const BASE = process.env.BASE || 'https://app.tesseraphoto.com';
 const PW = process.env.PW || '/tmp/shots/node_modules/playwright-core';
 const { chromium } = await import(`${PW}/index.mjs`);
 const args = new Set(process.argv.slice(2));
@@ -83,7 +83,9 @@ await pathTry('Studio: views keep the camera settings', async () => {
   const seen = [];
   for (const v of ['World', 'Map', 'World', 'Walk', 'Top']) {
     if (v === 'Walk') await A.keyboard.press('Escape');
-    await A.locator('[role=group][aria-label=View] button').filter({ hasText: new RegExp(`^${v}$`) }).first().click({ timeout: 8000 });
+    // Software GL can keep the page too busy for Playwright's actionability checks; fall back to a dispatched click.
+    const vb = A.locator('[role=group][aria-label=View] button').filter({ hasText: new RegExp(`^${v}$`) }).first();
+    await vb.click({ timeout: 8000 }).catch(() => vb.dispatchEvent('click'));
     await A.waitForTimeout(v === 'Map' ? 5000 : 2500); seen.push(await view(A));
     if (v === 'Walk') { await A.keyboard.press('Escape'); await A.keyboard.press('Escape'); }
   }

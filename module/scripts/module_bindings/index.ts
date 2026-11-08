@@ -63,6 +63,7 @@ import RecordShotVersionReducer from "./record_shot_version_reducer.ts";
 import RegisterCrewReducer from "./register_crew_reducer.ts";
 import RemoveChannelLinkReducer from "./remove_channel_link_reducer.ts";
 import RemovePersonReducer from "./remove_person_reducer.ts";
+import RenameSessionReducer from "./rename_session_reducer.ts";
 import RenewPreviewReducer from "./renew_preview_reducer.ts";
 import ReportProgressReducer from "./report_progress_reducer.ts";
 import RequestPreviewReducer from "./request_preview_reducer.ts";
@@ -637,6 +638,7 @@ const reducersSchema = __reducers(
   __reducerSchema("register_crew", RegisterCrewReducer),
   __reducerSchema("remove_channel_link", RemoveChannelLinkReducer),
   __reducerSchema("remove_person", RemovePersonReducer),
+  __reducerSchema("rename_session", RenameSessionReducer),
   __reducerSchema("renew_preview", RenewPreviewReducer),
   __reducerSchema("report_progress", ReportProgressReducer),
   __reducerSchema("request_preview", RequestPreviewReducer),
@@ -761,6 +763,7 @@ export const reducers = {
   registerCrew: __reducerAccessors.registerCrew,
   removeChannelLink: __reducerAccessors.removeChannelLink,
   removePerson: __reducerAccessors.removePerson,
+  renameSession: __reducerAccessors.renameSession,
   renewPreview: __reducerAccessors.renewPreview,
   reportProgress: __reducerAccessors.reportProgress,
   requestPreview: __reducerAccessors.requestPreview,
