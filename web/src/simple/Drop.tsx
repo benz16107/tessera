@@ -34,7 +34,6 @@ export function LegalLinks() {
 
 export default function Home() {
   const { isActive, identity } = useSpacetimeDB();
-  const [spots] = useTable(tables.spot);
   const [mine, mineReady] = useTable(tables.mySessions);
   const latest = useRef({ mine, mineReady });
   latest.current = { mine, mineReady };
@@ -74,10 +73,11 @@ export default function Home() {
       const gps = u.gpsLat != null && u.gpsLon != null ? { lat: u.gpsLat, lon: u.gpsLon } : undefined;
       let loc = null;
       if (!knownSpot && !u.nearestSpot) { setPhase('locating'); loc = await locate(u.url, gps); }
-      const at = decidePlace(u, loc, spots.length === 1 ? spots[0].id : '', knownSpot);
+      const at = decidePlace(u, loc, knownSpot);
       const pin = at.kind === 'pin' ? { lat: at.lat, lon: at.lon } : undefined;
-      // A pin shoot's session spot is 'geo:...' (Studio reads it); its photo has no spot, so no solve is queued.
-      const sessionSpot = at.kind === 'pin' ? geoSpotId(at.lat, at.lon, await groundHeight(at.lat, at.lon)) : at.spotId;
+      // A pin shoot's session spot is 'geo:...' (Studio reads it); its photo has no spot, so no solve is queued. A clue shoot has
+      // neither yet: it opens on the clue panel.
+      const sessionSpot = at.kind === 'pin' ? geoSpotId(at.lat, at.lon, await groundHeight(at.lat, at.lon)) : at.kind === 'spot' ? at.spotId : '';
       const title = at.kind === 'pin' && at.place ? at.place.split(',').slice(0, 2).join(',').trim().slice(0, 120) : 'Untitled shoot';
       for (let i = 0; !latest.current.mineReady && i < 100; i++) await new Promise(r => setTimeout(r, 100));
       if (!latest.current.mineReady) throw new Error('Still connecting to Tessera. Try again in a moment.');

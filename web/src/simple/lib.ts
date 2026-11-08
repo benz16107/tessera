@@ -77,14 +77,28 @@ export const initials = (name: string) => (name.trim()[0] ?? '?').toUpperCase();
 /** POST /api/locate (docs/NVIDIA.md, "Nemotron places photos from anywhere"): names the place from the photo's GPS, or
  *  from its pixels when it has none. Coordinates come from the GPS or Nominatim, never from the model. Null on any failure. */
 export interface Located {
-  place: string; lat: number | null; lon: number | null; confidence: 'high' | 'medium' | 'low'; reason: string;
+  // 'area': an area hint was given and nothing inside it matched, so lat/lon is the circle's centre.
+  place: string; lat: number | null; lon: number | null; confidence: 'high' | 'medium' | 'low' | 'area'; reason: string;
   headingDeg: number | null; source: 'gps' | 'nemotron'; nearestSpot: string | null;
+  evidence?: { type: 'sign' | 'landmark' | 'architecture' | 'other'; text: string }[]; // what Nemotron saw, in its own words
 }
-export async function locate(photoUrl: string, gps?: { lat: number; lon: number }): Promise<Located | null> {
+
+/** "From the Travelodge and Ruby Tuesday signs": the signs and landmarks behind a guess, the strongest kinds first. */
+export function evidenceLine(ev: Located['evidence']): string {
+  const pick = (t: string) => (ev ?? []).filter(e => e.type === t).map(e => e.text.trim().replace(/\.$/, '')).filter(Boolean).slice(0, 3);
+  const list = (xs: string[]) => (xs.length < 3 ? xs.join(' and ') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+  const signs = pick('sign'), marks = pick('landmark');
+  if (signs.length) return `From the signs: ${list(signs)}${marks.length ? `, and ${list(marks)}` : ''}.`;
+  if (marks.length) return `From the landmark: ${list(marks)}.`;
+  const rest = pick('architecture');
+  return rest.length ? `From the architecture: ${list(rest)}.` : '';
+}
+export interface Area { lat: number; lon: number; radiusM: number }
+export async function locate(photoUrl: string, gps?: { lat: number; lon: number }, hint?: { area?: Area; text?: string }): Promise<Located | null> {
   try {
     const r = await fetch('/api/locate', {
       method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(25_000),
-      body: JSON.stringify({ photoUrl, ...(gps ?? {}) }),
+      body: JSON.stringify({ photoUrl, ...(gps ?? {}), ...(hint ? { hint } : {}) }),
     });
     return r.ok ? await r.json() : null;
   } catch { return null; }
@@ -110,14 +124,18 @@ export async function groundHeight(lat: number, lon: number): Promise<number> {
 // shortcut: a free location's zone is its longitude's whole-hour offset (no daylight saving), as in Studio; use a zone lookup when one ships.
 export const lonZone = (lon: number) => { const h = Math.round(lon / 15); return h === 0 ? 'UTC' : `Etc/GMT${h > 0 ? '-' : '+'}${Math.abs(h)}`; };
 
-/** Where a dropped photo's shoot lives: a mapped spot (solve it), or a free location at a pin (no solve; nothing to match). */
-export type Placement = { kind: 'spot'; spotId: string } | { kind: 'pin'; lat: number; lon: number; place: string; guessed: boolean };
-export function decidePlace(u: Pick<Upload, 'nearestSpot' | 'gpsLat' | 'gpsLon'>, loc: Located | null, onlySpot: string, knownSpot = ''): Placement {
+/** Where a dropped photo's shoot lives: a mapped spot (solve it), a free location at a pin (no solve; nothing to match), or,
+ *  with no GPS and no confident guess, no place yet: the shoot opens on the clue panel (anywhere2.md rule 1, never a dead end). */
+export type Placement = { kind: 'spot'; spotId: string } | { kind: 'pin'; lat: number; lon: number; place: string; guessed: boolean } | { kind: 'clue' };
+export function decidePlace(u: Pick<Upload, 'nearestSpot' | 'gpsLat' | 'gpsLon'>, loc: Located | null, knownSpot = ''): Placement {
   const spotId = knownSpot || u.nearestSpot || loc?.nearestSpot;
   if (spotId) return { kind: 'spot', spotId };
   // GPS far from every mapped spot: plan at the photo's own location.
   if (u.gpsLat != null && u.gpsLon != null) return { kind: 'pin', lat: u.gpsLat, lon: u.gpsLon, place: loc?.place ?? '', guessed: false };
-  // No GPS: Nemotron's guess, when it is not unsure and the map found the name.
-  if (loc && loc.lat != null && loc.lon != null && loc.confidence !== 'low') return { kind: 'pin', lat: loc.lat, lon: loc.lon, place: loc.place, guessed: true };
-  return { kind: 'spot', spotId: onlySpot }; // unsure: solve against the mapped spot, as before
+  // No GPS: only a high-confidence guess pins the shoot (a medium one once put a London underpass in Paris).
+  if (loc && loc.lat != null && loc.lon != null && loc.confidence === 'high') return { kind: 'pin', lat: loc.lat, lon: loc.lon, place: loc.place, guessed: true };
+  return { kind: 'clue' }; // medium (shown there as a suggestion), unsure or no answer: the clue panel
 }
+
+/** How a free-location shoot's pin was set; Cam A's params carry it (placed=...), so every viewer gets the same label. */
+export type PlacedBy = 'gps' | 'guess' | 'search' | 'pin' | 'area';

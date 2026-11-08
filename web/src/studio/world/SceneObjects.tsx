@@ -12,8 +12,8 @@ import { GLTF_UPRIGHT } from '../frame.ts';
 import { propById } from '../catalog/props.ts';
 import { kelvinToRgb } from '../optics.ts';
 
-/** The highlight colour token, for three.js materials that can't read CSS. Selection and the measure tool follow it. */
-export const accent = () => getComputedStyle(document.documentElement).getPropertyValue('--amber').trim() || '#e8a33d';
+/** Selection and measure colour in 3D: the studio's --accent (three.js materials can't read CSS). */
+export const ACCENT = '#f2efe8';
 import { parseParams, num } from '../scene/objects.ts';
 import type { Optics } from '../camera/shot.ts';
 
@@ -153,7 +153,7 @@ function Light({ row, expo, selected }: { row: SceneObject; expo: number; select
   const size = num(p, 'size', 0.3), shadows = p.shadows === '1';
   const target = useMemo(() => { const o = new Object3D(); o.position.set(0, 10, 0); return o; }, []);
   const i = row.intensity * expo;
-  const helperMat = <meshBasicMaterial color={selected ? accent() : color} toneMapped={false} />;
+  const helperMat = <meshBasicMaterial color={selected ? ACCENT : color} toneMapped={false} />;
   return (
     <>
       <primitive object={target} />
@@ -165,7 +165,7 @@ function Light({ row, expo, selected }: { row: SceneObject; expo: number; select
         {row.lightType === 'area'
           ? <mesh rotation={[Math.PI / 2, 0, 0]}><planeGeometry args={[size, size]} />{helperMat}</mesh>
           : <mesh><sphereGeometry args={[0.12, 16, 12]} />{helperMat}</mesh>}
-        {row.lightType !== 'point' && <Line points={[[0, 0, 0], [0, 1.2, 0]]} color={selected ? accent() : '#d8cdb4'} lineWidth={1.5} />}
+        {row.lightType !== 'point' && <Line points={[[0, 0, 0], [0, 1.2, 0]]} color={selected ? ACCENT : '#d8cdb4'} lineWidth={1.5} />}
       </group>
     </>
   );
@@ -176,7 +176,7 @@ export function CameraGizmo({ o, selected, isShot, focusM }: { o: Optics; select
   const tx = Math.tan((o.hfovDeg * Math.PI) / 360), ty = Math.tan((o.vfovDeg * Math.PI) / 360);
   const rect = (d: number): [number, number, number][] => [[-tx * d, -ty * d, -d], [tx * d, -ty * d, -d], [tx * d, ty * d, -d], [-tx * d, ty * d, -d], [-tx * d, -ty * d, -d]];
   const L = 3;
-  const c = selected ? accent() : isShot ? '#e9e2d3' : '#8f877a';
+  const c = selected ? ACCENT : isShot ? '#e9e2d3' : '#8f877a';
   const near = Math.min(o.dof.nearM, 80), far = Math.min(o.dof.farM, 80), focus = Math.min(focusM, 80);
   return (
     <group userData={{ helper: true }}>
@@ -290,7 +290,7 @@ export function SelectionBox({ target }: { target: Object3D<Object3DEventMap> | 
   return (
     <group ref={ref} userData={{ helper: true }}>
       <lineSegments geometry={edges} raycast={() => null}>
-        <lineBasicMaterial color={accent()} />
+        <lineBasicMaterial color={ACCENT} />
       </lineSegments>
     </group>
   );

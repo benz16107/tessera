@@ -1,5 +1,5 @@
 /* Tessera Studio, "Darkroom" (Figma QrpLuCwKGGFFBSDRMd7VqS, round 3), polished for calm: the 3D view owns the screen,
-   panels sit on the background without borders, and amber marks only the selection and the primary action.
+   panels sit on the background without borders, and the UI is neutral grey: a near-white primary, edged secondaries.
    Spacing is on a 4/8 grid. Panel text uses three sizes: 16 (names), 13 (body and values), 11 (labels and metadata).
    Archivo for words, Martian Mono for numbers. Every colour is a token on .studio. */
 .studio {
@@ -13,10 +13,12 @@
   --text: #f2efe8;
   --text-2: #a39f96;
   --text-3: #75716a;
-  --amber: #f2a33a;
-  --amber-ink: #1a1206;
-  --amber-tint: rgba(242, 163, 58, 0.14);
-  --amber-line: rgba(242, 163, 58, 0.65);
+  /* Neutral since Ben's 4:15 AM note (tokens.css): --amber is now the muted warm kept for the sun, golden hour and
+     cautions; selection and the primary action use the neutral --ui-* tokens. */
+  --amber: var(--ui-warm);
+  --amber-ink: var(--ui-primary-ink);
+  --amber-tint: var(--ui-selected);
+  --amber-line: var(--ui-edge);
   --glass: rgba(14, 14, 13, 0.86);
   --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 8px 24px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.35);
   --x: #e8675e;
@@ -28,7 +30,7 @@
   --blue-band-text: #c9d8f5;
   --gold-band: rgba(214, 170, 100, 0.2);
   --gold-band-text: #ecd2a4;
-  --mono: 'Martian Mono', ui-monospace, monospace;
+  --mono: var(--sans); /* numbers are Archivo with tabular figures; the camera HUD keeps --font-hud */
   --sans: 'Archivo Variable', 'Archivo', system-ui, sans-serif;
   --r: 8px;
   --r-sm: 6px;
@@ -38,7 +40,7 @@
   --time-h: 56px;
   /* The NVIDIA, SpacetimeDB and Photon panels read these names. */
   --st-panel: var(--panel); --st-raise: var(--field); --st-line: var(--line); --st-line-2: var(--line-2); --st-text: var(--text);
-  --st-muted: var(--text-2); --st-dim: var(--text-3); --st-amber: var(--amber); --st-amber-ink: var(--amber-ink); --st-red: var(--red); --st-r: var(--r-sm);
+  --st-muted: var(--text-2); --st-dim: var(--text-3); --st-amber: var(--ui-primary); --st-amber-ink: var(--ui-primary-ink); --st-red: var(--red); --st-r: var(--r-sm);
   --font: var(--sans);
   position: fixed; inset: 0;
   display: grid;
@@ -48,6 +50,7 @@
   background: var(--bg);
   color: var(--text);
   font: 13px/1.4 var(--sans);
+  font-variant-numeric: tabular-nums;
   color-scheme: dark;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -71,14 +74,14 @@
 .ico.s10 { width: 10px; height: 10px; } .ico.s12 { width: 12px; height: 12px; } .ico.s16 { width: 16px; height: 16px; } .ico.s18 { width: 18px; height: 18px; }
 
 /* Buttons */
-.st-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: var(--control-h, 36px); padding: 0 12px !important; border-radius: var(--r) !important; background: var(--raise) !important; font: 500 13px var(--sans) !important; color: var(--text); white-space: nowrap; transition-property: background-color, scale; transition-duration: 120ms; transition-timing-function: ease-out; }
-.st-btn.primary { background: var(--amber) !important; color: var(--amber-ink) !important; font-weight: 600 !important; }
-.st-btn.ghost { background: transparent !important; color: var(--text-2); pointer-events: auto; mix-blend-mode: normal; inset: auto; width: auto; height: 32px; } /* undoes styles.css .ghost (the old planner's): absolute, full size, no pointer events */
-.st-btn.small { height: var(--control-h-dense, 28px); padding: 0 10px !important; border-radius: var(--r-sm) !important; }
+.st-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: var(--button-h-studio, 32px); padding: 0 12px !important; border-radius: var(--radius-control, 6px) !important; background: transparent !important; box-shadow: inset 0 0 0 1px var(--ui-edge); border: 1px solid transparent !important; font: 500 13px var(--sans) !important; color: var(--text); white-space: nowrap; transition-property: background-color, box-shadow, scale; transition-duration: 120ms; transition-timing-function: ease-out; }
+.st-btn.primary { background: var(--ui-primary) !important; color: var(--ui-primary-ink) !important; box-shadow: none; font-weight: 600 !important; }
+.st-btn.ghost { background: transparent !important; box-shadow: none; color: var(--text-2); pointer-events: auto; mix-blend-mode: normal; inset: auto; width: auto; height: var(--button-h-studio, 32px); } /* undoes styles.css .ghost (the old planner's): absolute, full size, no pointer events */
+.st-btn.small { height: var(--button-h-studio, 32px); padding: 0 12px !important; border-radius: var(--radius-control, 6px) !important; }
 .st-btn.wide { width: 100%; }
-.st-btn[aria-pressed='true'] { background: var(--line-2) !important; }
+.st-btn[aria-pressed='true'] { background: var(--ui-selected) !important; box-shadow: inset 0 0 0 1px var(--ui-edge-hover); }
 .st-btn:not(:disabled):active { scale: 0.96; }
-@media (hover: hover) { .st-btn:not(:disabled):not(.primary):hover { background: var(--line-2) !important; } .st-btn.primary:not(:disabled):hover { filter: brightness(1.06); } }
+@media (hover: hover) { .st-btn:not(:disabled):not(.primary):hover { background: var(--ui-selected) !important; } .st-btn.primary:not(:disabled):hover { background: var(--ui-primary-hover) !important; } }
 .st-icon-btn { position: relative; width: 32px; height: 32px; display: grid; place-items: center; border-radius: var(--r-sm); color: var(--text-2); flex: none; }
 .st-icon-btn::after { content: ''; position: absolute; inset: -4px; }
 @media (hover: hover) { .st-icon-btn:hover { color: var(--text); background: var(--raise); } }
@@ -282,7 +285,7 @@
 @media (hover: hover) { .st-menu > button:hover, .st-menu > label:hover { background: var(--raise); } }
 .st-cmd { position: absolute; left: 452px; right: 112px; top: 12px; max-width: 420px; z-index: var(--z-controls, 22); }
 .st-cmd-pill { display: flex; align-items: center; gap: 8px; width: 100%; height: 36px; padding: 0 8px 0 14px !important; color: var(--text-2); font-size: 13px; text-align: left; }
-.st-cmd-pill .st-meta { margin-left: auto; padding: 2px 6px; border-radius: 4px; background: var(--line-2); color: var(--text-2); }
+.st-cmd-pill .st-meta { padding: 2px 6px; border-radius: 4px; background: var(--line-2); color: var(--text-2); }
 @media (hover: hover) { .st-cmd-pill:hover { color: var(--text); } }
 .st-cmd-open { padding: 8px; display: flex; flex-direction: column; gap: 4px; }
 .st-cmd-open .nv-command { padding: 0; border: 0; }
@@ -293,7 +296,7 @@
 .st-cmd-open[data-opts='true'] .nv-command > .nv-small { padding: 4px 4px 0; }
 .st-cmd-tools { display: flex; justify-content: flex-end; gap: 4px; }
 .st-pip { position: absolute; right: 16px; bottom: 32px; border-radius: var(--r-sm); cursor: pointer; pointer-events: auto; background: transparent; box-shadow: 0 0 0 1px oklch(1 0 0 / 0.12), 0 6px 20px rgba(0, 0, 0, 0.5); }
-.st-pip-label { position: absolute; padding: 2px 6px; border-radius: 4px; background: var(--glass); font: 11px var(--mono); color: var(--text-2); white-space: nowrap; pointer-events: none; }
+.st-pip-label { position: absolute; padding: 2px 6px; border-radius: 4px; background: var(--glass); font: 11px var(--font-hud); color: var(--text-2); white-space: nowrap; pointer-events: none; }
 .st-credits { position: absolute; z-index: var(--z-overlay, 21); left: 0; right: 0; bottom: 0; height: 24px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: linear-gradient(to top, rgba(5, 5, 5, 0.75), rgba(5, 5, 5, 0)); font-size: 11px; color: #d6d2ca; pointer-events: none; }
 .st-credits img { height: 14px; width: auto; flex: none; }
 .st-credits .gcred { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
@@ -312,7 +315,7 @@
 .st-minibar > button:not(.st-btn) { width: 32px; height: 32px; display: grid; place-items: center; border-radius: var(--r-sm); color: var(--text-2); }
 .st-minibar > button[aria-pressed='true'] { background: var(--text); color: var(--bg); }
 .st-lock-tag, .studio-lock-tag { font: 500 11px var(--sans); color: #08201f; background: var(--c, var(--teal)); padding: 2px 8px; border-radius: 4px; white-space: nowrap; pointer-events: none; }
-.st-obj-label { font: 11px var(--mono); color: var(--text-2); background: var(--glass); padding: 2px 6px; border-radius: 4px; white-space: nowrap; pointer-events: none; }
+.st-obj-label { font: 11px var(--font-hud); color: var(--text-2); background: var(--glass); padding: 2px 6px; border-radius: 4px; white-space: nowrap; pointer-events: none; }
 .studio-text-obj { font: 600 13px var(--sans); color: #fff; text-shadow: 0 1px 3px #000; white-space: nowrap; pointer-events: none; }
 .st-cursor-tag, .st-ping-tag { font: 500 11px var(--sans); color: #111; background: var(--who, var(--text)); padding: 2px 6px; border-radius: 4px; white-space: nowrap; pointer-events: none; }
 .st-dropask { position: absolute; z-index: 20; display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: 10px; background: var(--panel); box-shadow: var(--shadow); translate: -50% 8px; min-width: 200px; }
@@ -323,10 +326,10 @@
 .st-camctl { position: absolute; left: 12px; top: 12px; right: 12px; display: flex; align-items: center; gap: 8px; z-index: var(--z-controls, 22); overflow-x: auto; scrollbar-width: none; }
 .st-overlays { position: absolute; inset: 0; pointer-events: none; }
 .st-overlays svg { position: absolute; inset: 0; }
-.st-ov-label { font: 11px var(--mono); fill: var(--z); }
-.st-readout { position: absolute; display: flex; gap: 12px; padding: 4px 8px; border-radius: 4px; background: var(--glass); font: 11px var(--mono); color: var(--text); white-space: nowrap; pointer-events: none; }
+.st-ov-label { font: 11px var(--font-hud); fill: var(--z); }
+.st-readout { position: absolute; display: flex; gap: 12px; padding: 4px 8px; border-radius: 4px; background: var(--glass); font: 11px var(--font-hud); color: var(--text); white-space: nowrap; pointer-events: none; }
 .st-readout b { color: var(--text-2); font-weight: 400; }
-.st-focuslabel { position: absolute; translate: -50% -100%; padding: 2px 6px; border-radius: 4px; background: var(--glass); font: 11px var(--mono); color: var(--text); white-space: nowrap; pointer-events: none; }
+.st-focuslabel { position: absolute; translate: -50% -100%; padding: 2px 6px; border-radius: 4px; background: var(--glass); font: 11px var(--font-hud); color: var(--text); white-space: nowrap; pointer-events: none; }
 .st-photocredit { position: absolute; padding: 2px 6px; border-radius: 4px; background: var(--glass); font-size: 11px; color: var(--text-2); pointer-events: none; }
 .st-caption { position: absolute; display: flex; flex-direction: column; gap: 2px; pointer-events: none; }
 .st-caption b { font: 400 13px var(--sans); color: var(--text); }
@@ -389,7 +392,7 @@
 .st-textin input { height: 36px; padding: 0 12px; border-radius: var(--r); background: var(--field); border: 0; color: var(--text); font-size: 16px; }
 
 /* Building-your-set card (V-1), quiet and in the corner */
-.st-build { position: absolute; left: 60px; bottom: 32px; width: 320px; padding: 16px; border-radius: var(--radius-panel, 10px); z-index: var(--z-panel, 30); background: var(--panel) !important; display: flex; flex-direction: column; gap: 12px; }
+.st-build { position: relative; width: 320px; max-width: 100%; pointer-events: auto; padding: 16px; border-radius: var(--radius-panel, 10px); background: var(--panel) !important; display: flex; flex-direction: column; gap: 12px; }
 .st-build ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .st-build li { display: grid; grid-template-columns: 16px 1fr; gap: 0 8px; align-items: baseline; }
 .st-build li > b { width: 8px; height: 8px; border-radius: 4px; background: var(--y); grid-row: span 2; align-self: center; }
@@ -450,7 +453,7 @@
 /* The physical camera's readouts on the frame: histogram (top right) and warnings under it. */
 .st-hist { position: absolute; pointer-events: none; }
 .st-camwarn { position: absolute; translate: -100% -100%; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin: 0; pointer-events: none; }
-.st-camwarn span { padding: 2px 6px; border-radius: 4px; background: var(--glass); font: 11px var(--mono); color: var(--amber); white-space: nowrap; }
+.st-camwarn span { padding: 2px 6px; border-radius: 4px; background: var(--glass); font: 11px var(--font-hud); color: var(--ui-danger); white-space: nowrap; }
 /* The date beside the clock: looks like a control, a native calendar on click. */
 .st-date { position: relative; display: inline-flex; align-items: center; gap: 4px; min-width: 0; padding: 2px 6px; border-radius: var(--r-sm); background: var(--raise); cursor: pointer; }
 .st-date span { color: var(--text) !important; }

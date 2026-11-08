@@ -220,7 +220,7 @@ function inside([x, y]: XY, ring: XY[]) {
 function Alerts({ fc, P, gz }: { fc: FC; P: (c: number[]) => XY; gz: Gz }) {
   const hits = fc.features.filter(f => ringsOf(f).some(r => inside([0, 0], r.map(P))) || !f.geometry);
   if (!hits.length) return null;
-  const sev = hits.some(f => f.properties.severity === 'severe') ? '#e8675e' : '#f2a33a';
+  const sev = '#e8675e'; // alerts read as red at every severity (no orange highlights)
   const z = gz(0, 0);
   return (
     <group>
@@ -334,7 +334,7 @@ function Heat({ fc, P, gz, high, hotspots }: { fc: FC; P: (c: number[]) => XY; g
 /** The street point the shadow readout is about: amber ring in sun, slate ring in building shadow. */
 function Probe({ probe, label, xray, sunUp, P, gz }: { probe: { label: string; lat: number; lon: number; readout: string; now: { shadow: boolean } }; label: boolean; xray: boolean; sunUp: boolean; P: (c: number[]) => XY; gz: Gz }) {
   const [x, y] = P([probe.lon, probe.lat]), z = gz(x, y) + 0.08;
-  const color = probe.now.shadow || !sunUp ? '#7f8ea8' : '#f2a33a';
+  const color = probe.now.shadow || !sunUp ? '#7f8ea8' : '#c9a46a'; // sun: the muted warm
   return (
     <group position={[x, y, z]}>
       <mesh raycast={() => null} renderOrder={xray ? 13 : 4} position={[0, 0, xray ? 0 : 0.3]}><ringGeometry args={[1.0, 1.25, 40]} /><meshBasicMaterial color={color} transparent opacity={0.9} toneMapped={false} depthWrite={false} depthTest={!xray} side={DoubleSide} /></mesh>

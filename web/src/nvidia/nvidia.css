@@ -9,8 +9,8 @@
   --nv-text: var(--st-text, #ece6d8);
   --nv-muted: var(--st-muted, #8f877a);
   --nv-dim: var(--st-dim, #5f594f);
-  --nv-accent: var(--st-amber, #e8a33d);
-  --nv-accent-ink: var(--st-amber-ink, #1a1208);
+  --nv-accent: var(--st-amber, #ece9e2);
+  --nv-accent-ink: var(--st-amber-ink, #111110);
   --nv-red: var(--st-red, #e0644c);
   --nv-r: var(--radius-control, 6px);
   --nv-font: var(--font-sans);
@@ -32,25 +32,25 @@
 .nv-muted { color: var(--nv-muted); }
 .nv-dim { color: var(--nv-dim); font-size: var(--text-xs); }
 .nv-num { font-family: var(--nv-mono); font-variant-numeric: tabular-nums; font-size: var(--text-xs); }
-.nv .nv-input { width: 100%; height: var(--control-h-dense); padding: 0 var(--space-2); background: var(--nv-raise); color: var(--nv-text); border: 0; border-radius: var(--nv-r); font: inherit; }
+.nv .nv-input { width: 100%; height: var(--button-h-studio, 32px); padding: 0 var(--space-2); background: var(--nv-raise); color: var(--nv-text); border: 0; border-radius: var(--nv-r); font: inherit; }
 .nv .nv-input:focus-visible, .nv .nv-btn:focus-visible { outline: 2px solid var(--nv-text); outline-offset: 2px; }
-.nv .nv-btn { position: relative; height: var(--control-h-dense); padding: 0 var(--control-pad-dense); background: var(--nv-raise); color: var(--nv-text); border: 0; border-radius: var(--nv-r); font: 500 var(--text-sm)/1 var(--nv-font); white-space: nowrap; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); transition-property: background-color, scale; transition-duration: 120ms; transition-timing-function: ease-out; }
-.nv .nv-btn.primary { background: var(--nv-accent); color: var(--nv-accent-ink); font-weight: 600; }
+.nv .nv-btn { position: relative; height: var(--button-h-studio, 32px); padding: 0 12px; background: transparent; box-shadow: inset 0 0 0 1px var(--ui-edge, #403d38); color: var(--nv-text); border: 0; border-radius: var(--nv-r); font: 500 var(--text-sm)/1 var(--nv-font); white-space: nowrap; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); transition-property: background-color, scale; transition-duration: 120ms; transition-timing-function: ease-out; }
+.nv .nv-btn.primary { background: var(--nv-accent); color: var(--nv-accent-ink); box-shadow: none; font-weight: 600; }
 .nv .nv-btn.wide { width: 100%; }
-.nv .nv-btn:disabled { background: var(--nv-raise); color: var(--nv-dim); cursor: not-allowed; }
+.nv .nv-btn:disabled { background: transparent; color: var(--nv-dim); cursor: not-allowed; }
 .nv .nv-btn:not(:disabled):active { scale: 0.96; }
-@media (hover: hover) { .nv .nv-btn:not(:disabled):not(.primary):hover { background: var(--nv-hover); } .nv .nv-btn.primary:not(:disabled):hover { filter: brightness(1.06); } }
+@media (hover: hover) { .nv .nv-btn:not(:disabled):not(.primary):hover { background: var(--ui-selected, rgba(255,255,255,0.09)); } .nv .nv-btn.primary:not(:disabled):hover { background: var(--ui-primary-hover, #fff); } }
 .nv .nv-mic { touch-action: none; user-select: none; }
 .nv .nv-mic.on { color: var(--nv-red); box-shadow: inset 0 0 0 1px var(--nv-red); }
 .nv-file { overflow: hidden; }
 .nv-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .nv-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; max-height: 180px; overflow: auto; overscroll-behavior: contain; }
 .nv-steps li { display: grid; grid-template-columns: 9.5em minmax(0, 1fr) auto; gap: var(--space-2); padding: var(--space-1) 0; border-top: 1px solid var(--nv-line); font-size: var(--text-xs); }
-.nv-step-tool { color: var(--nv-accent); }
+.nv-step-tool { color: var(--nv-text); font-weight: 500; }
 .nv-step-res { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nv-reply { border-left: 2px solid var(--nv-accent); padding-left: var(--space-2); display: flex; flex-direction: column; gap: 2px; }
+.nv-reply { border-left: 2px solid var(--ui-edge, #403d38); padding-left: var(--space-2); display: flex; flex-direction: column; gap: 2px; }
 .nv-error { color: var(--nv-red); }
-.nv-warn { color: var(--nv-accent); }
+.nv-warn { color: var(--nv-red); }
 .nv-ok a { color: var(--nv-accent); }
 /* Skeleton while a model works; no spinner. */
 .nv-skel { min-height: 20px; border-radius: var(--nv-r); background: linear-gradient(90deg, var(--nv-raise), var(--nv-hover), var(--nv-raise)); background-size: 200% 100%; display: flex; align-items: center; padding: 0 var(--space-2); color: var(--nv-muted); }

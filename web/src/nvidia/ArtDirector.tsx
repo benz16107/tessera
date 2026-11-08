@@ -47,7 +47,7 @@ export function ArtDirector({ sessionId, photoId, getLayers }: Props) {
     <section className="nv nv-card" aria-label="Art director">
       <header><h3>Art director</h3><span className="nv-muted">Nemotron Super VL, reasoning on</span></header>
       <p className="nv-muted">{image ? 'Critiques the latest render.' : 'No render yet: critiques your objects over the photo.'}</p>
-      <button className="nv-btn primary wide" onClick={run} disabled={!!busy}>Critique the composition</button>
+      <button className="nv-btn wide" onClick={run} disabled={!!busy}>Critique the composition</button>
       {busy && <div className="nv-skel tall"><span className="nv-num">{busy}, {secs} s</span></div>}
       {crit && (
         <div className="nv-crit">

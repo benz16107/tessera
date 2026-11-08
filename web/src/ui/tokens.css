@@ -10,12 +10,12 @@
    No 999 px pills anywhere: Simple's pill buttons were the only ones, and they move to 6 px like every other button.
    The viewfinder frame and the AI render shown beside it stay square, like a print.
 
-   Buttons: one shape (no border on the dark theme), three variants: primary (amber in Studio, the theme accent in
-   Simple), secondary (raised surface), ghost (text only). Heights: 28 px in dense Studio panels, 36 px everywhere
-   else, 44 px for touch targets in Simple on phones. Label 13 px/500. Icons 16 px, one stroke.
+   Buttons: one rectangular shape, 6 px corners, three variants: primary (near-white fill, dark text), secondary
+   (1 px edge, no fill), ghost (text only). Heights: 32 px in Studio, 36 px in Simple, 44 px touch targets on phones.
+   Label 13 px/500, 12 px side padding. Icons 16 px, one stroke. Segmented controls keep 28 px buttons in a 36 px track.
 
-   Type: the Darkroom scale. Archivo for words, Martian Mono for numbers. Studio panels use 11 (labels, metadata),
-   13 (body, values) and 16 (names, drawer titles) only. Simple adds 20 and 28 for its headings.
+   Type: Archivo for all text and numbers (tabular figures); Martian Mono only for the camera HUD and coordinates.
+   One scale: 11 (labels, metadata), 13 (body, values), 16 (names, titles), 20 (Simple's place name, the largest).
 
    Spacing: a 4 px grid.
 
@@ -39,10 +39,29 @@
      bottom edge   credits strip (hidden in Map view, which draws its own attribution)
    Inside the Through Cam A frame: readout top-left, histogram and warnings bottom-right, photo credit bottom-left,
    focus label at the subject, horizon label inside the right edge. */
-/* Martian Mono for numbers in both views (Studio also imports it); Archivo comes from main.tsx. */
+/* Martian Mono for the camera HUD and coordinates in both views; Archivo comes from main.tsx. */
 @import '@fontsource/martian-mono/400.css';
 @import '@fontsource/martian-mono/500.css';
 @import '@fontsource/martian-mono/600.css';
+
+/* Colour, both views (Ben, 4:15 AM: "fewer colours, no orange buttons, like an actual tool"). The UI is neutral grey.
+   Primary is a near-white fill with dark text (15:1); secondary is a 1 px edge on the surface; selected is a neutral
+   wash. Colour stays only where it carries meaning: --ui-warm for the sun and golden hour, --ui-danger for warnings and
+   errors, --ui-ok for a small status dot. Martian Mono (--font-hud) is for the camera HUD and coordinates only;
+   everything else, numbers included, is Archivo with tabular figures. */
+:root {
+  --ui-primary: #ece9e2;
+  --ui-primary-hover: #ffffff;
+  --ui-primary-ink: #111110;
+  --ui-edge: #403d38;
+  --ui-edge-hover: #5a5650;
+  --ui-selected: rgba(255, 255, 255, 0.09);
+  --ui-warm: #c9a46a;
+  --ui-danger: #e8675e;
+  --ui-ok: #7fc96f;
+  --font-hud: 'Martian Mono', ui-monospace, monospace;
+  --button-h-studio: 32px;
+}
 
 :root {
   --radius-control: 6px;
@@ -57,7 +76,7 @@
   --icon: 16px;
 
   --font-sans: 'Archivo Variable', 'Archivo', system-ui, sans-serif;
-  --font-mono: 'Martian Mono', ui-monospace, monospace;
+  --font-mono: var(--font-sans); /* numbers are Archivo now; the HUD uses --font-hud */
   --text-xs: 11px;
   --text-sm: 13px;
   --text-md: 16px;

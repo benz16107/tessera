@@ -16,3 +16,7 @@ export type { CameraCone } from './Map2D.tsx';
 //     onCamera={setMapCam} onEnter3D={(c, heading, pitch) => ...} onOpenShot={(t, mode) => ...} /></Suspense>
 export const GeoMapView = lazy(() => import('./MapView.tsx'));
 export type { MapCamera, ShotTarget } from './MapView.tsx';
+// Location clues: tap or drag a pin, or drag a circle's centre and edge. Needs no session (Simple's Drop page too).
+//   <Suspense><GeoPicker mode="pin" | "area" center={{ lat, lon }} value={v} onChange={setV} height={320} /></Suspense>
+export const GeoPicker = lazy(() => import('./GeoPicker.tsx'));
+export type { PickedPoint, PickedArea } from './GeoPicker.tsx';

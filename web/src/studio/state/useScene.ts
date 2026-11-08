@@ -1,7 +1,7 @@
 // The live set: every scene_object row of the session, the reducers that edit it, gizmo locks, drag streaming at 10 Hz,
 // and undo/redo of this client's own edits (keyed by the uid each client writes into params, so a re-added row still matches).
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { useTable, useReducer } from 'spacetimedb/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSpacetimeDB, useTable, useReducer } from 'spacetimedb/react';
 import { tables, reducers } from '../../module_bindings/index.ts';
 import type { SceneObject } from '../../module_bindings/types.ts';
 import { keyOf, stateOf, parseParams, type ObjState } from '../scene/objects.ts';
@@ -22,6 +22,27 @@ export function useScene(sessionId: bigint) {
   const [, bump] = useState(0);
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
+  const { identity } = useSpacetimeDB();
+
+  // shortcut: updateSceneObject replaces the whole row, so two people's writes inside one round trip undo each other's
+  // fields. When someone else's write puts a field I changed in the last 3 s back to the value I changed it from, send
+  // my change once more on top of their row. A deliberate revert by someone else in those 3 s gets overridden; the root
+  // fix is a field-level patch reducer in the module.
+  const mine = useRef(new Map<bigint, { base: ObjState; s: ObjState; t: number }>());
+  useEffect(() => {
+    const now = performance.now();
+    for (const [id, m] of mine.current) {
+      if (now - m.t > 3000) { mine.current.delete(id); continue; }
+      const r = rows.find(x => x.id === id);
+      if (!r || !identity || r.updatedBy.isEqual(identity)) continue;
+      const cur = stateOf(r) as unknown as Record<string, unknown>, base = m.base as unknown as Record<string, unknown>, mineS = m.s as unknown as Record<string, unknown>;
+      const lost = Object.keys(mineS).filter(k => mineS[k] !== base[k] && cur[k] === base[k]);
+      if (!lost.length) continue;
+      mine.current.delete(id);
+      for (const k of lost) cur[k] = mineS[k];
+      update({ id, sessionId, ...(cur as unknown as ObjState) }).catch(fail);
+    }
+  }, [rows]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sorted = useMemo(() => [...rows].sort((a, b) => Number(a.id - b.id)), [rows]);
   const fail = useCallback((e: unknown) => setError(String((e as Error)?.message ?? e)), []);
@@ -63,6 +84,8 @@ export function useScene(sessionId: bigint) {
   };
   const setObject = useCallback((row: SceneObject, s: ObjState, tag = '') => {
     record({ key: keyOf(row), before: stateOf(row), after: s, tag });
+    const prev = mine.current.get(row.id); // typing: keep the value from before the first keystroke as the base
+    mine.current.set(row.id, { base: prev && performance.now() - prev.t < 3000 ? prev.base : stateOf(row), s, t: performance.now() });
     update({ id: row.id, sessionId, ...onLatest(row.id, stateOf(row), s) }).catch(fail);
   }, [update, sessionId, fail]); // eslint-disable-line react-hooks/exhaustive-deps
 

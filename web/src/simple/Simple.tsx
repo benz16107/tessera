@@ -17,16 +17,17 @@ import { optics as opticsOf, frameFromPhoto } from '../studio/camera/shot.ts';
 import { sceneEv100 } from '../studio/optics.ts';
 import { cameraHpr, cameraQuat, llhToEnu, type Origin } from '../studio/frame.ts';
 import { geometryFor, groundZ } from '../studio/world/geometry.ts';
-import { newUid, parseParams } from '../studio/scene/objects.ts';
+import { newUid, parseParams, stateOf, withParams } from '../studio/scene/objects.ts';
 import type { Layers } from '../studio/render/layers.ts';
 import ShotView from './ShotView.tsx';
-import Found, { PinFound, ChangePlace } from './Found.tsx';
+import Found, { PinFound } from './Found.tsx';
+import { CluePanel, type OnPlace } from './clue.tsx';
 import Yours from './Yours.tsx';
 import There from './There.tsx';
 import ShareSheet from './Share.tsx';
 import { Wordmark, LegalLinks } from './Drop.tsx';
 import { ViewSwitch } from './ViewSwitch.tsx';
-import { CONFIDENCE, initials, lonZone, parseGeo, uploadPhoto, useNow } from './lib.ts';
+import { CONFIDENCE, evidenceLine, geoSpotId, groundHeight, initials, locate, lonZone, parseGeo, uploadPhoto, useNow, type Located, type PlacedBy } from './lib.ts';
 import { Close, Photo as PhotoIcon, Sun } from './icons.tsx';
 import './simple.css';
 
@@ -183,11 +184,24 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
       const q = cameraQuat(pose.heading, pose.pitch, pose.roll);
       scene.addObject({
         kind: 'camera', assetId: '', name: 'Cam A', x: p.x, y: p.y, z: gz(p.x, p.y) + pose.alt, qx: q.x, qy: q.y, qz: q.z, qw: q.w, scale: 1,
-        color: '', intensity: 0, lightType: '', params: `uid=${newUid()};shot=1;photo=${photo.id};alt=${pose.alt}${solved ? '' : ';approx=1'}`, visible: true,
+        color: '', intensity: 0, lightType: '', visible: true,
+        params: `uid=${newUid()};shot=1;photo=${photo.id};alt=${pose.alt}${solved ? '' : `;approx=1;placed=${placedNext.current?.by ?? (photo.source === 'locate' ? 'guess' : 'gps')}${placedNext.current?.radiusM ? `;area=${Math.round(placedNext.current.radiusM)}` : ''}`}`,
       });
     }, 4000);
     return () => clearTimeout(t);
   }, [scene.ready, cams.length, solved, pinShoot, origin]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Every clue (search, exact spot, area, Nemotron's guess) moves the pin for everyone and records on Cam A how it was placed.
+  const placedNext = useRef<{ by: PlacedBy; radiusM?: number } | null>(null);
+  const placeAt: OnPlace = async (lat, lon, by, radiusM) => {
+    placedNext.current = { by, radiusM }; // before the pin moves, so the first render after it already has the right label
+    await setSessionSpot({ sessionId: sid, spotId: geoSpotId(lat, lon, await groundHeight(lat, lon)) });
+    const patch = { placed: by, area: by === 'area' && radiusM ? Math.round(radiusM) : '', approx: 1 };
+    if (shotRow) scene.setObject(shotRow, withParams({ ...stateOf(shotRow), x: 0, y: 0, z: 1.6 }, patch));
+  };
+  const camPrm: Record<string, string> = shotRow ? parseParams(shotRow.params) : {};
+  const placedBy = (camPrm.placed as PlacedBy | undefined) ?? placedNext.current?.by;
+  const placedArea = camPrm.area ? Number(camPrm.area) : placedNext.current?.radiusM;
 
   const [step, setStep] = useState<Step>('found');
   const [blend, setBlend] = useState(1); // open on the photo; the slider reveals the 3D on demand
@@ -204,9 +218,10 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
 
   let panel: React.ReactNode;
   if (!photo) panel = <AddPhoto session={session} spotId={spotId} />;
-  else if (!pose) panel = <Solving photo={photo} job={job} result={result} spots={spots} sessionId={sid} />;
+  else if (!pose) panel = <Solving photo={photo} job={job} result={result} spots={spots} onPlace={placeAt} />;
   else if (step === 'found') panel = solved ? <Found result={solved} photo={photo} spot={spot} zone={zone} credit={owner} onGo={() => setStep('there')} />
-    : <PinFound photo={photo} geo={geoSpot!} title={session.title} zone={zone} sessionId={sid} credit={owner} onGo={() => setStep('there')} />;
+    : <PinFound photo={photo} geo={geoSpot!} title={session.title} zone={zone} credit={owner} onPlace={placeAt} onGo={() => setStep('there')}
+      placed={placedBy} areaM={placedArea} />;
   else if (step === 'yours') panel = (
     <Yours sessionId={sid} photo={photo} spotId={spotId} pose={pose} shot={shot} setShot={setShot} o={o} planTime={planTime} zone={zone}
       changeTime={changeTime} people={scene.rows.filter(r => r.kind === 'person').length} capture={capture} sun={sun} credit={owner} />
@@ -301,9 +316,11 @@ class StageBoundary extends Component<{ children: ReactNode; fallback: ReactNode
 
 const SOLVE_STEPS = ['Uploading your photo', 'Finding the place', 'Matching it with photos of the spot', 'Working out where they stood and the lens'];
 
-function Solving({ photo, job, result, spots, sessionId }: { photo: Photo; job?: SolveJob; result?: SolveResult; spots: readonly Spot[]; sessionId: bigint }) {
+function Solving({ photo, job, result, spots, onPlace }: { photo: Photo; job?: SolveJob; result?: SolveResult; spots: readonly Spot[]; onPlace: OnPlace }) {
   const enqueue = useReducer(reducers.enqueueSolve);
   const [spotPick, setSpotPick] = useState('');
+  const [clueOpen, setClueOpen] = useState(false);
+  const [placing, setPlacing] = useState(false);
   const now = useNow(1000, !!job && job.state !== 'done' && job.state !== 'failed');
   const failed = job?.state === 'failed' || result?.confidence === 'none';
   // Which plain-words step is active: queued is "finding", running walks through matching then solving.
@@ -314,8 +331,39 @@ function Solving({ photo, job, result, spots, sessionId }: { photo: Photo; job?:
     const s = job?.spotId || spotPick || (spots.length === 1 ? spots[0].id : '');
     if (s) enqueue({ photoId: photo.id, spotId: s, lensHintF35: lens }).catch(() => {});
   };
+  // anywhere2.md rule 2: a shoot with no place yet, or a failed solve, asks the crew once where the photo is.
+  const [guess, setGuess] = useState<Located | null | undefined>(undefined);
+  const ask = failed || !job;
+  useEffect(() => {
+    if (!ask) return;
+    let live = true;
+    const gps = photo.pinLat != null && photo.pinLon != null ? { lat: photo.pinLat, lon: photo.pinLon } : undefined;
+    // One retry: a crew restart or a slow model returns an error, and a miss here leaves only the clue panel.
+    locate(photo.url, gps).then(r => r ?? new Promise<void>(ok => setTimeout(ok, 2000)).then(() => locate(photo.url, gps)))
+      .then(r => { if (live) setGuess(r); });
+    return () => { live = false; };
+  }, [ask, photo.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A high or medium guess is offered, never applied: the shoot is pinned only when the person taps "Plan it there".
+  const plan = guess && guess.lat != null && guess.lon != null && !guess.nearestSpot && (guess.confidence === 'high' || guess.confidence === 'medium') ? guess : null;
+  const unsure = plan?.confidence === 'medium';
+  const jobSpot = spots.find(s => s.id === job?.spotId);
+  const near = plan ? { lat: plan.lat!, lon: plan.lon! } : guess?.lat != null && guess.lon != null ? { lat: guess.lat, lon: guess.lon }
+    : jobSpot ? { lat: jobSpot.lat, lon: jobSpot.lon } : spots[0] ? { lat: spots[0].lat, lon: spots[0].lon } : { lat: 40.7032, lon: -73.9896 };
+  const clue = <CluePanel photo={photo} near={near} onPlace={onPlace} onClose={plan ? () => setClueOpen(false) : undefined} />;
+  const looksLike = plan && (
+    <div className="s-guess">
+      <p className="s-label">{unsure ? 'Nemotron thinks it might be' : 'Looks like'}</p>
+      <p className="s-mid strong">{plan.place.split(',').slice(0, 2).join(',')}{unsure ? '?' : ''}</p>
+      {(evidenceLine(plan.evidence) || plan.reason) && <p className="s-muted small">{evidenceLine(plan.evidence) || `Nemotron: ${plan.reason}`}</p>}
+      <button className="s-btn primary" disabled={placing} onClick={() => { setPlacing(true); onPlace(plan.lat!, plan.lon!, 'guess').catch(() => setPlacing(false)); }}>{placing ? 'Moving the shoot' : 'Plan it there'}</button>
+    </div>
+  );
+  const clueRow = plan && !clueOpen
+    ? <div className="s-place"><button type="button" className="s-btn s-place-btn" onClick={() => setClueOpen(true)}>{unsure ? 'Give a clue' : 'Somewhere else? Give a clue'}</button></div>
+    : clue;
 
-  if (failed) {
+  // A real mapped-spot photo whose solve failed: today's screen, with the clue panel one tap away.
+  if (failed && guess?.nearestSpot) {
     return (
       <div className="s-solving">
         <p className="s-conf" data-tone="bad"><i aria-hidden="true" />{CONFIDENCE.none.word}</p>
@@ -328,19 +376,39 @@ function Solving({ photo, job, result, spots, sessionId }: { photo: Photo; job?:
           <button className="s-chip" onClick={() => retry()}>Try again</button>
         </div>
         <hr />
-        <p className="s-label">Not taken at {spots.find(s => s.id === job?.spotId)?.name ?? 'a mapped spot'}? Pick the place and plan it there.</p>
-        <ChangePlace sessionId={sessionId} />
+        {clueOpen ? clue : <div className="s-place"><button type="button" className="s-btn s-place-btn" onClick={() => setClueOpen(true)}>Give a location clue</button></div>}
       </div>
     );
   }
-  if (!job) {
+  // No place yet (rule 1), or a failed solve of a photo from somewhere else (rule 2): never a dead end.
+  if (failed || !job) {
+    const looking = guess === undefined;
     return (
-      <div className="s-solving">
-        <h1 className="s-title">Which place is this?</h1>
-        <p className="s-muted">The photo has no location, so pick the spot it shows.</p>
-        <div className="s-chips">
-          {spots.map(s => <button key={s.id} className="s-chip" aria-pressed={spotPick === s.id} onClick={() => { setSpotPick(s.id); enqueue({ photoId: photo.id, spotId: s.id, lensHintF35: undefined }).catch(() => {}); }}>{s.name}</button>)}
-        </div>
+      <div className="s-solving s-clue-screen" aria-live="polite">
+        <p className="s-eyebrow">{failed ? `Not ${jobSpot?.name ?? 'one of our mapped spots'}` : 'Where was this taken?'}</p>
+        <h1 className="s-title">{looking ? 'Looking for clues in the photo' : plan ? 'Plan it where it was taken' : 'Give Tessera a clue'}</h1>
+        <p className="s-muted">{looking ? 'Nemotron is reading the signs, landmarks and streets in it.'
+          : plan ? `${failed ? 'Our 3D model could not place this photo. ' : ''}${unsure ? 'Nemotron has a guess but is not sure. Plan it there if it is right, or give a clue.' : 'Nemotron recognised the place.'}`
+          : 'Nemotron could not name the place from the photo. Search for it, tap the exact spot, or circle the area.'}</p>
+        {looksLike}
+        {!looking && clueRow}
+        {failed && jobSpot && (
+          <details className="s-retry">
+            <summary>Or try matching it with {jobSpot.name} again</summary>
+            <div className="s-chips">
+              {[24, 35, 50, 85].map(f => <button key={f} className="s-chip" onClick={() => retry(f)}>{f} mm</button>)}
+              <button className="s-chip" onClick={() => retry()}>Try again</button>
+            </div>
+          </details>
+        )}
+        {!job && spots.length > 0 && (
+          <div className="s-retry">
+            <p className="s-label">Or match it against our 3D model of</p>
+            <div className="s-chips">
+              {spots.map(s => <button key={s.id} className="s-chip" aria-pressed={spotPick === s.id} onClick={() => { setSpotPick(s.id); enqueue({ photoId: photo.id, spotId: s.id, lensHintF35: undefined }).catch(() => {}); }}>{s.name}</button>)}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

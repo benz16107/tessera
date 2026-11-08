@@ -2,35 +2,35 @@
    The drawer that hosts it gives the side margin, so the panel adds none. Buttons match the studio's dense .st-btn. */
 .ph-panel {
   --p-bg: var(--panel, #121211); --p-field: var(--raise, #181816); --p-hover: var(--line-2, #3a3833); --p-line: var(--line, #22211e);
-  --p-text: var(--text, #f2efe8); --p-muted: var(--text-2, #a39f96); --p-dim: var(--text-3, #75716a); --p-accent: var(--amber, #f2a33a); --p-ink: var(--amber-ink, #1a1206);
+  --p-text: var(--text, #f2efe8); --p-muted: var(--text-2, #a39f96); --p-dim: var(--text-3, #75716a); --p-accent: var(--ui-primary, #ece9e2); --p-ink: var(--ui-primary-ink, #111110);
   display: flex; flex-direction: column; gap: var(--space-3); padding: 0 0 var(--space-3); color: var(--p-text); font: var(--text-sm)/1.45 var(--font-sans);
 }
 .ph-head { display: flex; align-items: center; gap: var(--space-2); }
 .ph-title, .ph-sub { flex: 1; margin: 0; font: 500 var(--text-sm)/1.3 var(--font-sans); color: var(--p-text); }
 .ph-sub { margin-top: var(--space-1); }
 .ph-state { font: var(--text-xs)/1 var(--font-sans); color: var(--p-muted); background: var(--p-field); border-radius: var(--radius-control); padding: 4px 8px; white-space: nowrap; }
-.ph-state[data-on='true'] { color: var(--p-accent); }
+.ph-state[data-on='true'] { color: var(--p-text); }
 .ph-people, .ph-versions, .ph-checkins { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .ph-people li { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .ph-name { font-weight: 500; }
 .ph-dim { color: var(--p-muted); }
 .ph-badges { display: inline-flex; gap: var(--space-1); }
 .ph-badge { font: var(--text-xs)/1 var(--font-mono); color: var(--p-muted); background: var(--p-field); border-radius: var(--radius-control); padding: 3px 6px; }
-.ph-badge[data-ok='true'] { color: var(--p-accent); }
+.ph-badge[data-ok='true'] { color: var(--p-text); box-shadow: inset 0 0 0 1px var(--ui-edge, #403d38); }
 .ph-invite { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
-.ph-panel .ph-invite input, .ph-panel .ph-invite select { height: var(--control-h-dense); min-width: 0; padding: 0 var(--space-2); background: var(--p-field); color: var(--p-text); border: 0; border-radius: var(--radius-control); font: inherit; }
-.ph-panel .ph-btn { position: relative; height: var(--control-h-dense); padding: 0 var(--control-pad-dense); background: var(--p-field); color: var(--p-text); border: 0; border-radius: var(--radius-control); font: 500 var(--text-sm)/1 var(--font-sans); white-space: nowrap; cursor: pointer; transition-property: background-color, scale; transition-duration: 120ms; transition-timing-function: ease-out; }
-.ph-panel .ph-btn.primary { background: var(--p-accent); color: var(--p-ink); font-weight: 600; }
+.ph-panel .ph-invite input, .ph-panel .ph-invite select { height: var(--button-h-studio, 32px); min-width: 0; padding: 0 var(--space-2); background: var(--p-field); color: var(--p-text); border: 0; border-radius: var(--radius-control); font: inherit; }
+.ph-panel .ph-btn { position: relative; height: var(--button-h-studio, 32px); padding: 0 12px; background: transparent; box-shadow: inset 0 0 0 1px var(--ui-edge, #403d38); color: var(--p-text); border: 0; border-radius: var(--radius-control); font: 500 var(--text-sm)/1 var(--font-sans); white-space: nowrap; cursor: pointer; transition-property: background-color, scale; transition-duration: 120ms; transition-timing-function: ease-out; }
+.ph-panel .ph-btn.primary { background: var(--p-accent); color: var(--p-ink); box-shadow: none; font-weight: 600; }
 .ph-panel .ph-btn.small { margin-left: auto; }
 .ph-panel .ph-btn.wide { width: 100%; }
-.ph-panel .ph-btn:disabled { background: var(--p-field); color: var(--p-dim); cursor: not-allowed; }
+.ph-panel .ph-btn:disabled { background: transparent; color: var(--p-dim); cursor: not-allowed; }
 .ph-panel .ph-btn:not(:disabled):active { scale: 0.96; }
-@media (hover: hover) { .ph-panel .ph-btn:not(:disabled):not(.primary):hover { background: var(--p-hover); } .ph-panel .ph-btn.primary:not(:disabled):hover { filter: brightness(1.06); } }
+@media (hover: hover) { .ph-panel .ph-btn:not(:disabled):not(.primary):hover { background: var(--ui-selected, rgba(255,255,255,0.09)); } .ph-panel .ph-btn.primary:not(:disabled):hover { background: var(--ui-primary-hover, #fff); } }
 .ph-panel .ph-btn:focus-visible, .ph-invite input:focus-visible, .ph-invite select:focus-visible { outline: 2px solid var(--p-text); outline-offset: 2px; }
 .ph-note { background: var(--p-field); border-radius: var(--radius-panel); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); overflow-wrap: anywhere; }
 .ph-note p { margin: 0; }
 .ph-versions li { display: flex; align-items: center; gap: var(--space-2); }
 .ph-versions img, .ph-thumb { width: 44px; height: 30px; object-fit: cover; border-radius: var(--radius-control); outline: 1px solid oklch(1 0 0 / 0.1); outline-offset: -1px; background: var(--p-field); flex: none; }
-.ph-label { font: 500 var(--text-sm) var(--font-mono); }
+.ph-label { font: 500 var(--text-sm) var(--font-sans); }
 .ph-checkins li[data-verdict='on the mark'] .ph-name { color: #5ec8c2; }
 .ph-mark-tag { font: var(--text-xs) var(--font-mono); color: #111; background: var(--ph-c); padding: 2px 6px; border-radius: var(--radius-control); white-space: nowrap; pointer-events: none; }

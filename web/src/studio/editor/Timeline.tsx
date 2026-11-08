@@ -78,6 +78,13 @@ export default function Timeline({ at, lat, lon, zone, camHeading, camName, onCh
   })();
   const sunrise = win === 'evening' ? times.sunset : times.sunrise;
   const px = x(at);
+  // The sun readout (about 170 px) goes beside the playhead on the side clear of the Sunrise/Sunset label (about 90 px,
+  // centred); when neither side is clear the label gives way, since the readout already says where the sun is.
+  const riseX = sunrise instanceof Date && !isNaN(sunrise.getTime()) && sunrise > a && sunrise < b ? x(sunrise) : null;
+  const clear = (l: number) => riseX === null || l + 170 < riseX - 45 || l > riseX + 45;
+  const sides = (px + 10 > w - 180 ? [px - 170, px + 10] : [px + 10, px - 170]).filter(l => l >= 0 && l + 170 <= w);
+  const readLeft = sides.find(clear) ?? sides[0] ?? px + 10;
+  const showRise = riseX !== null && (!(at >= a && at <= b) || clear(readLeft));
   const zoneDay = new Intl.DateTimeFormat('en-US', { timeZone: zone, weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).format(at);
   const ymd = new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(at); // YYYY-MM-DD at the spot
   const [year, mon, dom] = ymd.split('-').map(Number);
@@ -134,13 +141,13 @@ export default function Timeline({ at, lat, lon, zone, camHeading, camName, onCh
           {at >= a && at <= b && <circle cx={px} cy={y(sun.altitude)} r={4} fill="var(--text)" stroke="var(--panel)" strokeWidth={1.5} />}
         </svg>
         <span className="horizon open-only" style={{ top: 60 + y(0) - 14 }}>Horizon</span>
-        {sunrise instanceof Date && !isNaN(sunrise.getTime()) && sunrise > a && sunrise < b && (
+        {showRise && (
           <span className="sunrise open-only" style={{ left: x(sunrise), top: 60 + y(0) + 2 }}>{win === 'evening' ? 'Sunset' : 'Sunrise'} {fmtTime(sunrise, zone).replace(/ [AP]M$/, '')}</span>
         )}
         {at >= a && at <= b && (
           <>
             <i className="st-playhead" style={{ left: px }} />
-            <span className="st-sunread open-only" style={{ left: px + 10 > w - 180 ? px - 170 : px + 10 }}>
+            <span className="st-sunread open-only" style={{ left: readLeft }}>
               <b>Sun {sun.altitude.toFixed(1)}° {sun.altitude >= 0 ? 'up' : 'down'}, {sun.azimuth.toFixed(0)}°</b>
               {rel && <span>{rel}</span>}
             </span>

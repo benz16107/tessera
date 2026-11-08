@@ -16,6 +16,7 @@ import { useConfig, NAME_KEY } from '../config.ts';
 import { navigate } from '../App.tsx';
 import { sunAt, spotZone, fmtTime } from '../geo.ts';
 import { ENU_TO_THREE, enuToThree, threeToEnu, llhToEnu, enuToLlh, cameraQuat, cameraHpr, yawQuat, type Origin } from './frame.ts';
+import { rememberView } from '../simple/view.ts';
 import { useGeoLayers, GeoScene, GeoButton, GeoPanel, GeoBands, GeoOverview, GeoMapView, zoomForHeight, type MapCamera, type ShotTarget } from '../layers/index.ts';
 import { sceneEv100, meterStops, whiteBalanceGains, fmtShutter, kelvinToRgb, shutterForScene, remainingMp, subjectLockedDistance, shakeBlurPx, tintGains } from './optics.ts';
 import type { Histogram, PointLight, Walker } from './post/LookThrough.tsx';
@@ -32,7 +33,7 @@ import PlaceSearch, { type Place } from './editor/PlaceSearch.tsx';
 import Splat, { useSplatUrl, sparkRef } from './world/Splat.tsx';
 import Catchers from './world/Catchers.tsx';
 import { geometryFor, groundZ, onStreet, SPLATS } from './world/geometry.ts';
-import { ObjectNode, SelectionBox, accent, objectSizes } from './world/SceneObjects.tsx';
+import { ObjectNode, SelectionBox, ACCENT, objectSizes } from './world/SceneObjects.tsx';
 import LookThrough from './post/LookThrough.tsx';
 import Overlays from './editor/Overlays.tsx';
 import Timeline from './editor/Timeline.tsx';
@@ -517,8 +518,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const latestRender = [...previews].filter(p => p.state === 'done' && p.imageUrl).sort((a, b) => Number(b.id - a.id))[0];
   const split = view === 'shot' && renderOpen && !!latestRender;
   const fitFn = useCallback((vw: number, vh: number): Fit => fitFrame(o, vw, vh, {
-    top: vw < 1150 ? 104 : 56, bottom: 72, left: compareOn ? vw / 2 + 8 : 24, right: split && !compareOn ? vw / 2 + 8 : 24, // camera bar wraps under 1150
-  }), [o, split, compareOn]);
+    top: vw < 1150 ? 104 : 56, bottom: split || compareOn ? 112 : 72, left: compareOn ? vw / 2 + 8 : 24, right: split && !compareOn ? vw / 2 + 8 : 24, // camera bar wraps under 1150
+  }), [o, split, compareOn]); // side by side, the narrow frames' captions wrap to four lines: keep them off the credits strip (ui-audit 44)
   const fit = fitFn(vp.w, vp.h);
   const portrait = frame.h > frame.w;
   const aspectLabel = (a: string) => { const [x, y] = a.split(':'); return portrait && +x > +y ? `${y}:${x}` : a; };
@@ -832,7 +833,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   return (
     <div className="studio" data-time={timeHover || timePinned ? 'open' : 'slim'} data-focus={focus} data-view={view}>
       <header className="st-top">
-        <a className="st-logo" href={`/p/${session.code}`} onClick={e => { e.preventDefault(); navigate(`/p/${session.code}`); }} title="Back to the planner">TESSERA</a>
+        <a className="st-logo" href={`/p/${session.code}`} onClick={e => { e.preventDefault(); rememberView('simple'); navigate(`/p/${session.code}`); }} title="Back to the planner">TESSERA</a>
         <ViewSwitch code={session.code} current="studio" selected={selected} onArrive={h => { if (h.selected !== null) setSelected(h.selected); if (h.first) setView('shot'); }} />
         <div className="st-setname"><span>{spot?.name ?? session.title}</span><span className="saved">Saved live</span></div>
         {/* Simple | Studio toggle: the "simple" thread owns this one spot. */}
@@ -992,9 +993,9 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                 </>
               );
             })()}
-            <p className="st-readout" style={{ left: fit.rect.x + 12, top: fit.rect.y + 12 }}>
+            <p className="st-readout" style={{ left: fit.rect.x + 12, top: fit.rect.y + 12, maxWidth: fit.rect.w - 24, flexWrap: 'wrap' }}>
               <b>{shotName.toUpperCase()}</b><span>{Math.round(shot.focalMm)} mm</span><span>f/{shot.aperture}</span><span>{fmtShutter(shot.shutterS)}{shot.shutterS < 0.3 ? ' s' : ''}</span><span>ISO {shot.iso}</span>
-              <span style={{ color: Math.abs(meter) > 1 ? 'var(--amber)' : undefined }}>{meter >= 0 ? '+' : ''}{meter.toFixed(1)} EV</span>
+              {fit.rect.w >= 400 && <span style={{ color: Math.abs(meter) > 1 ? 'var(--amber)' : undefined }}>{meter >= 0 ? '+' : ''}{meter.toFixed(1)} EV</span>}
             </p>
             {Math.abs(meter) > 1.5 && (
               <button className="st-btn small st-expose" style={{ left: fit.rect.x + 12, top: fit.rect.y + 44 }}
@@ -1142,7 +1143,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                 <span className="st-pip-label" style={{ left: pip.x + 6, top: pip.y + pip.h - 22 }}>{shotName} · {Math.round(o.f35)} mm</span>
               </>
             )}
-            {view !== 'walk' && view !== 'map' && scene.rows.filter(r => r.kind !== 'camera').length === 0 && scene.ready && !addOpen && (
+            {view !== 'walk' && view !== 'map' && scene.rows.filter(r => r.kind !== 'camera').length === 0 && scene.ready && !addOpen && !buildShown && (
               <div className="st-hint st-float" role="note">
                 <span>Press <kbd>+</kbd> to add people, props and lights, or describe a change.</span>
                 <button className="st-btn small" onClick={() => setAddOpen(true)}>Add</button>
@@ -1157,8 +1158,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               onCamera={c => { mapCamRef.current = c; }} onEnter3D={(c, heading) => enter3D(c, heading)} onOpenShot={openShot} />
           </Suspense>
         )}
-        <div className="st-corner" aria-live="polite">
-          {showTiles && view !== 'shot' && !focus && (
+        <div className="st-corner" aria-live="polite" style={view === 'map' ? { bottom: 56 } : undefined}>{/* on the Map, above Geo's hint chip (bottom 16 px) */}
+          {showTiles && view !== 'shot' && view !== 'map' && !focus && (
             <div className="st-seg st-float st-lightsw" role="group" aria-label="Light"
               title="Live sun relights Google's 3D tiles for the time on the timeline. Their photos were taken in daylight, so faint shadows from the capture still show.">
               <button aria-pressed={lightMode === 'live'} onClick={() => setLightMode('live')}>Live sun</button>
@@ -1186,6 +1187,11 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
           {laser && <span className="st-chip">Laser on: click to show everyone a spot</span>}
           {view === 'persp' && <span className="st-chip mono">Eye {camHeight.toFixed(1)} m</span>}
           {(scene.error || toast) && <button className={`st-chip ${scene.error ? 'err' : 'toast'}`} onClick={() => { scene.clearError(); setToast(''); }}>{scene.error || toast}</button>}
+          {/* Last in the corner, so the chips stack above the card instead of under it (ui-audit 42). */}
+          {!focus && view !== 'map' && <BuildCard onShown={setBuildShown} spotName={spot?.name} solved={solved ? { f35: solved.pose.f35, heading: solved.pose.heading, inliers: solved.inliers, alt: solved.pose.alt, pitch: solved.pose.pitch, secs: solved.secs } : null}
+            hasCam={!!shotRow} worldReady={plateReady || (world === 'clay' || world === 'clayPhoto' ? !!layers.data?.layers.buildings : splatState.loaded || attribution !== '')}
+            worldNote={world === 'clay' || world === 'clayPhoto' ? `Clay massing from ${layers.data?.layers.buildings?.features.length ?? 'the'} building footprints${world === 'clayPhoto' ? ', your photo projected on it' : ''}` : undefined}
+            splat={world === 'splat' && !!splatUrl} progress={splatState.progress} />}
         </div>
         {view !== 'map' && <div className="st-credits">{credits}{photo && <span className="right">Photo: {nameOf(photo.owner)}'s upload</span>}</div>}
         {dragOver && <div className="st-dropzone-hint">Drop the image where it should go</div>}
@@ -1198,10 +1204,6 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
           </div>
         )}
         {addOpen && <AddDrawer onAdd={i => addItem(i)} sessionId={sid} onGenerated={onGenerated} genFile={genFile} onClose={() => setAddOpen(false)} startTab={genFile ? 'Generate' : undefined} />}
-        {!focus && view !== 'map' && <BuildCard onShown={setBuildShown} spotName={spot?.name} solved={solved ? { f35: solved.pose.f35, heading: solved.pose.heading, inliers: solved.inliers, alt: solved.pose.alt, pitch: solved.pose.pitch, secs: solved.secs } : null}
-          hasCam={!!shotRow} worldReady={plateReady || (world === 'clay' || world === 'clayPhoto' ? !!layers.data?.layers.buildings : splatState.loaded || attribution !== '')}
-          worldNote={world === 'clay' || world === 'clayPhoto' ? `Clay massing from ${layers.data?.layers.buildings?.features.length ?? 'the'} building footprints${world === 'clayPhoto' ? ', your photo projected on it' : ''}` : undefined}
-          splat={world === 'splat' && !!splatUrl} progress={splatState.progress} />}
         {page !== 'set' && (
           <div className="st-page">
             <button className="st-btn small" onClick={() => setPage('set')} style={{ marginBottom: 16 }}>Back to the set</button>
@@ -1491,10 +1493,10 @@ function Picker({ pickRef }: { pickRef: React.MutableRefObject<((cx: number, cy:
 function Measure({ pts }: { pts: Vector3[] }) {
   return (
     <group userData={{ helper: true }}>
-      {pts.map((p, i) => <mesh key={i} position={[p.x, p.y, p.z + 0.03]}><sphereGeometry args={[0.08, 12, 8]} /><meshBasicMaterial color={accent()} toneMapped={false} /></mesh>)}
+      {pts.map((p, i) => <mesh key={i} position={[p.x, p.y, p.z + 0.03]}><sphereGeometry args={[0.08, 12, 8]} /><meshBasicMaterial color={ACCENT} toneMapped={false} /></mesh>)}
       {pts.length === 2 && (
         <>
-          <Line points={pts.map(p => [p.x, p.y, p.z + 0.05] as [number, number, number])} color={accent()} lineWidth={2} />
+          <Line points={pts.map(p => [p.x, p.y, p.z + 0.05] as [number, number, number])} color={ACCENT} lineWidth={2} />
           <Html position={[(pts[0].x + pts[1].x) / 2, (pts[0].y + pts[1].y) / 2, (pts[0].z + pts[1].z) / 2 + 0.4]} center>
             <span className="st-obj-label cam">{pts[0].distanceTo(pts[1]).toFixed(2)} m</span>
           </Html>

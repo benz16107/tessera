@@ -1,12 +1,10 @@
 // A-2 Found it: the answer in plain words. Where to stand, which way to face, the lens as an iPhone zoom, the next good
 // light and "Take me there".
 import { useEffect, useMemo, useState } from 'react';
-import { useReducer } from 'spacetimedb/react';
-import { reducers } from '../module_bindings/index.ts';
 import type { Photo, SolveResult, Spot } from '../module_bindings/types.ts';
 import { angleDiff, compassWord, fmtTime, hfovDeg, lightWindows, metersBetween } from '../geo.ts';
-import { searchPlaces, type Place } from '../studio/editor/PlaceSearch.tsx';
-import { CONFIDENCE, geoSpotId, groundHeight, iphoneZoom, locate, photoCredit, resultLine } from './lib.ts';
+import { CONFIDENCE, iphoneZoom, locate, photoCredit, resultLine, type PlacedBy } from './lib.ts';
+import { CluePanel, type OnPlace } from './clue.tsx';
 import { Arrow } from './icons.tsx';
 import { describeMark } from './street.ts';
 import { streetsFor } from './streets.data.ts';
@@ -109,33 +107,48 @@ export default function Found({ result, photo, spot, zone, credit, onGo }: {
   );
 }
 
-/** Found it for a free-location shoot (anywhere.md cases 1 and 2): planned at a pin from the photo's GPS, Nemotron's guess or
- *  a place someone picked. Nothing is solved, so the stand and the heading are labelled approximate. */
-export function PinFound({ photo, geo, title, zone, sessionId, credit, onGo }: {
-  photo: Photo; geo: { lat: number; lon: number }; title: string; zone: string; sessionId: bigint; credit?: string; onGo: () => void;
+/** Found it for a free-location shoot (anywhere.md, anywhere2.md): planned at a pin from the photo's GPS, Nemotron's guess, a
+ *  searched place, an exact spot someone set, or the centre of an area. Only an exact spot drops the "Approximate" label. */
+export function PinFound({ photo, geo, title, zone, placed, areaM, credit, onPlace, onGo }: {
+  photo: Photo; geo: { lat: number; lon: number }; title: string; zone: string; placed?: PlacedBy; areaM?: number; credit?: string;
+  onPlace: OnPlace; onGo: () => void;
 }) {
   const [place, setPlace] = useState(title === 'Untitled shoot' ? '' : title);
+  const [clue, setClue] = useState(false);
   const moved = photo.pinLat == null || photo.pinLon == null || metersBetween(photo.pinLat, photo.pinLon, geo.lat, geo.lon) > 50;
-  // The title names the place the shoot was made for. After Change place, the crew's geocoder names the new pin.
+  // The title names the place the shoot was made for. After the pin moves, the crew's geocoder names the new spot.
   useEffect(() => {
     if (!moved && place) return;
     let live = true;
     locate(photo.url, geo).then(r => { if (live && r?.place) setPlace(r.place.split(',').slice(0, 2).join(',').trim()); });
     return () => { live = false; };
   }, [photo.url, geo.lat, geo.lon, moved]); // eslint-disable-line react-hooks/exhaustive-deps
-  const guessed = photo.source === 'locate';
+  const by: PlacedBy = placed ?? (photo.source === 'locate' ? 'guess' : moved ? 'search' : 'gps');
   const name = place || 'this place';
-  const note = moved ? 'You picked this place. Plan the shot here; where you stand and which way you face are up to you.'
-    : guessed ? `Nemotron's guess from the photo: ${name}. Not one of our mapped spots yet, so where they stood is approximate.`
-    : `Not one of our mapped spots yet. Planning it at ${name} from your photo's location.`;
+  const km = areaM ? (areaM >= 1000 ? `${(areaM / 1000).toFixed(1)} km` : `${Math.round(areaM)} m`) : '';
+  const NOTE: Record<PlacedBy, string> = {
+    gps: `Not one of our mapped spots yet. Planning it at ${name} from your photo's location.`,
+    guess: `Nemotron's guess from the photo: ${name}. Not one of our mapped spots yet, so where they stood is approximate.`,
+    search: `You picked ${name}. Plan the shot here; where you stand and which way you face are up to you.`,
+    pin: 'Placed by you: the exact spot to stand. Which way to face is up to you.',
+    area: `Somewhere in this area${km ? `, within ${km} of ${name}` : ''}. Nemotron found nothing more exact inside it.`,
+  };
+  const MARK: Record<PlacedBy, string> = {
+    gps: "Your photo's GPS, usually within 5 to 30 m.",
+    guess: "Where the map puts Nemotron's guess, not where the photographer stood.",
+    search: 'The place you picked.',
+    pin: 'Exactly where you put the pin.',
+    area: `The centre of the area${km ? `, ${km} around` : ''}.`,
+  };
   const f35 = photo.exifF35;
   const golden = useMemo(() => lightWindows(new Date(), geo.lat, geo.lon, 0, 60, 2).find(w => w.kind === 'Golden hour'), [geo.lat, geo.lon]);
   return (
-    <article className="s-found s-pin">
-      <p className="s-conf" data-tone="warn"><i aria-hidden="true" />Approximate</p>
+    <article className="s-found s-pin" data-placed={by}>
+      <p className="s-conf" data-tone={by === 'pin' ? 'good' : 'warn'}><i aria-hidden="true" />{by === 'pin' ? 'Placed by you' : 'Approximate'}</p>
       <h1 className="s-title">{place || "Your photo's place"}</h1>
-      <p className="s-muted s-pin-note">{note}</p>
-      <ChangePlace sessionId={sessionId} />
+      <p className="s-muted s-pin-note">{NOTE[by]}</p>
+      {clue ? <CluePanel photo={photo} near={geo} onPlace={onPlace} onClose={() => setClue(false)} />
+        : <div className="s-place"><button type="button" className="s-btn s-place-btn" onClick={() => setClue(true)}>Change place</button></div>}
       <hr />
       <div className="s-two">
         <div>
@@ -164,7 +177,7 @@ export function PinFound({ photo, geo, title, zone, sessionId, credit, onGo }: {
         <div>
           <p className="s-label">The mark</p>
           <p className="s-mid">{geo.lat.toFixed(5)}, {geo.lon.toFixed(5).replace('-', '\u2212')}</p>
-          <p className="s-muted small s-approx">{moved ? 'The place you picked.' : guessed ? "Where the map puts Nemotron's guess, not where the photographer stood." : "Your photo's GPS, usually within 5 to 30 m."}</p>
+          <p className="s-muted small s-approx">{MARK[by]}</p>
         </div>
         <button className="s-btn primary big" onClick={onGo}><Arrow width={18} height={18} /> Take me there</button>
       </div>
@@ -182,50 +195,5 @@ export function PinFound({ photo, geo, title, zone, sessionId, credit, onGo }: {
       )}
       <p className="s-credit">{photoCredit(photo, '', credit)} · Place names © OpenStreetMap contributors</p>
     </article>
-  );
-}
-
-/** Change place: search a place (Nominatim) and move the shoot's pin there for everyone (setSessionSpot to 'geo:...'). */
-export function ChangePlace({ sessionId }: { sessionId: bigint }) {
-  const setSessionSpot = useReducer(reducers.setSessionSpot);
-  const [open, setOpen] = useState(false);
-  const [q, setQ] = useState('');
-  const [res, setRes] = useState<Place[] | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-  const search = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!q.trim() || busy) return;
-    setBusy(true); setErr('');
-    try { const r = await searchPlaces(q.trim()); setRes(r); if (!r.length) setErr('No place found. Try a street address or a landmark.'); }
-    catch (x) { setErr((x as Error).message); }
-    setBusy(false);
-  };
-  const pick = async (p: Place) => {
-    setBusy(true); setErr('');
-    try { await setSessionSpot({ sessionId, spotId: geoSpotId(p.lat, p.lon, await groundHeight(p.lat, p.lon)) }); setOpen(false); setRes(null); setQ(''); }
-    catch (x) { setErr(String((x as Error)?.message ?? x)); }
-    setBusy(false);
-  };
-  return (
-    <div className="s-place">
-      {!open ? <button type="button" className="s-btn s-place-btn" onClick={() => setOpen(true)}>Change place</button> : (
-        <form className="s-place-form" onSubmit={search}>
-          <label className="sr-only" htmlFor="s-place-q">Search for a place</label>
-          <div className="s-invite-row">
-            <input id="s-place-q" className="s-field" value={q} onChange={e => setQ(e.target.value)} placeholder="An address or a landmark" autoComplete="off" autoFocus />
-            <button className="s-btn" disabled={busy || !q.trim()}>{busy ? 'Searching' : 'Search'}</button>
-            <button type="button" className="s-btn" onClick={() => { setOpen(false); setRes(null); }}>Cancel</button>
-          </div>
-          {err && <p className="s-error" role="alert">{err}</p>}
-          {res && res.length > 0 && (
-            <ul className="s-place-results">
-              {res.map(p => <li key={`${p.lat},${p.lon}`}><button type="button" onClick={() => void pick(p)} disabled={busy}>{p.name}</button></li>)}
-            </ul>
-          )}
-          <p className="s-place-credit">Search by Nominatim, data © OpenStreetMap contributors</p>
-        </form>
-      )}
-    </div>
   );
 }

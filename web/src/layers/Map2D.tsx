@@ -50,6 +50,33 @@ export function conePolygon(c: CameraCone): FC {
   return { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [pts as [number, number][]] }, properties: { layer: 'camera', kind: 'cone', label: 'Shot camera' } }] };
 }
 
+/** A MapLibre map in the house style, shared by Map2D and GeoPicker: OpenFreeMap (dark or light), attribution kept and
+ *  folded to (i) on phone-width maps, zoom and compass when interactive, and the dark style's roads and labels lifted. */
+export function createMap(container: HTMLElement, o: { center: { lat: number; lon: number }; zoom: number; dark: boolean; interactive: boolean }) {
+  const m = new MlMap({ container, style: o.dark ? MAP_STYLE : MAP_STYLE_LIGHT, center: [o.center.lon, o.center.lat], zoom: o.zoom, attributionControl: false, interactive: o.interactive, maxPitch: 60 });
+  // OpenFreeMap's TileJSON carries its attribution ("OpenFreeMap © OpenMapTiles Data from OpenStreetMap"); the control shows it.
+  m.addControl(new AttributionControl({ compact: true }), 'bottom-right');
+  // MapLibre opens compact attribution until the first drag; on a phone-width map that covers the bottom of the view.
+  // Start it collapsed there: the (i) button keeps the OpenStreetMap credit one tap away, as ODbL requires.
+  m.once('idle', () => {
+    if (m.getContainer().clientWidth > 640) return;
+    const a = m.getContainer().querySelector('.maplibregl-ctrl-attrib');
+    a?.removeAttribute('open');
+    a?.classList.remove('maplibregl-compact-show');
+  });
+  if (o.interactive) m.addControl(new NavigationControl({ visualizePitch: true }), 'top-right');
+  m.on('load', () => {
+    // The dark style is near black; lift roads, buildings and labels a step so the base map reads under the layers.
+    if (o.dark) for (const l of m.getStyle().layers ?? []) {
+      if (l.type === 'line' && /road|highway|street|bridge|tunnel|path|rail/.test(l.id)) m.setPaintProperty(l.id, 'line-color', /path|rail/.test(l.id) ? '#34322e' : '#46443f');
+      if (l.type === 'fill' && /building/.test(l.id)) m.setPaintProperty(l.id, 'fill-color', '#1f1e1b');
+      if (l.type === 'fill' && /water/.test(l.id)) m.setPaintProperty(l.id, 'fill-color', '#0f1a24');
+      if (l.type === 'symbol' && l.layout && 'text-field' in l.layout) m.setPaintProperty(l.id, 'text-color', '#8a867e');
+    }
+  });
+  return m;
+}
+
 export default function Map2D({ geo, center, camera, height = 320, zoom = 16.2, interactive = true, className, theme = 'dark', shadow, onMap }: Props) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<MlMap | null>(null);
@@ -59,26 +86,8 @@ export default function Map2D({ geo, center, camera, height = 320, zoom = 16.2, 
   useEffect(() => {
     if (!el.current) return;
     const dark = theme === 'dark', halo = dark ? '#0b0b0a' : '#ffffff';
-    const m = new MlMap({ container: el.current, style: dark ? MAP_STYLE : MAP_STYLE_LIGHT, center: [center.lon, center.lat], zoom, attributionControl: false, interactive, maxPitch: 60 });
-    // OpenFreeMap's TileJSON carries its attribution ("OpenFreeMap © OpenMapTiles Data from OpenStreetMap"); the control shows it.
-    m.addControl(new AttributionControl({ compact: true }), 'bottom-right');
-    // MapLibre opens compact attribution until the first drag; on a phone-width map that covers the bottom of the view.
-    // Start it collapsed there: the (i) button keeps the OpenStreetMap credit one tap away, as ODbL requires.
-    m.once('idle', () => {
-      if (m.getContainer().clientWidth > 640) return;
-      const a = m.getContainer().querySelector('.maplibregl-ctrl-attrib');
-      a?.removeAttribute('open');
-      a?.classList.remove('maplibregl-compact-show');
-    });
-    if (interactive) m.addControl(new NavigationControl({ visualizePitch: true }), 'top-right');
+    const m = createMap(el.current, { center, zoom, dark, interactive });
     m.on('load', () => {
-      // The dark style is near black; lift roads, buildings and labels a step so the base map reads under the layers.
-      if (dark) for (const l of m.getStyle().layers ?? []) {
-        if (l.type === 'line' && /road|highway|street|bridge|tunnel|path|rail/.test(l.id)) m.setPaintProperty(l.id, 'line-color', /path|rail/.test(l.id) ? '#34322e' : '#46443f');
-        if (l.type === 'fill' && /building/.test(l.id)) m.setPaintProperty(l.id, 'fill-color', '#1f1e1b');
-        if (l.type === 'fill' && /water/.test(l.id)) m.setPaintProperty(l.id, 'fill-color', '#0f1a24');
-        if (l.type === 'symbol' && l.layout && 'text-field' in l.layout) m.setPaintProperty(l.id, 'text-color', '#8a867e');
-      }
       for (const id of [...SOURCES, 'shadow', 'cone', 'mark', 'arrows']) m.addSource(`geo-${id}`, { type: 'geojson', data: EMPTY });
       const add = (spec: Parameters<MlMap['addLayer']>[0]) => m.addLayer(spec);
       add({ id: 'geo-shadow', type: 'fill', source: 'geo-shadow', filter: ['==', ['get', 'kind'], 'building_shadow'], paint: { 'fill-color': '#000', 'fill-opacity': 0.38 } });
@@ -94,14 +103,14 @@ export default function Map2D({ geo, center, camera, height = 320, zoom = 16.2, 
         'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 1.5, 18, 3.5], 'circle-color': '#e6d3a8', 'circle-opacity': 0.8 } });
       add({ id: 'geo-photographers-arrows', type: 'line', source: 'geo-arrows', minzoom: 15.5, paint: { 'line-color': '#e6d3a8', 'line-width': 1, 'line-opacity': 0.6 } });
       add({ id: 'geo-pois', type: 'circle', source: 'geo-pois', paint: { 'circle-radius': 4, 'circle-stroke-width': 1, 'circle-stroke-color': halo,
-        'circle-color': ['match', ['get', 'kind'], 'viewpoint', '#f2a33a', 'transit', '#5f9cf0', 'cafe', '#5ec8c2', '#a39f96'] } });
+        'circle-color': ['match', ['get', 'kind'], 'viewpoint', '#c9a46a', 'transit', '#5f9cf0', 'cafe', '#5ec8c2', '#a39f96'] } });
       add({ id: 'geo-pois-label', type: 'symbol', source: 'geo-pois', filter: ['in', ['get', 'kind'], ['literal', ['viewpoint', 'transit']]], minzoom: 15.5,
         layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-optional': true },
         paint: { 'text-color': '#a39f96', 'text-halo-color': halo, 'text-halo-width': 1.2 } });
       add({ id: 'geo-quakes', type: 'circle', source: 'geo-quakes', paint: { 'circle-radius': ['interpolate', ['linear'], ['get', 'mag'], 1.5, 3, 5, 14], 'circle-color': '#b48ce0', 'circle-opacity': 0.6 } });
       add({ id: 'geo-tides', type: 'circle', source: 'geo-tides', paint: { 'circle-radius': 5, 'circle-color': '#5f9cf0', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#c9d8f5' } });
-      add({ id: 'geo-cone', type: 'fill', source: 'geo-cone', paint: { 'fill-color': '#f2a33a', 'fill-opacity': 0.2 } });
-      add({ id: 'geo-cone-line', type: 'line', source: 'geo-cone', paint: { 'line-color': '#f2a33a', 'line-width': 1.5 } });
+      add({ id: 'geo-cone', type: 'fill', source: 'geo-cone', paint: { 'fill-color': '#f2efe8', 'fill-opacity': 0.2 } });
+      add({ id: 'geo-cone-line', type: 'line', source: 'geo-cone', paint: { 'line-color': '#f2efe8', 'line-width': 1.5 } });
       add({ id: 'geo-mark', type: 'circle', source: 'geo-mark', paint: { 'circle-radius': 5, 'circle-color': '#f2efe8', 'circle-stroke-width': 2, 'circle-stroke-color': halo } });
       add({ id: 'geo-labels', type: 'symbol', source: 'geo-film', filter: ['==', ['get', 'active'], true], layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'text-optional': true }, paint: { 'text-color': '#f2a33a', 'text-halo-color': halo, 'text-halo-width': 1.2 } });
       ready.current = true;

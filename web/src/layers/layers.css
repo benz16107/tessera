@@ -8,7 +8,7 @@
 .geo-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .geo-chip { display: inline-flex; flex-direction: column; gap: 2px; padding: 6px 8px; border-radius: var(--radius-control); background: var(--raise); font: 13px/1.3 var(--sans); color: var(--text); max-width: 100%; }
 .geo-chip b { font: 500 11px/1.2 var(--mono); color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em; }
-.geo-chip[data-tone='good'] { box-shadow: inset 0 0 0 1px var(--amber-line); }
+.geo-chip[data-tone='good'] { box-shadow: inset 0 0 0 1px var(--ui-edge-hover, #5a5650); }
 .geo-chip[data-tone='poor'] { box-shadow: inset 0 0 0 1px rgba(232, 103, 94, 0.55); }
 .geo-map { width: 100%; border-radius: var(--radius-panel); overflow: hidden; background: var(--field); }
 .geo-map .maplibregl-ctrl-attrib { font: 11px var(--sans); background: rgba(14, 14, 13, 0.75) !important; color: var(--text-2); }
@@ -31,7 +31,7 @@
 .geo-skel i:nth-child(2) { width: 80%; } .geo-skel i:nth-child(3) { width: 55%; }
 .geo-skel-map { height: 300px; }
 .geo-btn { gap: 6px; }
-.geo-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); }
+.geo-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ui-warm, #c9a46a); }
 .geo-overview { position: absolute; inset: 0; z-index: 5; pointer-events: none; transition: opacity 120ms linear; }
 .geo-overview .geo-map { height: 100% !important; border-radius: 0; }
 .geo-overview-card { position: absolute; top: 64px; right: 16px; max-width: 300px; padding: 10px 12px; border-radius: var(--radius-panel); background: var(--glass); color: var(--text); font: 13px/1.4 var(--sans); }
@@ -41,7 +41,7 @@
 .geo-legend li { display: flex; align-items: center; gap: 8px; }
 .geo-legend i { flex: none; width: 10px; height: 10px; border-radius: 2px; opacity: 0.8; }
 .geo-legend i.dot { width: 6px; height: 6px; margin: 0 2px; border-radius: 50%; background: #e6d3a8; }
-.geo-legend i.cone { background: none; width: 0; height: 0; border-radius: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 10px solid rgba(242, 163, 58, 0.6); }
+.geo-legend i.cone { background: none; width: 0; height: 0; border-radius: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 10px solid rgba(236, 233, 226, 0.6); }
 .geo-bands { position: absolute; left: 0; right: 0; height: 30px; pointer-events: none; }
 .geo-hour { position: absolute; top: 0; height: 14px; display: flex; flex-direction: column; gap: 1px; pointer-events: auto; }
 .geo-hour i { display: block; height: 3px; background: #c9d8f5; border-radius: 1px; }
@@ -80,7 +80,7 @@
 /* Row 39: the sun's label, a chip clamped inside the map (MapView positions it). */
 /* The chip look is spelled out (same values as studio.css .st-chip) so Simple's compact map, which may load without
    studio.css, renders it the same. Fallbacks are the Darkroom values for pages that don't define the tokens. */
-.geo-sunchip { position: absolute; z-index: 1; translate: -50% -50%; margin: 0; padding: 4px 8px; border-radius: var(--radius-control); background: var(--glass, rgba(14, 14, 13, 0.86)); font: 11px var(--sans, system-ui, sans-serif); white-space: nowrap; color: #e9cf7f !important; pointer-events: none; }
+.geo-sunchip { position: absolute; z-index: 1; translate: -50% -50%; margin: 0; padding: 4px 8px; border-radius: var(--radius-control); background: var(--glass, rgba(14, 14, 13, 0.86)); font: 11px var(--sans, system-ui, sans-serif); white-space: nowrap; color: #c9a46a !important; pointer-events: none; }
 /* Row 30: MapLibre's zoom and compass as a glass group: 36 px buttons with 6 px corners inside a 10 px group. */
 .geo-map .maplibregl-ctrl-group { display: flex; flex-direction: column; gap: 2px; padding: 4px; border-radius: var(--radius-panel); background: var(--glass, rgba(14, 14, 13, 0.86)); box-shadow: none; }
 .geo-map .maplibregl-ctrl-group button { width: 36px; height: 36px; border-radius: var(--radius-control); background-color: transparent; }
@@ -95,3 +95,13 @@
 /* The card's close button, styled here so it doesn't depend on studio.css's .st-btn in Simple. */
 .geo-shotcard .geo-x { width: 28px; height: 28px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text-2, #a39f96); font: 16px/1 var(--sans, system-ui, sans-serif); cursor: pointer; }
 @media (hover: hover) { .geo-shotcard .geo-x:hover { background: rgba(255, 255, 255, 0.08); } }
+
+/* GeoPicker (location clues): 44 px touch handles around small dots; the edge handle carries the radius. */
+.geo-picker { width: 100%; border-radius: var(--radius-panel); overflow: hidden; background: var(--field, #1c1b19); }
+.geo-handle { width: 44px; height: 44px; display: grid; place-items: center; cursor: grab; touch-action: none; }
+.geo-handle:active { cursor: grabbing; }
+.geo-handle::after { content: ''; display: block; width: 18px; height: 18px; border-radius: 50%; background: #ece9e2; box-shadow: 0 0 0 3px #0b0b0a, 0 2px 8px rgba(0, 0, 0, 0.6); }
+.geo-handle.pin::after { width: 20px; height: 20px; }
+.geo-handle.edge::after { width: 14px; height: 14px; background: #f2efe8; }
+.geo-handle span { position: absolute; left: 38px; top: 50%; translate: 0 -50%; padding: 2px 6px; border-radius: var(--radius-control); background: var(--glass, rgba(14, 14, 13, 0.86)); font: 11px var(--sans, system-ui, sans-serif); color: var(--text, #f2efe8); white-space: nowrap; pointer-events: none; }
+.geo-picker[data-theme='light'] .geo-handle::after { box-shadow: 0 0 0 3px #ffffff, 0 2px 8px rgba(0, 0, 0, 0.3); }
