@@ -67,7 +67,7 @@ General Track is automatic.
 - Demo shoot in [Simple](https://app.tesseraphoto.com/p/A9TVAN) or [Studio](https://app.tesseraphoto.com/studio/A9TVAN). Drop your own photo of that view, or text one to @ShotMatchSetBot on Telegram.
 - Product and docs: https://tesseraphoto.com
 - Code: https://github.com/benz16107/tessera
-- Video (2:57): https://www.youtube.com/watch?v=IPZ_BBfmesc
+- Video (2:57): https://www.youtube.com/watch?v=SvSqGH4IKKk
 - Ten vertical reels for the Virality track: https://tesseraphoto.com/reels/
 
 ## A film set for the photo you want to take
