@@ -29,7 +29,7 @@ The answer ShotMatch gives is technical: a position, a heading, a 35 mm-equivale
 | Design tokens from Figma | The build matches the design | `web/src/studio/studio.css` tokens from frames 25:2 and 30:76 via the Figma MCP | Colours are CSS variables, so the A theme is a token swap |
 | Honest states | Trust: the user can see how sure the answer is | Simple and Studio confidence states, render labels | "Couldn't place" on the 75-match photo; "AI interpretation" on every render |
 | Credits on screen | Respect for the photographers and the map provider | Studio credits band, Simple photo credit, `/credits` | "3D scene trained from photos by 26 Wikimedia Commons contributors, CC BY-SA 4.0" on the splat view |
-| Accessibility | Usable by more people | `web/src/simple/simple.css`, `web/src/studio/studio.css` | Text contrast passes AA in the Figma frames (ratios in each page's note); Simple buttons and fields are at least 44 px tall; both stylesheets honour `prefers-reduced-motion`; Studio has keyboard shortcuts (G, R, S to move, rotate, scale; F focus; 0, 1, 3, 5, 7 views) |
+| Accessibility | Usable by more people | `web/src/simple/simple.css`, `web/src/studio/studio.css` | Text contrast passes AA in the Figma frames (ratios in each page's note); Simple's main buttons and fields are at least 44 px tall; both stylesheets honour `prefers-reduced-motion`; Studio has keyboard shortcuts (G, R, S to move, rotate, scale; F focus; 0, 1, 3, 5, 7 views) |
 
 ## Screenshots
 
@@ -69,7 +69,7 @@ For the design track:
 
 ## How to check it
 
-- Figma: https://www.figma.com/design/QrpLuCwKGGFFBSDRMd7VqS (pages A, B, C and "Round 3: Virtual set")
+- Figma: https://www.figma.com/design/QrpLuCwKGGFFBSDRMd7VqS (pages A, B, C and "Round 3: Virtual set"). The file is private to the team, so a logged-out visitor sees a not-found page; the exports on this page are the same frames.
 - Simple: https://104-238-146-229.sslip.io/p/A9TVAN; Studio: https://104-238-146-229.sslip.io/studio/A9TVAN
 - Design notes and derived numbers: `design/REPORT.md`; screenshots of every step: `web/screenshots/simple-*.png` and `studio-*.png`
 

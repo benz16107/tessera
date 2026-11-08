@@ -78,10 +78,10 @@ drapes every vertex on the street plane.
 ## Where it shows
 
 - **3D set** (`GeoScene`). Building shadow casters, permit and closure zones draped on the street, 3 m volumes for sheds
-  and scaffolds, POI pins, the photographer heatmap with heading arrows and the three busiest spots, an alert drum when
+  and scaffolds, POI pins, a plain dot per geotagged photo with its heading arrow and the three busiest spots, an alert drum when
   the spot is inside an NWS alert area, and the shadow probe ring. The root is tagged `helper`, so render layers and AI
   renders never include it, and none of it comes from Google's tiles.
-- **2D map** (`Map2D`). MapLibre GL 6.16 with OpenFreeMap's keyless "dark" style. OpenFreeMap is free with no
+- **2D map** (`Map2D`). Photographers show as plain dots, named in the overview legend. MapLibre GL 6.16 with OpenFreeMap's keyless "dark" style. OpenFreeMap is free with no
   registration. Its attribution, "OpenFreeMap © OpenMapTiles, data from OpenStreetMap", stays on the map. The map shows
   the same layers plus building extrusions, shadows at the set time, quakes, the tide station and the shot camera's view
   cone. Past 300 m of camera height it also serves as the overview (`GeoOverview`).

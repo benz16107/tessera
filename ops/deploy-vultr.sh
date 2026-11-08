@@ -6,7 +6,7 @@ set -euo pipefail
 HOST=${VULTR_HOST:-ben@104.238.146.229}
 cd "$(dirname "$0")/.."
 out=$(rsync -ai --exclude .git --exclude node_modules --exclude .venv --exclude __pycache__ --exclude /data \
-  --exclude 'spots/*/sfm' --exclude /design ./ "$HOST:Code/hackathons/shotmatch/")
+  --exclude 'spots/*/sfm' --exclude /design --exclude /site ./ "$HOST:Code/hackathons/shotmatch/")
 echo "$out" | grep -v '^\.d' || echo "nothing changed"
 if echo "$out" | grep -q 'crew/package-lock.json'; then
   ssh "$HOST" 'cd ~/Code/hackathons/shotmatch/crew && PATH=$HOME/.nvm/default-node/bin:$PATH npm ci --no-audit --no-fund'

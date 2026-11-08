@@ -182,7 +182,13 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
     if (!body) { json(res, 413, { error: 'layers larger than 60 MB' }); return true; }
     let form: FormData;
     try { form = await new Request('http://x/', { method: 'POST', headers: { 'content-type': ct }, body }).formData(); } catch { json(res, 400, { error: 'bad multipart body' }); return true; }
-    const sid = sessionOf(form.get('sessionId')), beauty = form.get('beauty'), shadow = form.get('shadow'), photoId = String(form.get('photoId') ?? '');
+    const sid = sessionOf(form.get('sessionId')), beauty = form.get('beauty'), shadow = form.get('shadow'), mask = form.get('mask'), photoId = String(form.get('photoId') ?? '');
+    let legend: { id: string; name: string; kind: string; color: string }[] | undefined;
+    try {
+      const l = JSON.parse(String(form.get('legend') ?? '[]'));
+      legend = Array.isArray(l) ? l.filter(x => x && /^\d+$/.test(String(x.id)) && /^#[0-9a-f]{6}$/i.test(String(x.color))).slice(0, 300)
+        .map(x => ({ id: String(x.id), name: String(x.name ?? '').slice(0, 80), kind: String(x.kind ?? ''), color: String(x.color) })) : undefined;
+    } catch { /* no legend: no per-object strength */ }
     if (!sid || !(beauty instanceof Blob) || !/^\d+$/.test(photoId)) { json(res, 400, { error: 'need sessionId, photoId and a beauty PNG' }); return true; }
     // Fields come flat, or inside the studio's `settings` JSON (shot settings plus f35 and the timeline's sun).
     let settings: Record<string, unknown> = {};
@@ -195,6 +201,7 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
     if (text) { const s = await screenText(text); if (!s.safe) { json(res, 422, { error: 'that instruction was refused by the safety check' }); return true; } }
     try {
       json(res, 200, await render({ sessionId: sid, photoId: BigInt(photoId), beauty: Buffer.from(await beauty.arrayBuffer()), shadow: shadow instanceof Blob ? Buffer.from(await shadow.arrayBuffer()) : undefined,
+        mask: mask instanceof Blob ? Buffer.from(await mask.arrayBuffer()) : undefined, legend,
         text, f35: num('f35'), aperture: num('aperture'), focusM: num('focusM'), iso: num('iso'), strength: num('strength'), sun, mode: raw('mode') === 'canny' ? 'canny' : raw('mode') === 'composite' ? 'composite' : 'depth' }));
     } catch (e) { fail(502, e); }
     return true;

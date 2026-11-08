@@ -53,3 +53,24 @@ export function fluxSize(w: number, h: number): { width: number; height: number 
   return best;
 }
 
+
+export type Placeholder = { id: string; kind: string; name: string; asset: string; pose?: string; heightM?: number; frameX: number; dist: number; facing: string };
+
+const POSE_WORDS: Record<string, string> = { stand: 'standing', walk: 'walking', sit: 'sitting', lean: 'leaning', point: 'pointing', jump: 'jumping', talk: 'talking', crouch: 'crouching', push: 'pushing' };
+const SEASONS = ['winter', 'winter', 'early spring', 'spring', 'late spring', 'summer', 'summer', 'late summer', 'early autumn', 'autumn', 'late autumn', 'winter'];
+
+/** Time of day, season and weather in words for clothing: "a cloudy late autumn golden hour". */
+export function whenWords(at: Date | undefined, sunAlt: number | undefined, sky = ''): string {
+  const part = sunAlt === undefined ? 'day' : sunAlt < -6 ? 'night' : sunAlt < 0 ? 'blue hour' : sunAlt < 10 ? 'golden hour' : 'day';
+  const season = at ? SEASONS[at.getMonth()] : '';
+  return [sky && sky.split(/[ ,]/)[0], season, part].filter(Boolean).join(' ');
+}
+
+/** What one placeholder (a grey mannequin or a low-poly stand-in prop) becomes in the render. */
+export function placeholderPrompt(p: Placeholder, when: string, light: string): string {
+  const where = `${p.frameX < -0.33 ? 'on the left' : p.frameX > 0.33 ? 'on the right' : 'in the centre'}, about ${Math.round(p.dist)} m from the camera`;
+  if (p.kind === 'person')
+    return `the grey mannequin ${where} becomes a real person, ${POSE_WORDS[p.pose ?? 'stand'] ?? p.pose}, about ${(p.heightM ?? 1.75).toFixed(2)} m tall, casual clothes that suit a ${when}, lit by ${light}, facing ${p.facing}`;
+  const thing = p.name.replace(/^From photo: /, '').replace(/\s*\(stand-in for .*\)$/, '').toLowerCase();
+  return `the stand-in ${thing} ${where} becomes a real ${thing} with real materials, wear and reflections, lit by ${light}`;
+}

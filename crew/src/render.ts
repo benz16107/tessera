@@ -20,24 +20,26 @@ import { chat, editImage, parseJson, physicalCheck, thinking } from './models.ts
 import { genai } from './props3d.ts';
 import { sunAt } from './sun.ts';
 import { sessionLight, type LightRead } from './vision.ts';
-import { fluxSize, renderPrompt } from './prompts.ts';
+import { fluxSize, placeholderPrompt, renderPrompt, whenWords, type Placeholder } from './prompts.ts';
 export { fluxSize, lensWords, renderPrompt } from './prompts.ts';
-import { describeObjects, setContext, sessionObjects } from './set.ts';
+import { describeObjects, parseParams, setContext, sessionObjects } from './set.ts';
+import { bearingTo, frameOf } from './setgeo.ts';
 import { relativeAngle } from './geo.ts';
-import { alphaOf, applyShadow, azDiff, blendMasked, blur1, contactMask, harmonizeBeauty, jpeg, matchParams, over, rawRgb, rawRgba, ringOf, shadowParams, sunFromRead } from './composite.ts';
+import { alphaOf, applyShadow, azDiff, blendMasked, blur1, contactMask, harmonizeBeauty, jpeg, maskBox, matchParams, objectMasks, over, pasteCrop, rawRgb, rawRgba, ringOf, shadowParams, strengthMap, sunFromRead } from './composite.ts';
 
 export type RenderIn = {
   sessionId: bigint; photoId: bigint; beauty: Buffer; shadow?: Buffer; text?: string; f35?: number; aperture?: number; focusM?: number; iso?: number;
   sun?: { az: number; alt: number }; mode?: 'depth' | 'canny' | 'composite'; strength?: number;
+  mask?: Buffer; legend?: { id: string; name: string; kind: string; color: string }[]; // the studio's object-ID layer
 };
-export type Check = { round: number; pass: boolean; summary: string; objects: { name: string; light: boolean; shadow: boolean; scale: boolean; color: boolean; note: string }[];
+export type Check = { round: number; pass: boolean; summary: string; objects: { name: string; light: boolean; shadow: boolean; scale: boolean; color: boolean; note: string }[]; placeholders: string[];
   strength: 'up' | 'down' | 'same'; promptAdd: string; sunFix?: { azimuth: number; altitude: number; why: string }; model: string; ms: number };
 export type RenderOut = {
-  url: string; compositeUrl: string; model: string; fallback?: string; prompt: string; label: string; ms: number; jobId?: string;
+  url: string; compositeUrl: string; model: string; fallback?: string; prompt: string; label: string; ms: number; jobId?: string; placeholders: number;
   strength: number; checks: Check[]; sunFix?: { azimuth: number; altitude: number; why: string }; rerendered: boolean;
 };
 
-const editSize = (w: number, h: number) => { const s = 1536 / Math.max(w, h), r = (x: number) => Math.max(256, Math.round((x * s) / 16) * 16); return `${r(w)}x${r(h)}`; };
+const editSize = (w: number, h: number) => { const s = 1536 / Math.max(w, h), r = (x: number) => Math.max(256, Math.round((x * s) / 32) * 32); return `${r(w)}x${r(h)}`; };
 
 // FLUX.1-dev answered 500 for hours on 2026-11-07; after a failure the render skips it for 10 minutes instead of waiting on it again.
 let fluxDownUntil = 0, fluxLastError = '';
@@ -68,7 +70,8 @@ ${objs}
 The real photo's light: ${light}
 The 3D sun the objects were lit with: ${sun}
 For each placed object, judge against the real scene: is its lighting direction the same as the scene's, do its shadows fall the same way and with the same softness as real shadows, is its scale right next to doors, cars and people, and do its colour, white balance and grain match?
-Reply with strict JSON only: {"pass": true|false, "summary": "<one sentence>", "objects": [{"name": "...", "light": true, "shadow": true, "scale": true, "color": true, "note": "..."}],
+Also: does any person still look like a grey mannequin, a statue or a 3D model, is any person or object see-through, ghosted or smeared (every person must be fully opaque, no transparency or ghosting), or does any prop look like a toy, a clay or plastic model or a low-poly game asset? List their ids in "placeholders"; any id there fails the frame.
+Reply with strict JSON only: {"pass": true|false, "summary": "<one sentence>", "placeholders": [<ids>], "objects": [{"name": "...", "light": true, "shadow": true, "scale": true, "color": true, "note": "..."}],
 "strength": "up|down|same" (up = objects still look pasted on and need more blending, down = the scene itself changed too much), "prompt_add": "<words to add to the render prompt, or empty>",
 "sun_fix": null or {"azimuth": <deg from north>, "altitude": <deg>, "why": "..."} when the 3D sun is on the wrong side or at the wrong height}`;
 
@@ -94,10 +97,11 @@ async function verify(sid: bigint, img: Buffer, round: number, light: LightRead 
   if (!j) { await logStep(sid, 'render_check', `round ${round}, ${MODELS.agent}`, 'no verdict: the model returned no JSON', Date.now() - t0); return null; }
   const objects = (Array.isArray(j.objects) ? j.objects : []).slice(0, 14).map((o: any) => ({ name: String(o.name ?? ''), light: o.light !== false, shadow: o.shadow !== false, scale: o.scale !== false, color: o.color !== false, note: String(o.note ?? '').slice(0, 160) }));
   const sf = j.sun_fix && Number.isFinite(Number(j.sun_fix.azimuth)) ? { azimuth: Math.round(Number(j.sun_fix.azimuth)), altitude: Math.round(Number(j.sun_fix.altitude) || 20), why: String(j.sun_fix.why ?? '').slice(0, 160) } : undefined;
-  const check: Check = { round, pass: j.pass === true && objects.every((o: Check['objects'][number]) => o.light && o.shadow && o.scale && o.color), summary: String(j.summary ?? '').slice(0, 300), objects,
+  const placeholders = (Array.isArray(j.placeholders) ? j.placeholders : []).map((x: unknown) => String(x).replace(/\D/g, '')).filter(Boolean).slice(0, 8);
+  const check: Check = { round, pass: j.pass === true && !placeholders.length && objects.every((o: Check['objects'][number]) => o.light && o.shadow && o.scale && o.color), summary: String(j.summary ?? '').slice(0, 300), objects, placeholders,
     strength: ['up', 'down'].includes(j.strength) ? j.strength : 'same', promptAdd: String(j.prompt_add ?? '').slice(0, 200), sunFix: sf, model: MODELS.agent, ms: Date.now() - t0 };
   const bad = objects.filter((o: Check['objects'][number]) => !(o.light && o.shadow && o.scale && o.color)).map((o: Check['objects'][number]) => `${o.name}: ${[!o.light && 'light', !o.shadow && 'shadow', !o.scale && 'scale', !o.color && 'colour'].filter(Boolean).join(', ')}`);
-  await logStep(sid, 'render_check', `round ${round}, ${MODELS.agent}`, `${check.pass ? 'pass' : 'fail'}: ${check.summary}${bad.length ? ` Off: ${bad.join('; ')}.` : ''}${sf ? ` Sun fix: azimuth ${sf.azimuth}, altitude ${sf.altitude} (${sf.why}).` : ''}${check.strength !== 'same' ? ` Strength ${check.strength}.` : ''}`, check.ms);
+  await logStep(sid, 'render_check', `round ${round}, ${MODELS.agent}`, `${check.pass ? 'pass' : 'fail'}: ${check.summary}${bad.length ? ` Off: ${bad.join('; ')}.` : ''}${placeholders.length ? ` Still look like mannequins or models: ids ${placeholders.join(', ')}.` : ''}${sf ? ` Sun fix: azimuth ${sf.azimuth}, altitude ${sf.altitude} (${sf.why}).` : ''}${check.strength !== 'same' ? ` Strength ${check.strength}.` : ''}`, check.ms);
   return check;
 }
 
@@ -137,17 +141,33 @@ export async function render(inp: RenderIn): Promise<RenderOut> {
   let sunFix = want && sun && azDiff(want.azimuth, sun.az) > 60 ? { ...want, why: `the photo's light comes from the ${light?.sun_side}; the 3D sun is ${Math.round(azDiff(want.azimuth, sun.az))} deg away from that` } : undefined;
 
   if (inp.mode === 'composite') {
-    return { url: compositeUrl, compositeUrl, model: 'composite only (no AI)', prompt: '', label: 'Composite', ms: Date.now() - t0, strength: 0, checks: [], sunFix, rerendered: false };
+    return { url: compositeUrl, compositeUrl, model: 'composite only (no AI)', prompt: '', label: 'Composite', ms: Date.now() - t0, strength: 0, checks: [], sunFix, rerendered: false, placeholders: 0 };
   }
 
   // 2. The prompt and the render row (preview_job kind 'render', created running by the crew).
   const objs = sessionObjects(sid).filter(o => o.visible && o.kind !== 'camera' && o.kind !== 'light');
   const people = objs.filter(o => o.kind === 'person').length;
   const names = [...(people ? [`${people === 1 ? 'one person' : `${people} people`}`] : []), ...objs.filter(o => o.kind !== 'person').map(o => o.name.replace(/^From photo: /, '').toLowerCase())];
+  // Mannequins and stand-in props are placeholders: each gets its own mask (from the studio's ID layer) and its own words.
+  const masks = inp.mask && inp.legend?.length ? objectMasks(await rawRgb(inp.mask, w, h), w, h, inp.legend) : new Map<string, Buffer>();
+  const when = whenWords(planTime ? new Date(Number(planTime.microsSinceUnixEpoch / 1000n)) : new Date(), sun?.alt, light?.sky);
+  const lightFor = light ? `${light.hardness} ${light.time_look} light${/none/.test(light.sun_side) ? '' : `, sun ${light.sun_side}`}` : 'the scene\'s light';
+  const placeholders: (Placeholder & { mask: Buffer; prompt: string; strength: number })[] = [];
+  for (const l of inp.legend ?? []) {
+    const row = objs.find(o => String(o.id) === l.id), m = masks.get(l.id);
+    if (!row || !m || !['person', 'model', 'prop_generated'].includes(row.kind) || m.reduce((n, v) => n + (v ? 1 : 0), 0) < 40) continue;
+    const prm = parseParams(row.params), f = ctx ? frameOf(ctx.cam, row) : { frameX: 0, dist: 8 };
+    const toCam = ctx ? bearingTo(row, ctx.cam) : 0, yaw = ((-2 * Math.atan2(row.qz, row.qw) * 180) / Math.PI + 720) % 360, off = Math.abs(((yaw - toCam + 540) % 360) - 180);
+    const ph: Placeholder = { id: l.id, kind: row.kind, name: row.name, asset: row.assetId, pose: prm.pose, heightM: Number(prm.height) || undefined, frameX: Number.isFinite(f.frameX) ? f.frameX : 0, dist: f.dist,
+      facing: off < 45 ? 'the camera' : off > 135 ? 'away from the camera' : 'sideways' };
+    placeholders.push({ ...ph, mask: m, prompt: placeholderPrompt(ph, when, lightFor), strength: row.kind === 'person' ? 0.9 : 0.8 });
+  }
   let prompt = renderPrompt({
     light, f35: inp.f35 ?? ctx?.cam.f35 ?? 35, aperture: inp.aperture ?? settings?.aperture, focusM: inp.focusM ?? settings?.focusM,
-    sun, heading: ctx?.cam.heading, objects: [...new Set(names)], people, text: inp.text, place: ctx ? conn.db.spot.id.find(ctx.spotId)?.name : undefined,
-  }).slice(0, 1800);
+    sun, heading: ctx?.cam.heading, objects: [...new Set(names)], people,
+    text: [placeholders.length ? `Turn every placeholder into the real thing: ${placeholders.map(p => p.prompt).join('; ')}` : '', inp.text].filter(Boolean).join('. '),
+    place: ctx ? conn.db.spot.id.find(ctx.spotId)?.name : undefined,
+  }).slice(0, 2400);
   let jobId: bigint | undefined;
   try {
     await conn.reducers.startRender({ sessionId: sid, photoId: inp.photoId, requestId: id, instruction: (inp.text || prompt).slice(0, 500), f35: inp.f35 ?? ctx?.cam.f35, people, sunAzimuth: sun?.az, sunAltitude: sun?.alt });
@@ -156,28 +176,40 @@ export async function render(inp: RenderIn): Promise<RenderOut> {
   const renew = jobId !== undefined ? setInterval(() => conn.reducers.renewPreview({ jobId: jobId! }).catch(() => {}), 60_000) : undefined;
 
   try {
-    // 3. Harmonize, then verify; one more round when the check fails.
-    const compRgb = await rawRgb(composite, w, h), mask = await contactMask(beautyA, shadowA, w, h), mode = inp.mode === 'canny' ? 'canny' : 'depth';
+    // 3. Placeholders (mannequins, stand-in props): each gets its own crop edit, pasted back fully opaque. Without an ID layer
+    //    (older clients), the whole-frame generator is blended over objects and the contact band under them at a low strength.
+    const compRgb = await rawRgb(composite, w, h), contact = await contactMask(beautyA, shadowA, w, h), mode = inp.mode === 'canny' ? 'canny' : 'depth';
     let strength = Math.max(0.1, Math.min(0.9, inp.strength ?? 0.45));
-    let gen = await generate(composite, w, h, prompt, mode);
+    const patchPath = placeholders.length > 0, used = new Set<string>();
+    let gen: Awaited<ReturnType<typeof generate>> | null = patchPath ? null : await generate(composite, w, h, prompt, mode);
+    let patched = compRgb;
+    if (patchPath) for (const p of placeholders) { const r = await realify(sid, patched, composite, p, w, h, 1); patched = r.rgb; if (r.model) used.add(r.model); }
     const checks: Check[] = [];
     const finalize = async (round: number) => {
-      const rgb = 'rgb' in gen ? blendMasked(compRgb, gen.rgb, mask, strength) : compRgb;
+      const map = gen && 'rgb' in gen ? await strengthMap(contact, strength, [], w, h) : null;
+      const rgb = patchPath ? patched : gen && 'rgb' in gen ? blendMasked(compRgb, gen.rgb, map!, 1) : compRgb;
       const file = round === 1 ? `${id}.jpg` : `${id}r${round}.jpg`, img = await jpeg(rgb, w, h, 90);
       await saveImage(`/preview/${file}`, join(PREVIEWS_DIR, file), img);
-      await logStep(sid, 'render', `round ${round}, strength ${strength.toFixed(2)}`, 'rgb' in gen ? `${gen.model}${gen.fallback ? ` (${gen.fallback})` : ''}, blended over objects and contact areas only` : `no generator answered (${gen.error}); harmonized composite only`, Date.now() - t0);
+      await logStep(sid, 'render', `round ${round}${patchPath ? '' : `, strength ${strength.toFixed(2)}`}`, patchPath
+        ? `${placeholders.length} placeholder${placeholders.length > 1 ? 's' : ''} replaced by focused crop edits (${[...used].join(', ') || 'no edit model answered'}), pasted fully opaque; the rest of the photo is untouched`
+        : gen && 'rgb' in gen ? `${gen.model}${gen.fallback ? ` (${gen.fallback})` : ''}, blended over objects and the contact band under them` : `no generator answered (${gen && 'error' in gen ? gen.error : ''}); harmonized composite only`, Date.now() - t0);
       return { url: `/preview/${file}`, img };
     };
     let out = await finalize(1);
     const [c1] = await Promise.all([verify(sid, out.img, 1, light, sun, ctx?.cam.heading).catch(e => { console.warn(`render check: ${e.message}`); return null; }), secondOpinion(sid, out.img, id)]);
     if (c1) checks.push(c1);
     let rerendered = false;
-    if (c1 && !c1.pass && 'rgb' in gen) {
-      if (c1.strength === 'up') strength = Math.min(0.85, strength + 0.25);
-      if (c1.strength === 'down') strength = Math.max(0.15, strength - 0.2);
-      // New words in the prompt need a new generation; a strength change only needs a new blend.
-      if (c1.promptAdd && gen.model.startsWith(MODELS.flux)) { prompt = `${prompt}. ${c1.promptAdd}`.slice(0, 1900); gen = await generate(composite, w, h, prompt, mode); }
-      if (c1.strength !== 'same' || c1.promptAdd) {
+    if (c1 && !c1.pass) {
+      // A placeholder that still looks like a mannequin, a model or a ghost gets one more focused edit with a firmer prompt.
+      const stuck = patchPath ? placeholders.filter(p => c1.placeholders.includes(p.id)).slice(0, 3) : [];
+      for (const p of stuck) { const r = await realify(sid, patched, composite, p, w, h, 2); patched = r.rgb; if (r.model) used.add(r.model); }
+      if (gen && 'rgb' in gen) {
+        if (c1.strength === 'up') strength = Math.min(0.85, strength + 0.25);
+        if (c1.strength === 'down') strength = Math.max(0.15, strength - 0.2);
+        // New words in the prompt need a new generation; a strength change only needs a new blend.
+        if (c1.promptAdd && gen.model.startsWith(MODELS.flux)) { prompt = `${prompt}. ${c1.promptAdd}`.slice(0, 1900); gen = await generate(composite, w, h, prompt, mode); }
+      }
+      if (stuck.length || (!patchPath && (c1.strength !== 'same' || c1.promptAdd))) {
         rerendered = true;
         out = await finalize(2);
         const c2 = await verify(sid, out.img, 2, light, sun, ctx?.cam.heading).catch(() => null);
@@ -185,14 +217,34 @@ export async function render(inp: RenderIn): Promise<RenderOut> {
       }
     }
     sunFix = checks.map(c => c.sunFix).filter(Boolean).pop() ?? sunFix;
-    const model = 'rgb' in gen ? gen.model : 'harmonized composite (no generator answered)';
+    const model = patchPath ? `${[...used].join(' + ') || 'none'} (crop edits per placeholder)` : gen && 'rgb' in gen ? gen.model : 'harmonized composite (no generator answered)';
     if (jobId !== undefined) await conn.reducers.finishPreview({ jobId, ok: true, imageUrl: out.url, error: '' }).catch(e => console.warn(`finishPreview: ${e.message}`));
-    return { url: out.url, compositeUrl, model, fallback: 'rgb' in gen ? gen.fallback : gen.error, prompt, label: 'AI interpretation', ms: Date.now() - t0, jobId: jobId?.toString(), strength, checks, sunFix, rerendered };
+    return { url: out.url, compositeUrl, model, fallback: patchPath ? (used.size ? undefined : 'no image-edit model answered; the placeholders are still mannequins') : gen && 'rgb' in gen ? gen.fallback : gen && 'error' in gen ? gen.error : undefined, prompt, label: 'AI interpretation', ms: Date.now() - t0, jobId: jobId?.toString(), strength, checks, sunFix, rerendered, placeholders: placeholders.length };
   } catch (e) {
     if (jobId !== undefined) await conn.reducers.finishPreview({ jobId, ok: false, imageUrl: '', error: (e as Error).message.slice(0, 480) }).catch(() => {});
     await logStep(sid, 'render', `photo ${inp.photoId}`, `error: ${(e as Error).message}`, Date.now() - t0);
     throw e;
   } finally { if (renew) clearInterval(renew); }
+}
+
+/** One placeholder's padded crop of the composite, edited on its own into the real thing, pasted into the frame fully opaque
+ *  (only the outer few px feathered, tone matched at the border). Attempt 2 uses a firmer prompt. */
+async function realify(sid: bigint, frame: Buffer, composite: Buffer, p: { id: string; name: string; kind: string; mask: Buffer; prompt: string }, w: number, h: number, attempt: number): Promise<{ rgb: Buffer; model?: string }> {
+  const box = maskBox(p.mask, w, h, 0.4);
+  if (!box || box.width < 16 || box.height < 16) return { rgb: frame };
+  const t0 = Date.now(), what = p.kind === 'person' ? 'person' : 'object';
+  const ask = `Photorealistic photo. ${p.prompt.replace(/^the /, 'The ')}. Replace the grey mannequin or toy-like model with the real ${what} at exactly the same place and size, standing on the same ground, solid and fully opaque. Keep the background, the framing and the perspective exactly the same. No text.` +
+    (attempt > 1 ? ` The ${what} must be completely real: nothing grey, see-through, ghosted or doll-like remains.` : '');
+  try {
+    const crop = await sharp(composite).extract(box).jpeg({ quality: 92 }).toBuffer();
+    const r = await editImage(crop, ask, editSize(box.width, box.height));
+    const patch = await rawRgb(r.image, box.width, box.height);
+    await logStep(sid, 'realify', `object ${p.id} ${p.name}, crop ${box.width}x${box.height}${attempt > 1 ? ', second try' : ''}`, `${r.model}: ${p.prompt}`.slice(0, 600), Date.now() - t0);
+    return { rgb: pasteCrop(frame, w, patch, box, 3), model: r.model };
+  } catch (e) {
+    await logStep(sid, 'realify', `object ${p.id} ${p.name}`, `error: ${(e as Error).message.slice(0, 200)}`, Date.now() - t0);
+    return { rgb: frame };
+  }
 }
 
 /** Cosmos Reason2 (or Nemotron Nano Omni while Cosmos 404s) as the second physics checker; logs its own step. */

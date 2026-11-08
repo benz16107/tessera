@@ -1,48 +1,271 @@
-# Devpost draft (submit by Sat 11 PM CT; final by Sun 12:00 PM CT)
+# Devpost submission, ready to paste
 
-Ben fills in: team members (max 4), and confirms the tracks. Numbers marked "so far" get updated Sunday morning from `spots/*/eval.md` and `lens/RESULTS.md`.
+Everything for the Devpost page, field by field, in the format we used for GurtOS at Cal Hacks. The text follows
+`docs/story.md`; when a track changes, change the story, the site page and this file together. The current Devpost
+entry named "bean" is a placeholder: replace its fields with these. Final deadline Sunday Nov 8, 12:00 PM CT.
 
-**Project name:** ShotMatch
+Placeholders still open are marked **TODO** and listed at the end.
 
-**Tagline:** Find where a photo was taken from, then plan your own version of the shot.
+## Project name
 
-**Tracks:** NVIDIA (Nemotron), SpacetimeDB, Photon (plus the voice-call prize), HackUTD Best Design, MLH Best Use of Vultr, MLH Best Domain Name from GoDaddy Registry.
+ShotMatch
 
-## Inspiration
+## Elevator pitch (200 characters max)
 
-You see a great photo of a place and want to take your own. Nothing tells you where the photographer stood, which way they pointed or what lens they used, and planning it with friends means a group chat full of screenshots.
+Drop a photo of a place. ShotMatch finds where the photographer stood, the heading and the lens, then your group plans its own version in a live 3D set, even by text.
 
-## What it does
+(169 characters.)
 
-Send ShotMatch a photo of a place. It finds where the photographer stood, which way they pointed and what lens they used, and lays the photo over a 3D view of the place so you can check it yourself. Then you plan your version: switch lenses, place your friends, pick the light, and get a preview. Your crew plans in one live scene while a scout at the real spot walks to the mark, with the original photo as a ghost over their camera. You can do it from the web, by iMessage, in a Telegram group, or by phone call.
+## Video
 
-## How we built it
+**TODO:** the main video link (2 to 3 min screen recording). The shot list for each track's video is on its site page
+under "Video": https://site.104-238-146-229.sslip.io/tracks/
 
-- **Locating the camera.** For each spot we build an open 3D model with structure-from-motion. Our first spot, the Manhattan Bridge view in Brooklyn, comes from 155 Creative Commons photos, of which 127 registered (MegaLoc retrieval, SuperPoint and LightGlue features, COLMAP mapping, aligned with photo GPS). A new photo is matched against the model, which gives position, heading and focal length with lens distortion in 11 to 18 seconds. On 11 held-out photos from other photographers, 10 were placed, 9 of them within 25 m of their phone GPS, with a median focal-length error of 3%. The eleventh had too few matches, and ShotMatch said "Couldn't place" instead of guessing.
-- **NVIDIA.** Nemotron does the work between your words and the set, as workflows rather than a chatbot, and every step shows live in the studio. Say "two friends walking toward camera, a red vintage bike on the left wall, warm string lights": Nemotron Content Safety (on Vultr) screens it while Nemotron 3.5 Lightning routes it in 0.23 s, and Nemotron 3.5 Super plans it with reasoning on, calling our set tools that turn "left third, 5 m away" into metres through the shot camera (16 objects placed in about 7 s). One-object edits stay on Lightning (2 s). When the hosted API is down, Nemotron 3.5 Bolt runs on our Vultr VM's CPU through Ollama and places the same edits offline (31 s). Super VL reads your photo, finds the people, cars and props with boxes and rebuilds them in the set where they stood (12 stand-ins in 6 s), and reads its light. The render puts your objects into your own photo: their shadows are multiplied into the real ground at the photo's softness, their colour and grain matched, and a generator blended in only around them, so the street never moves. Then Nemotron checks the render's physics object by object (light direction, shadow direction, scale, colour), changes the strength and renders once more on a fail, and tells the studio which sun angle to fix. Generation lands at real size: words become a 3D prop with TRELLIS, a photo of your own bike becomes a prop after Super VL crops and describes it, and any image becomes a poster, sign or screen; Super gives the real dimensions (a sedan from a photo: 4.6 by 1.85 by 1.45 m). Super is also the art director (a composition critique with one-click fixes) and writes a call sheet timed to the real golden hour; cuOpt orders the walk. Hold to talk and Parakeet transcribes in under a second; Magpie speaks the reply. Nemotron embeddings and the Nemotron VL reranker search the asset library and the chat. We fine-tuned Nemotron Nano 12B v2 VL with LoRA to read the lens of any photo, served with vLLM on our own GPU. Every model, its job and its measured latency: `docs/NVIDIA.md`.
-- **SpacetimeDB.** SpacetimeDB is the whole backend for the shared set: one TypeScript module on Maincloud, with no server, websocket layer, queue or cron of ours. Every object, person, light and camera in the 3D set is a row; the browser, the scout's phone, our GPU worker, the phone agent and the iMessage bridge all subscribe to the same rows. Row-level security delivers a session's rows only to its members and the worker (checked with two identities: an outsider receives nothing until they join by code). Ephemeral event tables carry cursors, laser-pointer pings ("Maya is pointing here") and camera-follow requests that are never stored, rate-limited by SpacetimeDB's official Rate Limit module. Every edit is recorded, so anyone can undo anyone's change or scrub the set back in time and restore it, and an iMessage thread becomes a version tree over that history ("go back to v1" forks a branch). Schedules inside the database requeue jobs from a killed worker, free gizmo locks held by frozen tabs, and run a live sun that moves every client's light together. A procedure calls NVIDIA Nemotron 3.5 Lightning from inside the database to title a shoot (about 120 ms). HTTP routes in the module serve a health check, a public JSON share link, and the ElevenLabs post-call webhook, whose HMAC signature the module verifies itself. A second database, shotmatch-library, holds the public library: a 3D prop generated in one session reaches every session through an inter-database outbox. Load test: 3 clients dragging objects at 10 Hz for 30 s, 900 of 900 edits committed, median round trip 42 to 50 ms (one network round trip). Details and line references: `docs/SPACETIME.md`.
-- **Photon.** The set reaches everyone on the app they already have, and each one gets it in that app's form: a render arrives on iMessage as the image and one line, on Telegram as an album of 35, 50 and 85 mm options with one progress message edited in place, by email from our own domain with the image attached, and on SMS as text and a link. Five things a chat app can't do on its own: (1) one live set fanned out to iMessage, Telegram, SMS, WhatsApp Business and email, with invites by channel ("add Maya +1 469 555 0144 on SMS"); (2) call the set: a voice agent on a Photon number guides you turn by turn from your phone's live position ("Turn left 26 degrees, then walk 12 m north") and edits the scene by voice while planners watch, then texts the framing after you hang up; (3) text a photo from where you stand and get the correction back ("You're 3.2 m east of the mark and facing 14 degrees too far left"), with a marker in the 3D set; (4) the thread is the version tree: reply to v1 in any chat app and the set forks to v1.1; (5) golden-hour alerts with your walking time, sent on the channel that will deliver when the shared iMessage line can't. A photo of a single object becomes a 3D prop in the set. The production crew runs on Photon's live API and event stream; because the numbers, DNS and testers for each line are set up by hand, all five were also proven end to end against a stand-in for Photon's Beta API with the real crew, the real SpacetimeDB module and real NVIDIA models (29 of 29 checks). Details: `docs/PHOTON.md`.
-- **Web.** React and CesiumJS with Google Photorealistic 3D Tiles for the planning view, with Google's attribution on screen. Nothing is computed from the tiles.
+## Image gallery (upload in this order)
 
-## Challenges
+All in `site/public/devpost/` and served at https://site.104-238-146-229.sslip.io/devpost/. The first is the thumbnail.
 
-- Google's Map Tiles terms ban image analysis of their tiles, so we rebuilt the solver to match against our own open 3D models and use Google only for display.
-- Far, flat scenes let the camera slide along its line of sight while the focal length compensates. A lens estimate narrows the search.
-- A symmetric bridge tower made some photos register facing the wrong way; we drop photos whose solved heading disagrees with their compass by more than 90 degrees.
-- High match counts can still be wrong, so confidence needs more than one signal.
+1. `1-studio-camera.jpg`. Caption: "Studio, looking through the shot camera: your photo as the backplate, your people and lens in the shared set".
+2. `2-simple-found.jpg`. Caption: "Simple: where to stand, which way to face, and the lens as 2.2x on your iPhone".
+3. `3-render.jpg`. Caption: "A render puts your objects into your own photo, labelled AI interpretation".
+4. `4-phones.jpg`. Caption: "The four steps on a phone: drop, found it, make it yours, take me there".
+5. `5-live-data.jpg`. Caption: "Live data: every edit is a SpacetimeDB row every screen shares".
+6. `6-conditions.jpg`. Caption: "Conditions: real building shadows, permits and scaffolding near the mark".
 
-## What we learned
+## Try it out (links)
 
-The honest answer is often "Couldn't place". We measured everything on held-out photos and report the misses.
-
-## What's next
-
-More spots, a calibrated confidence score, and an offline lens reader on the phone.
+- https://site.104-238-146-229.sslip.io (the site: what it is, one page per track, the docs)
+- https://104-238-146-229.sslip.io/p/A9TVAN (the app, opened on the Manhattan Bridge demo shoot)
+- https://104-238-146-229.sslip.io/studio/A9TVAN (the same shoot in Studio)
+- **TODO:** the GitHub repo once Ben makes it public (SpacetimeDB requires a public repo)
+- https://www.figma.com/design/QrpLuCwKGGFFBSDRMd7VqS (the design file; private: **TODO** Ben, share it as "anyone with the link can view" before pasting, or leave it out)
 
 ## Built with
 
-NVIDIA Nemotron 3.5 Super VL, Nemotron 3.5 Lightning, Nemotron 3.5 Bolt (Ollama), Nemotron 3.5 Content Safety, Nemotron 3 Nano Omni, Nemotron 3.5 Embed, Llama Nemotron Rerank VL, Nemotron Nano 12B v2 VL, NVIDIA Riva Parakeet and Magpie, TRELLIS, FLUX.1-dev, NVIDIA cuOpt, NVIDIA API Catalog, Vultr Serverless Inference, Ollama, vLLM, PyTorch, COLMAP (pycolmap), hloc, MegaLoc, SuperPoint, LightGlue, SpacetimeDB, Photon (iMessage, Telegram, SMS, WhatsApp Business, email, voice), ElevenLabs, CesiumJS, Google Photorealistic 3D Tiles (display only), React, Vite, Node.js, FastAPI, OpenAI gpt-image-2 (preview images), Vultr, Tailscale.
+nvidia-nemotron, nvidia-nim, vllm, cuopt, riva, spacetimedb, photon, elevenlabs, vultr, typescript, react, three.js, react-three-fiber, node.js, python, fastapi, colmap, pycolmap, lightglue, gaussian-splatting, google-3d-tiles, maplibre, astro, caddy, figma
 
-## Credits
+## Prizes to select on the submission form
 
-Every Creative Commons photo used in a 3D model or the training set is listed on the app's credits page and in `spots/*/CREDITS.tsv` and `lens/CREDITS.tsv`.
+Match the exact names in Devpost's list: the NVIDIA Nemotron track, the Spacetime track, the Photon track (and the
+Photon voice-call prize if it is a separate category), HackUTD Best Design, [MLH] Best Use of Vultr. Add [MLH] Best
+Domain Name from GoDaddy Registry only if Ben registers a domain (`ops/DOMAIN.md`). Overall is automatic.
+
+---
+
+## About the project (PASTE THIS)
+
+<!-- DEVPOST START -->
+
+**Start here: https://site.104-238-146-229.sslip.io**, with a page per sponsor track and the docs.
+
+- Try it: https://104-238-146-229.sslip.io/p/A9TVAN (the Manhattan Bridge demo shoot; Studio at `/studio/A9TVAN`)
+- Video: **TODO**
+
+## Stand where the photo was taken. Then make the shot yours.
+
+Drop a photo of a place. ShotMatch finds where the photographer stood, which way they faced and what lens they used,
+rebuilds the place as a 3D set, and your group plans its own version there together, from a browser, a text thread or
+a phone call.
+
+![Studio, looking through the shot camera](https://site.104-238-146-229.sslip.io/devpost/1-studio-camera.jpg)
+
+## Inspiration
+
+You see a great photo of a place and want your own. Google Lens names the landmark in a second, but the standing spot,
+the direction and the zoom are guesswork. People ask strangers online, message photographers who often won't say, or
+walk around until it lines up. A couple on r/AskPhotography (1,215 upvotes) wrote that their photographer "just
+couldn't get the focal length/settings right". Guides to our own demo shot, the Manhattan Bridge from Washington St in
+DUMBO, disagree on which block to stand on. The tools that exist each cover one side: Lens names the place, spot
+directories list known spots, PhotoPills plans the sun once you know where you stand, ghost overlay apps help once
+you're there. Nothing does the step between them.
+
+## What it does
+
+1. **Drop a photo.** Nemotron Content Safety screens it, the spot is picked from its GPS or a name, our fine-tuned
+   Nemotron reads the lens, and the solver matches it against our 3D model of the spot. Each step shows as it runs.
+2. **Found it.** Where to stand, which way to face (4 degrees N on the demo), the lens as "2.2x on your iPhone's main
+   camera" with the 53 mm equivalent, how sure it is (Solid, Check this, Couldn't place), and the next good light. The
+   photo blends over the 3D view so you can check the answer yourself.
+3. **Make it yours.** The place becomes a 3D set you work in like a film set: people, props, lights and cameras with
+   real bodies and lenses. Say "two friends walking toward camera, a red vintage bike on the left wall" and Nemotron
+   places them. Move the sun to golden hour. Render, and your objects land in your own photo, labelled AI
+   interpretation.
+4. **Take me there.** Walk to the mark with the original as a ghost over your camera while friends watch your dot.
+
+**Two views over one live set.** Simple is light and phone first, for anyone. Studio is the "Darkroom" set editor for
+photographers. A friend on Simple and a photographer on Studio edit one shot together.
+
+**Off the laptop.** The set reaches people on iMessage, Telegram, SMS, WhatsApp and email through Photon, and you can
+call it: a voice agent guides you to the mark and edits the set as you talk.
+
+![Simple: the answer](https://site.104-238-146-229.sslip.io/devpost/2-simple-found.jpg)
+
+## How we built it
+
+- **Locating the camera (core).** For each spot we build an open structure-from-motion model: 155 Creative Commons
+  photos of the DUMBO view, 127 registered (MegaLoc retrieval, SuperPoint and LightGlue, COLMAP mapping, georegistered
+  with photo GPS, a mirror filter for the symmetric bridge tower). A new photo is matched against it and solved for
+  position, heading, focal length and lens distortion. On 11 held-out photos from other photographers, 10 were placed,
+  9 within 25 m of their phone GPS, with a median focal error of 3% and a median solve of 15.8 s on a CPU. The 11th had
+  75 matches, and ShotMatch said "Couldn't place" instead of guessing.
+- **The virtual set (core).** three.js with React Three Fiber. The photoreal world is a Gaussian splat we trained from
+  55 of the spot's Commons photos (gsplat, 2.75 M Gaussians, 15.6 minutes on an A100). Google Photorealistic 3D Tiles
+  draw the planning view with Google's credits on screen and never enter a render, an export or an AI step. The camera
+  has 19 real bodies and 67 lenses, 59 with measured distortion and vignetting from lensfun, and thin-lens depth of
+  field.
+- **The render (core).** The studio renders beauty, shadow, depth and mask layers of your objects only. The crew
+  multiplies their shadows into your photo at its shadow softness, matches exposure, colour and grain, and blends a
+  generator in only around the objects, so the rest of your photo stays pixel for pixel.
+- **Live geodata (core).** Weather and sunset colour chance, haze, NWS alerts, tides, NYC film permits, closures and
+  scaffolding, real building shadows on the street, and where Commons photographers stood, in the set, on a 2D map and
+  in the AI's context.
+- **NVIDIA, SpacetimeDB, Photon, Vultr:** below.
+
+## NVIDIA: Nemotron, beyond a chatbot
+
+Nemotron does the work between your words and the set, as workflows, and every step writes a row the studio shows
+live.
+
+- **Text to set.** Content Safety (on Vultr) screens the sentence while Nemotron 3.5 Lightning routes it in 0.23 s;
+  Nemotron 3.5 Super plans with reasoning on and calls our set tools, which turn "left third, 5 m away" into metres
+  through the shot camera. Two friends, a red bike and warm string lights: 16 objects in 6.6 s and 13.1 s.
+- **Rebuild the scene from the photo.** Super VL found 10 vehicles, a street lamp and a yellow umbrella in the DUMBO
+  photo and placed stand-ins where they stood, in 5.8 s.
+- **A render that checks its own physics.** Super VL checks each placed object's light, shadow, scale and colour
+  against the photo. On a fail the crew changes the blend strength and renders again (29 s in total on our test, with
+  Nemotron 3 Nano Omni as a second opinion in 1.2 s).
+- **Generation at real size.** Words or a photo of your own bike become a 3D prop through TRELLIS, at the size Super
+  gives (a sedan from a photo: 4.6 x 1.85 x 1.45 m). Any image becomes a poster, sign or screen.
+- **Art director, call sheet, route.** Super critiques the composition with one-click fixes, writes a call sheet inside
+  the real golden-hour windows, and cuOpt orders the walk.
+- **Voice and offline.** Parakeet transcribes hold-to-talk in 0.6 to 1.0 s, Magpie speaks the reply in 0.8 to 1.1 s.
+  With the hosted API down, Nemotron 3.5 Bolt runs on our Vultr VM's CPU through Ollama and places the same edits
+  (30.8 s).
+- **Our own model.** We fine-tuned Nemotron Nano 12B v2 VL with LoRA to read the lens of any photo and serve it with
+  vLLM on an A100. On 480 photos from three landmarks it never saw, it flags 72.4% of long-lens photos (OpenAI zero
+  shot 48.3%, the base model 12.6%). It does not beat "always wide" on plain bin accuracy (55.6% against 57.5%) and
+  reads normal lenses as wide, so only its long-lens reads narrow the solver.
+
+What failed: FLUX.1-dev returned HTTP 500 on every base call, so the render generator is Qwen-Image on Vultr, and every
+result names the model that ran. Details: https://site.104-238-146-229.sslip.io/tracks/nvidia/
+
+## SpacetimeDB: the set is the database
+
+SpacetimeDB is the whole backend of the shared set: one TypeScript module on Maincloud, with no server, websocket
+layer, queue or cron of ours. Every person, prop, light and camera is a row that the browsers, the scout's phone, our
+GPU worker, the phone agent and the messaging bridge all share.
+
+- **Row-level security:** an outsider subscribed to every table receives nothing of a session until they join by code.
+- **Time travel:** undo anyone's change, scrub the set back and restore it. A text thread is a version tree over that
+  history: reply to v1 and the set forks to v1.1.
+- **Job leases:** kill the worker mid-solve and a 10 s sweep in the database requeues the job.
+- **Ephemeral events** for cursors, laser pings and camera follow, never stored, rate-limited by the official Rate
+  Limit module (a 12-ping burst: 7 through, 5 refused).
+- **Schedules:** presence, a live sun every client shares (600x moved the set 30 minutes in 3.2 s), golden-hour
+  reminders, and a 15-minute weather refresh the database fetches itself.
+- **A procedure** calls Nemotron 3.5 Lightning from inside the database to title a shoot (121 to 126 ms).
+- **HTTP routes** in the module: health, a public share link, and the phone agent's post-call webhook with its HMAC
+  checked in the module.
+- **A second database**, `shotmatch-library`, receives generated props and shared shots through inter-database
+  outboxes, so a prop made in one shoot shows up in every shoot's library.
+- **Load test:** 3 clients dragging objects at 10 Hz for 30 s, 900 of 900 edits committed, median round trip 42 to
+  50 ms.
+
+Details: https://site.104-238-146-229.sslip.io/tracks/spacetime/
+
+## Photon: the set in your texts
+
+Most people on a shoot won't install anything, and the scout's hands are full. Photon brings the set to them.
+
+1. **One live set, everyone on their own channel.** A render arrives on iMessage as the image and one line, on
+   Telegram as an album of 35, 50 and 85 mm crops with a progress message edited in place, by email with the image
+   attached, on SMS as a link. Invite by text: "add Maya +1 469 555 0144 on SMS".
+2. **Call the set.** A voice agent on a Photon number guides you from your phone's live position ("Turn left 26
+   degrees, then walk 12 m north.") and edits the set as you talk while planners watch, then texts the framing after
+   you hang up.
+3. **Check in by photo.** Text a photo from where you stand: "You're 3.2 m east of the mark and facing 14 degrees too
+   far left."
+4. **The thread is the version tree.** Reply to v1 in any chat app and the set forks to v1.1.
+5. **Golden-hour alerts** with your walking time, sent on the next channel when the shared iMessage line refuses.
+
+A photo of one object becomes a 3D prop in the set. Status, plainly: the production crew is connected to Photon's live API
+and event stream, but no public number or bot handle is published yet. The iMessage, SMS, voice, email, WhatsApp and
+Telegram lines need numbers, DNS and testers set up in Photon's dashboard, so all five mechanisms were also proven end to end against a stand-in for Photon's Beta API with
+the real crew, the real SpacetimeDB module and real NVIDIA models: 29 of 29 checks.
+
+Details: https://site.104-238-146-229.sslip.io/tracks/photon/
+
+## HackUTD Best Design
+
+We designed before we coded: three directions in Figma for the answer (A Viewfinder, light; B Darkroom, camera
+instruments on near-black; C Call sheet, editorial), then a round for the virtual set. Darkroom became Studio, where
+the scene, the photo and the render are the brightest things on screen. Viewfinder became Simple, phone first, the
+answer in large type. The controls explain the answer: a compass cone draws the lens's field of view, a lens ring shows
+where 53 mm sits, the photo blends over the 3D view. Honesty is designed in: "Couldn't place", "AI interpretation",
+Google's credits on every tile view, the photographer's credit on every frame.
+
+Details: https://site.104-238-146-229.sslip.io/tracks/design/
+
+## MLH: Best Use of Vultr
+
+Production runs on Vultr: a VM in Dallas (12 vCPU, 24 GB) runs Caddy with automatic HTTPS, the crew, the solver and
+Ollama with Nemotron 3.5 Bolt for the offline path. Vultr Object Storage keeps photos, renders and generated props.
+Vultr Serverless Inference runs Nemotron Content Safety (our primary safety path), Nemotron 3 Nano Omni, Qwen-Image and
+Whisper. The site is served from the same VM. Vultr refused our GPU instance (no credit, then the monthly fee limit),
+so the fine-tune and the splat ran on a Brev A100 from the HackUTD NVIDIA credit.
+
+Details: https://site.104-238-146-229.sslip.io/tracks/vultr/
+
+## Challenges we ran into
+
+- Google's Map Tiles terms ban image analysis of their tiles, so we rebuilt the solver to match against our own open
+  3D model and use Google only for display.
+- A symmetric bridge tower registered 11 training photos facing the wrong way; the spot build drops photos whose solved
+  heading disagrees with their compass by more than 90 degrees.
+- Far, flat scenes let the camera slide along its line of sight while the focal length compensates. A lens read
+  narrows the search, but only where our lens model is good (long lenses).
+- Our first two splat runs failed: one collapsed into a single colour, one diverged. Cropping the cameras to the street
+  corridor and cutting floaters out of the street's empty air fixed it.
+- Several hosted models failed on the night (FLUX 500s, TRELLIS failing about half its calls, Cosmos Reason2 404).
+  Every step has a named fallback, and the result says which model ran.
+
+## Accomplishments that we're proud of
+
+- An honest solver: 10 of 11 held-out photos placed with a 3% median focal error, and a clear "Couldn't place" on the
+  one it couldn't.
+- A real lens model of our own: 72.4% long-lens recall on landmarks it never saw, trained in 44 minutes on the first
+  attempt.
+- One live set shared by a laptop, a phone, a GPU worker, a text thread and a phone call, with nothing between them but
+  SpacetimeDB.
+
+## What we learned
+
+The honest answer is often "Couldn't place". We measured everything on held-out data, and we report the misses: the
+lens model's weakness on normal lenses, the splat's low PSNR (15.4 dB colour-corrected), and which hosted models did not
+answer.
+
+## What's next
+
+More spots, starting with a UTD campus spot shot by us. A calibrated confidence score. The lens reader on the phone.
+VR: the set already enters WebXR on a headset that supports it, untested so far.
+
+## Built with
+
+NVIDIA Nemotron (Super VL, Lightning, Bolt, Nano Omni, Content Safety, Embed, Rerank VL, Nano 12B v2 VL with our LoRA),
+NVIDIA Parakeet and Magpie (Riva), cuOpt, TRELLIS, vLLM, SpacetimeDB, Photon, ElevenLabs, Vultr (VM, Object Storage,
+Serverless Inference), Brev, COLMAP, hloc, MegaLoc, SuperPoint, LightGlue, gsplat, three.js, React Three Fiber, Spark,
+Google Photorealistic 3D Tiles (display only), MapLibre, React, Vite, Astro, Caddy, Figma.
+
+Photo credits: every Creative Commons photo in the spot model, the splat and the lens dataset is listed with its author
+and license at https://site.104-238-146-229.sslip.io/credits/
+
+<!-- DEVPOST END -->
+
+## Open TODOs (Ben)
+
+- Team members (up to 4) on the Devpost form.
+- The main video link, and each track video (shot lists on the track pages).
+- Make the repo public after the gitleaks scan, then add the GitHub link here, in `site/src/site.ts` (`REPO`) and on
+  Devpost.
+- Photon dashboard lines (`crew/PHOTON.md`), so the iMessage, SMS, voice, email and WhatsApp beats can be recorded live.
+- A domain, if entering GoDaddy (`ops/DOMAIN.md`).

@@ -5,7 +5,7 @@ description: How one SpacetimeDB module on Maincloud is the whole backend of Sho
 
 ShotMatch's primary function is a shared virtual film set: you drop a photo, ShotMatch finds where the photographer stood, and your group builds its own version of the shot in a 3D copy of the place. Every person, prop, light and camera in that set is a row in one SpacetimeDB TypeScript module on Maincloud. There is no application server between the browser and the data, no websocket layer we wrote, no queue and no cron. The planner's browser, the scout's phone, the GPU worker (the crew), the phone agent and the iMessage bridge all read and write the same rows. Without SpacetimeDB there is no set.
 
-**Best shown in:** Studio (`/studio/A9TVAN`) with Live data open, a second browser joined by code, and the scout page on a phone.
+**Best shown in:** Studio (`/studio/A9TVAN`) with the People and live data drawer open (the People button), a second browser joined by code, and the scout page on a phone.
 
 ## The problem
 
@@ -82,7 +82,7 @@ node scripts/loadtest.ts shotmatch 3 10 30      # the load test above
 scripts/demo.sh shotmatch                       # live SQL over both databases, HTTP routes, log highlights
 ```
 
-- In the app: open `/studio/A9TVAN`, press Live. The Feed streams reducer calls as people edit; History scrubs and restores the set.
+- In the app: open `/studio/A9TVAN` and press People: the drawer holds the live data inspector. The Feed streams reducer calls as people edit; History scrubs and restores the set.
 - Full write-up with line links: `docs/SPACETIME.md`.
 
 ## Video
@@ -94,7 +94,7 @@ scripts/demo.sh shotmatch                       # live SQL over both databases, 
 | `0:00` to `0:15` | Simple `/p/A9TVAN`: the photo snapped onto the 3D view | You found where the photo was taken. Now your whole group builds the shot in one live set. | Problem first |
 | `0:15` to `0:40` | Browser 2 (fresh profile) opens `/studio/A9TVAN`: the join card, then Join; both windows side by side, presence chips appear | Before joining, a stranger sees only the card. Row-level security sends a shoot's rows only to its members. | Security, primary function |
 | `0:40` to `1:05` | Browser 1 drags a person with the gizmo; browser 2 sees it move, the other person's lock tag shows; laser ping "pointing here" | Every person, prop, light and camera is a row. Drags stream at ten a second. Pings are event rows, never stored. | Real-time sync |
-| `1:05` to `1:25` | Open Live data: the Feed streaming reducer calls, changes per second, round trip | No server of ours in between. This is the module's own stream of calls and row changes. | SpacetimeDB as the backend |
+| `1:05` to `1:25` | Press People to open the People and live data drawer: the Feed streaming reducer calls, changes per second, round trip | No server of ours in between. This is the module's own stream of calls and row changes. | SpacetimeDB as the backend |
 | `1:25` to `1:45` | History tab: scrub back, ghost preview, Restore; then undo the restore | Anyone can undo anyone's change, or rewind the whole set and restore it. | Scene history |
 | `1:45` to `2:05` | Timeline: Live sun at 600x; the light sweeps in both windows | A schedule in the database runs the sun, so every client's light moves together. | Schedules |
 | `2:05` to `2:30` | Terminal: `node scripts/loadtest.ts shotmatch 3 10 30` result, then `scripts/demo.sh shotmatch` SQL and the health route | Load test: 900 of 900 edits committed, median round trip one network hop. | Proof |

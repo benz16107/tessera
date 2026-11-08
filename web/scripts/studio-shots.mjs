@@ -25,6 +25,14 @@ const S = n => page.screenshot({ path: `${out}${n}.png` });
 for (const step of stepsArg.split(',')) {
   if (step === 'main') { await page.waitForTimeout(500); await S(''); }
   if (step === 'world') { await page.keyboard.press('5'); await page.waitForTimeout(3000); await S('-world'); }
+  if (step.startsWith('style:')) { // style:<World style label>, from the World view's default camera
+    const label = step.slice(6);
+    await page.keyboard.press('5'); await page.waitForTimeout(1000);
+    await page.locator('.st-viewswitch button[aria-expanded]').click();
+    await page.getByRole('menuitemradio', { name: label, exact: true }).click();
+    await page.waitForTimeout(label === 'Splat' ? 25000 : 6000);
+    await S(`-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`);
+  }
   if (step === 'person') { await page.locator('.st-ol-row', { hasText: 'Person' }).nth(0).locator('button').first().click(); await page.waitForTimeout(1500); await S('-person'); await page.keyboard.press('Escape'); }
   if (step === 'camera') { await page.keyboard.press('0'); await page.waitForTimeout(6000); await S('-camera'); await page.keyboard.press('5'); await page.waitForTimeout(2000); }
   if (step === 'add') { await page.keyboard.press('Shift+A'); await page.waitForTimeout(800); await S('-add'); }

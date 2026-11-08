@@ -1,7 +1,23 @@
-# Caddy on the Vultr box (shotmatch-app): HTTPS with an automatic certificate, everything to the crew.
-# Install: sudo cp ops/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy
-# Swap the sslip.io name for the real domain once it points here (ops/VULTR.md).
+# Caddy on the Vultr box (shotmatch-app): HTTPS with automatic certificates.
+# Install: scp ops/Caddyfile root@104.238.146.229:/etc/caddy/Caddyfile, then on the box
+#   caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && systemctl reload caddy
+# Moving to a real domain: ops/DOMAIN.md.
+
+# The app: everything to the crew.
 104-238-146-229.sslip.io {
 	encode gzip
 	reverse_proxy 127.0.0.1:8790
+}
+
+# The docs site: static files from site/dist, pushed by ops/deploy-site.sh. No access log.
+site.104-238-146-229.sslip.io {
+	encode zstd gzip
+	root * /var/www/shotmatch-site
+	header /_astro/* Cache-Control "public, max-age=31536000, immutable"
+	header ?Cache-Control "public, max-age=300"
+	file_server
+	handle_errors 404 {
+		rewrite * /404.html
+		file_server
+	}
 }

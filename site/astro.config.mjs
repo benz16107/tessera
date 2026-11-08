@@ -33,7 +33,7 @@ export default defineConfig({
       },
       head: [
         { tag: 'meta', attrs: { name: 'theme-color', content: '#0b0b0a' } },
-        { tag: 'meta', attrs: { property: 'og:image', content: `${SITE_URL}/og.png` } },
+        { tag: 'meta', attrs: { property: 'og:image', content: `${SITE_URL}/og.jpg` } },
       ],
       plugins: [
         starlightLlmsTxt({
@@ -92,7 +92,6 @@ export default defineConfig({
             { label: 'Credits and licenses', link: '/credits/' },
             'privacy',
             'terms',
-            { label: 'llms.txt', link: '/llms.txt' },
           ],
         },
       ],

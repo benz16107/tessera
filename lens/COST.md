@@ -22,5 +22,6 @@ Account: Ben's Brev org `benz16107-4e84e4-rvkd`, $60.00 credit from the HackUTD 
 | Sat 10:42 PM | vLLM serving shotmatch-lens on :8000 for the crew, through the VM tunnel | same | | 1.62 | $2.03 |
 | Sat 9:43 to 10:45 PM | Splat runs: 1 collapsed, 2 diverged, 3 done in 16 min (10:27 to 10:43) | same | | 1.62 | $2.12 |
 | Sat 10:56 PM | Running, serving. Plan: keep it up until Sunday noon CT for judging, then delete. Projected total at noon $23.60, at 1 PM $25.20, under the $55 cap | same | | 1.62 | $2.41 |
+| Sat 11:50 PM | Difix3D pass on the DUMBO splat (Ben's request) started on the same instance, beside vLLM. No new instance: it uses hours already paid for serving, so the projected total is unchanged | same | | 1.62 | $3.86 |
 
 Stop everything: `brev delete shotmatch-gpu` from linuxbox (`brev ls` to confirm it is gone). Billing stops on delete; this instance type cannot be stopped and kept.

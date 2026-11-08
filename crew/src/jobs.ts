@@ -11,6 +11,7 @@ import { sunWindows, windowWords } from './sun.ts';
 import { cropForF35, lightWords, placementWords } from './geo.ts';
 import type { SolveJob, PreviewJob } from './module_bindings/types.ts';
 import { afterSolve } from './vision.ts';
+import { Timestamp } from 'spacetimedb';
 
 const warn = (what: string) => (e: unknown) => console.warn(`${what}: ${(e as Error).message ?? e}`);
 const ZERO_POSE = { lat: 0, lon: 0, alt: 0, heading: 0, pitch: 0, roll: 0, f35: 0 };
@@ -152,6 +153,12 @@ async function runSolve(j: SolveJob, spotLoaded: boolean) {
     await finish(true, '', r, lens?.f35);
     // Nemotron reads the photo (objects with boxes, light) and rebuilds an empty set from it; in the background.
     if (r.confidence !== 'none') void afterSolve(sid, j.photoId);
+    // A new shoot would otherwise open at the current time (often night), so presets and renders looked dark.
+    if (r.confidence !== 'none' && !conn.db.session.id.find(sid)?.planTime) {
+      const g = sunWindows(r.lat, r.lon, r.heading).golden;
+      if (g) await conn.reducers.setPlanTime({ sessionId: sid, at: new Timestamp(BigInt(Math.round((g.start.getTime() + g.end.getTime()) / 2)) * 1000n) })
+        .then(() => logStep(sid, 'set_time', 'first solve, no plan time', `the middle of the next golden hour: ${windowWords(g, r.lat, r.lon)}`, 0)).catch(warn('setPlanTime'));
+    }
   } catch (e) {
     if (e instanceof SolverDown) {
       // Stop renewing so the module's sweep hands the job to the next healthy worker.
@@ -166,7 +173,7 @@ async function runSolve(j: SolveJob, spotLoaded: boolean) {
 
 // gpt-image sizes must be multiples of 16; keep the photo's aspect so the edit lines up with the original.
 const editSize = (w: number, h: number) => {
-  const s = 1536 / Math.max(w, h), r16 = (x: number) => Math.max(256, Math.round((x * s) / 16) * 16);
+  const s = 1536 / Math.max(w, h), r16 = (x: number) => Math.max(256, Math.round((x * s) / 32) * 32);
   return `${r16(w)}x${r16(h)}`;
 };
 

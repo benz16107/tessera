@@ -52,3 +52,12 @@ test('the image plane GLB is valid and real-sized', () => {
   assert.equal(j.buffers[0].byteLength % 4, 0);
   assert.equal(j.bufferViews[4].byteLength, jpeg.length);
 });
+
+test('placeholders become real people and props, with pose, height, clothes and light', async () => {
+  const { placeholderPrompt, whenWords } = await import('../src/prompts.ts');
+  const when = whenWords(new Date('2026-11-08T22:30:00Z'), 5, 'cloudy');
+  assert.equal(when, 'cloudy late autumn golden hour');
+  const p = placeholderPrompt({ id: '7', kind: 'person', name: 'Person 1', asset: 'mannequin', pose: 'walk', heightM: 1.72, frameX: -0.5, dist: 8.4, facing: 'the camera' }, when, 'soft overcast light');
+  assert.equal(p, 'the grey mannequin on the left, about 8 m from the camera becomes a real person, walking, about 1.72 m tall, casual clothes that suit a cloudy late autumn golden hour, lit by soft overcast light, facing the camera');
+  assert.match(placeholderPrompt({ id: '9', kind: 'model', name: 'Bicycle', asset: 'bike', frameX: 0.6, dist: 5, facing: 'left' }, when, 'x'), /stand-in bicycle on the right.*becomes a real bicycle/);
+});

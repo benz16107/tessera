@@ -4,8 +4,8 @@ import type { SceneObject } from '../../module_bindings/types.ts';
 import { parseParams, num } from '../scene/objects.ts';
 import { Ico, type IconName } from './ui.tsx';
 
-export type WorldMode = 'splat' | 'tiles' | 'off';
-const WORLD_LABEL: Record<WorldMode, string> = { splat: 'Splat', tiles: '3D Tiles', off: 'Hidden' };
+export type WorldMode = 'splat' | 'clayPhoto' | 'clay' | 'tiles' | 'off';
+export const WORLD_LABEL: Record<WorldMode, string> = { splat: 'Splat', clayPhoto: 'Clay + photo', clay: 'Clay', tiles: '3D Tiles', off: 'Hidden' };
 
 interface Props {
   rows: SceneObject[];

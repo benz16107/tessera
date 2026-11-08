@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
-import { BufferGeometry, CanvasTexture, Color, DirectionalLight, DoubleSide, EdgesGeometry, ExtrudeGeometry, Float32BufferAttribute, InstancedMesh, Matrix4, Mesh, Object3D, Shape, ShapeGeometry, SRGBColorSpace, Vector2 } from 'three';
+import { BufferGeometry, Color, DirectionalLight, DoubleSide, EdgesGeometry, ExtrudeGeometry, Float32BufferAttribute, InstancedMesh, Matrix4, Mesh, Object3D, Shape, ShapeGeometry, Vector2 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { llhToEnu, type Origin } from '../studio/frame.ts';
 import type { Feature, FC, GeoLayers } from './useGeoLayers.ts';
@@ -281,47 +281,19 @@ function PinInstances({ pts }: { pts: { f: Feature; x: number; y: number; z: num
   );
 }
 
-const HEAT_R = 450, HEAT_PX = 512;
 
-/** Where photographers stand: a heat texture of the geotagged photos on the street plane, each photo's heading as an
+/** Where photographers stand: a dot per geotagged photo on the street plane, each photo's heading as an
  *  arrow on the ground, and the three busiest spots labelled. Drawn from above only: at eye level it is noise. */
 function Heat({ fc, P, gz, high, hotspots }: { fc: FC; P: (c: number[]) => XY; gz: Gz; high: boolean; hotspots: { lat: number; lon: number; n: number; text: string }[] }) {
   const pts = useMemo(() => fc.features.filter(f => f.geometry?.type === 'Point').map(f => ({ xy: P((f.geometry as { coordinates: number[] }).coordinates), h: f.properties.heading as number | undefined })), [fc, P]);
-  const tex = useMemo(() => {
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = HEAT_PX;
-    const ctx = cv.getContext('2d')!;
-    const px = (m: number) => ((m + HEAT_R) / (2 * HEAT_R)) * HEAT_PX, r = (11 / (2 * HEAT_R)) * HEAT_PX;
-    ctx.globalCompositeOperation = 'lighter';
-    for (const { xy: [x, y] } of pts) {
-      const cx = px(x), cy = HEAT_PX - px(y);
-      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      g.addColorStop(0, 'rgba(255,255,255,0.09)'); g.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = g; ctx.fillRect(cx - r, cy - r, 2 * r, 2 * r);
-    }
-    // Density (about 11 overlapping photos saturate) to amber, then pale gold where most people stand. Alpha rises
-    // smoothly from zero so the edges fade instead of stepping.
-    const im = ctx.getImageData(0, 0, HEAT_PX, HEAT_PX), a = im.data;
-    for (let i = 0; i < a.length; i += 4) {
-      const v = Math.min(1, a[i + 3] / 255); // density lives in alpha: 'lighter' on a clear canvas keeps the colour at white
-      const k = Math.max(0, (v - 0.35) / 0.65);
-      a[i] = 242 + 13 * k; a[i + 1] = 140 + 95 * k; a[i + 2] = 40 + 150 * k;
-      a[i + 3] = Math.round(210 * Math.pow(v, 0.7));
-    }
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.putImageData(im, 0, 0);
-    const t = new CanvasTexture(cv);
-    t.colorSpace = SRGBColorSpace;
-    return t;
-  }, [pts]);
-  const quad = useMemo(() => {
-    const g = new BufferGeometry();
-    const c: XY[] = [[-HEAT_R, -HEAT_R], [HEAT_R, -HEAT_R], [HEAT_R, HEAT_R], [-HEAT_R, HEAT_R]];
-    g.setAttribute('position', new Float32BufferAttribute(c.flatMap(([x, y]) => [x, y, gz(x, y) + 0.12]), 3));
-    g.setAttribute('uv', new Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
-    g.setIndex([0, 1, 2, 0, 2, 3]);
-    return g;
-  }, [gz]);
+  // One crisp dot per photo (instanced circles, 0.7 m), the same sand colour as the 2D map's dots: no glow at any zoom.
+  const placeDots = (m: InstancedMesh | null) => {
+    if (!m) return;
+    const o = new Object3D();
+    pts.forEach(({ xy: [x, y] }, i) => { o.position.set(x, y, gz(x, y) + 0.15); o.updateMatrix(); m.setMatrixAt(i, o.matrix); });
+    if (!pts.length) m.setMatrixAt(0, new Matrix4().makeScale(0, 0, 0));
+    m.instanceMatrix.needsUpdate = true;
+  };
   const arrows = useMemo(() => {
     const v: number[] = [];
     for (const { xy: [x, y], h } of pts) {
@@ -336,22 +308,23 @@ function Heat({ fc, P, gz, high, hotspots }: { fc: FC; P: (c: number[]) => XY; g
     g.setAttribute('position', new Float32BufferAttribute(v, 3));
     return g;
   }, [pts, gz]);
-  useEffect(() => () => { tex.dispose(); quad.dispose(); arrows.dispose(); }, [tex, quad, arrows]);
+  useEffect(() => () => arrows.dispose(), [arrows]);
   return (
     <>
       {high && (
-        <mesh geometry={quad} raycast={() => null} renderOrder={11}>
-          <meshBasicMaterial map={tex} transparent depthWrite={false} depthTest={false} toneMapped={false} />
-        </mesh>
+        <instancedMesh key={pts.length} args={[undefined, undefined, Math.max(1, pts.length)]} ref={placeDots} raycast={() => null} renderOrder={11}>
+          <circleGeometry args={[0.7, 16]} />
+          <meshBasicMaterial color="#e6d3a8" transparent opacity={0.9} depthWrite={false} depthTest={false} toneMapped={false} />
+        </instancedMesh>
       )}
       {high && (
         <lineSegments geometry={arrows} raycast={() => null} renderOrder={13}>
-          <lineBasicMaterial color="#f7c97a" transparent opacity={0.75} depthTest={false} toneMapped={false} />
+          <lineBasicMaterial color="#e6d3a8" transparent opacity={0.7} depthTest={false} toneMapped={false} />
         </lineSegments>
       )}
       {hotspots.map((h, i) => { const [x, y] = P([h.lon, h.lat]); return (
         <Html key={i} position={[x, y, gz(x, y) + 2]} center zIndexRange={[20, 0]}>
-          <span className="st-obj-label geo-label quiet" style={{ borderLeft: '2px solid #f2a33a' }}>{h.text.replace(/ from .* of the mark/, ' here')}</span>
+          <span className="st-obj-label geo-label quiet" style={{ borderLeft: '2px solid #e6d3a8' }}>{h.text.replace(/ from .* of the mark/, ' here')}</span>
         </Html>
       ); })}
     </>

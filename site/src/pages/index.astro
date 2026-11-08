@@ -34,7 +34,7 @@ const faq = [
   { q: 'Where does it work today?', a: 'At one mapped spot: the Manhattan Bridge view from Washington St in DUMBO, Brooklyn. A photo from a place we have not mapped gets an honest "we haven\'t mapped this spot". Mapping a spot takes about 150 photos and about 23 minutes on a CPU.' },
   { q: 'Does it find the spot from Google\'s 3D map?', a: 'No. The solver matches your photo against our own 3D model, built from 155 Creative Commons photos. Google Photorealistic 3D Tiles only draw the planning view, with Google\'s credits on screen, and never enter a render, an export or an AI step.' },
   { q: 'Are the renders real photos?', a: 'No. Every render is labelled "AI interpretation". Your people and props are composited into your own photo with shadows from the real sun position, and the AI generator is blended only around them, so the rest of your photo stays as it was.' },
-  { q: 'Do my friends need the app?', a: 'No. Anyone with the link joins in a browser. The set can also reach people by text and by phone call through Photon; the Telegram bot is live, and the other lines are being connected.' },
+  { q: 'Do my friends need the app?', a: 'No. Anyone with the link joins in a browser. The set can also reach people by text and by phone call through Photon; the crew is connected to Photon, and the numbers to text and call are being set up.' },
   { q: 'What happens to my photo?', a: 'It is stored so everyone in your shoot can see it, and NVIDIA hosted models read it to place objects and make renders. Your position is shared only while the camera page is open. The privacy page lists every service that touches it.' },
   { q: 'Can someone use it to find where a person lives?', a: 'ShotMatch can only place a photo at a spot we mapped, and we map public places that are already famous. Nemotron Content Safety screens every upload.' },
 ];
@@ -43,13 +43,13 @@ const faq = [
   <section class="hero">
     <div class="wrap hero-copy">
       <p class="eyebrow">HackUTD 2026</p>
-      <h1>Stand where the photo was taken.<br />Then make the shot yours.</h1>
+      <h1>Stand where the photo was taken.{' '}<br />Then make the shot yours.</h1>
       <p class="lede">Drop a photo of a place. ShotMatch finds where the photographer stood, which way they faced and what lens they used, rebuilds the place as a 3D set, and your group plans its own version there together.</p>
       <div class="ctas">
         <a class="btn primary" href={demo}>Try the Manhattan Bridge shot</a>
         <a class="btn quiet" href="/docs/get-started/">Read the docs</a>
       </div>
-      <p class="proof"><span class="num">10 of 11</span> held out photos placed, median focal error <span class="num">3%</span></p>
+      <p class="proof"><span class="num">10 of 11</span>{' '}held out photos placed, median focal error{' '}<span class="num">3%</span></p>
     </div>
     <figure class="wrap hero-shot">
       <Image src={hero} alt="ShotMatch Studio looking through Cam A at the Manhattan Bridge from Washington St: the original photo as the backplate, two placed walking figures, a 51 mm lens at f/2.8 focused at 2.1 m, and the golden hour band on the timeline." widths={[800, 1200, 1600, 2000]} sizes="(max-width: 1200px) 100vw, 1200px" loading="eager" fetchpriority="high" />
@@ -84,7 +84,7 @@ const faq = [
   </section>
 
   <section class="wrap reveal" aria-label="What ShotMatch does">
-    <p class="reveal-text" data-reveal>A photo shows you the place. ShotMatch tells you where to stand, which way to face and which lens to bring.</p>
+    <p class="reveal-text" data-reveal>Where to stand, which way to face, which lens to bring and when the light will be right, from one photo.</p>
   </section>
 
   <section class="wrap views" aria-labelledby="views-h">
@@ -108,7 +108,7 @@ const faq = [
       {numbers.map((n) => (
         <div>
           <dt class="num">{n.v}</dt>
-          <dd>{n.l} <a href={n.href}>Source</a></dd>
+          <dd>{n.l}{' '}<a href={n.href}>Source</a></dd>
         </div>
       ))}
     </dl>
@@ -183,8 +183,8 @@ const faq = [
 </script>
 
 <style>
-  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
-  @media (max-width: 420px) { .wrap { padding: 0 16px; } }
+  .wrap { max-width: 1200px; margin-inline: auto; padding-inline: 24px; }
+  @media (max-width: 420px) { .wrap { padding-inline: 16px; } }
   section { margin-top: 96px; }
   h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; text-wrap: balance; margin: 0; }
   h2 { font-size: 1.875rem; line-height: 2.25rem; max-width: 680px; }
@@ -204,7 +204,7 @@ const faq = [
   .btn.quiet:hover { background: var(--field); }
   .proof { margin: 24px 0 0; color: var(--text-3); font-size: 0.875rem; }
   .proof .num { color: var(--text); }
-  .hero-shot { margin: 48px auto 0; }
+  .hero-shot { margin-top: 48px; margin-bottom: 0; }
   .hero-shot img { display: block; width: 100%; height: auto; border-radius: var(--r); border: 1px solid var(--line); }
   figcaption { margin-top: 12px; color: var(--text-3); font-size: 0.875rem; line-height: 1.25rem; max-width: 72ch; }
   figcaption strong { color: var(--text); font-weight: 600; }

@@ -137,7 +137,7 @@ our key (Nano Omni and Vultr's copy stand in). The lens model's limits are above
 
 ### SpacetimeDB: the set is the database
 
-**Best shown in:** Studio with Live data open, plus a second browser and the scout phone.
+**Best shown in:** Studio with the People and live data drawer open (the People button), plus a second browser and the scout phone.
 
 **Story.** SpacetimeDB is the whole backend of the shared set: one TypeScript module on Maincloud, with no server,
 websocket layer, queue or cron of ours. The browser, the scout's phone, the GPU worker (the crew), the phone agent and
@@ -179,7 +179,8 @@ them. Five mechanisms:
 5. Golden-hour alerts with your walking time, falling back to the next channel when iMessage refuses a late send.
 Plus a photo of one object becomes a 3D prop in the set.
 
-**Evidence.** The production crew went live on Photon's event stream at 12:30 AM CT Sunday with a managed Telegram bot.
+**Evidence.** The production crew went live on Photon's API and event stream at 12:30 AM CT Sunday and connected a managed Telegram bot
+over the API, but no public number or bot handle is published yet (`GET /api/photon/status` lists none).
 The other lines need numbers, DNS and testers set up by hand in Photon's dashboard, so all five mechanisms were proven
 end to end against a stand-in for Photon's Beta API (real crew, real SpacetimeDB module, real NVIDIA models): 29 of 29
 checks. Say this plainly on every Photon surface.

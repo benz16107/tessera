@@ -33,7 +33,8 @@ import LookThrough from './post/LookThrough.tsx';
 import Overlays from './editor/Overlays.tsx';
 import Timeline from './editor/Timeline.tsx';
 import Inspector from './editor/Inspector.tsx';
-import Outliner, { type WorldMode } from './editor/Outliner.tsx';
+import Outliner, { WORLD_LABEL, type WorldMode } from './editor/Outliner.tsx';
+import Clay, { type Projector } from './world/Clay.tsx';
 import AddDrawer from './editor/Library.tsx';
 import { generate, shrinkToDataUrl, type GenResult } from './editor/Generate.tsx';
 import { Ico, Seg, Disclosure } from './editor/ui.tsx';
@@ -127,7 +128,11 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const splatUrl = useSplatUrl(session.spotId, splatFull, splatSkip);
   const [world, setWorld] = useState<WorldMode>('tiles');
   const [splatState, setSplatState] = useState<{ loaded: boolean; progress: number }>({ loaded: false, progress: 0 });
-  useEffect(() => { if (splatUrl) setWorld('splat'); }, [splatUrl]);
+  const worlds: WorldMode[] = splatUrl ? ['splat', 'clayPhoto', 'clay', 'tiles', 'off'] : ['clayPhoto', 'clay', 'tiles', 'off'];
+  // The splat becomes the world once, when its file answers; after that the World style menu decides.
+  const autoWorld = useRef(false);
+  useEffect(() => { if (splatUrl && !autoWorld.current) { autoWorld.current = true; setWorld(w => (w === 'tiles' ? 'splat' : w)); } }, [splatUrl]);
+  const [worldMenu, setWorldMenu] = useState(false);
 
   // Time of day: shared through session.planTime (and the spacetime sun clock), local while dragging.
   const [planLocal, setPlanLocal] = useState<Date | null>(null);
@@ -441,7 +446,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
       else if (k === '3') { setView('persp'); setCmd({ n: Date.now(), kind: 'right' }); }
       else if (k === '5' || k === 'home') { setView('persp'); setCmd({ n: Date.now(), kind: 'home' }); }
       else if (k === 'escape') {
-        if (addOpen) setAddOpen(false); else if (viewMenu) setViewMenu(false); else if (cmdOpen) setCmdOpen(false); else if (focus) setFocus(false);
+        if (addOpen) setAddOpen(false); else if (worldMenu) setWorldMenu(false); else if (viewMenu) setViewMenu(false); else if (cmdOpen) setCmdOpen(false); else if (focus) setFocus(false);
         else { setSelected(null); setDropAsk(null); setMeasure([]); }
       }
       else if (k === 'k' && (e.metaKey || e.ctrlKey)) setCmdOpen(true);
@@ -506,6 +511,15 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const photoBack = view === 'shot' && backplate === 'photo' && !!photo;
   const showSplat = world === 'splat' && !!splatUrl && !photoBack;
   const showTiles = (world === 'tiles' || (world === 'splat' && !splatState.loaded)) && !photoBack;
+  const showClay = (world === 'clay' || world === 'clayPhoto') && !photoBack;
+  // Clay + photo projects the user's photo from its solved pose (not Cam A's current one: the photo was taken there).
+  const projector = useMemo((): Projector | null => {
+    if (!solved || !origin || !photo || !frame) return null;
+    const p = llhToEnu(origin, solved.pose.lat, solved.pose.lon, 0);
+    p.z = gz(p.x, p.y) + solved.pose.alt;
+    const fpx = (solved.pose.f35 * Math.hypot(frame.w, frame.h)) / 43.27;
+    return { url: photo.url || photo.thumb, pos: p, quat: cameraQuat(solved.pose.heading, solved.pose.pitch, solved.pose.roll), vfovDeg: (2 * Math.atan(frame.h / 2 / fpx) * 180) / Math.PI, aspect: frame.w / frame.h };
+  }, [solved?.photoId, origin?.lat, photo?.id, frame, gz]); // eslint-disable-line react-hooks/exhaustive-deps
   const pipSize = portrait ? { w: Math.round(160 * frame.w / frame.h), h: 160 } : { w: 200, h: Math.round(200 * frame.h / frame.w) };
   const pip = { x: vp.w - 16 - pipSize.w, y: vp.h - 36 - pipSize.h, ...pipSize };
   const online = presence.length ? presence : parts.filter(p => p.online).map(p => ({ name: p.name, color: '', identity: p.identity, status: 'active' }));
@@ -531,6 +545,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   let credits: ReactNode[] = [];
   if (showTiles && attribution) credits.push(<img key="g" src="/studio/attribution/google-maps-logo.svg" alt="Google Maps" />, <span key="gc" className="gcred">{attribution}</span>);
   if (showSplat && splatState.loaded) credits.push(<span key="s" className="gcred">{SPLATS[session.spotId]?.credit}</span>);
+  if (showClay) credits.push(<span key="c" className="gcred">Clay massing from NYC building footprints (NYC Open Data){world === 'clayPhoto' ? ", with your photo projected from where it was taken" : ''}</span>);
   if (!credits.length) credits = [<span key="n" className="gcred">{photoBack ? 'Your photo as the backplate; no map content in this view' : 'World hidden'}</span>];
 
   return (
@@ -562,7 +577,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
         <Outliner rows={scene.rows} selected={selected} shotId={shotRow?.id ?? null} camLabel={camSub} lockOwner={lockOwner}
           onSelect={id => setSelected(id)} onToggle={r => editRow(r, { ...stateOf(r), visible: !r.visible }, '')}
           spotLabel={spot?.name.split(',')[0].replace(/^.* from /, '') ?? 'Spot'} world={world}
-          worlds={splatUrl ? ['splat', 'tiles', 'off'] : ['tiles', 'off']} onWorld={setWorld} sunTime={fmtTime(planTime, zone)} photo={photo}
+          worlds={worlds} onWorld={setWorld} sunTime={fmtTime(planTime, zone)} photo={photo}
           onAdd={() => setAddOpen(v => !v)} addOpen={addOpen} />
       </aside>
 
@@ -597,8 +612,9 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                     onProgress={f => setSplatState(s => ({ ...s, progress: f }))} onLoaded={() => setSplatState({ loaded: true, progress: 1 })}
                     onError={e => { console.warn('splat failed, trying the next file', splatUrl, e); setSplatState({ loaded: false, progress: 0 }); setSplatSkip(k => [...k, splatUrl]); }} />
                 )}
+                {origin && showClay && <Clay buildings={layers.data?.layers.buildings ?? null} geo={geo} origin={origin} gz={gz} projector={world === 'clayPhoto' ? projector : null} />}
                 {origin && <GeoScene geo={layers} origin={origin} groundAt={gz} labels={geoOpen && view !== 'shot'} overlays={!photoBack} />}
-                <Catchers geo={geo} occlude={view === 'shot'} shadowOpacity={0.5} onTeleport={p => setVrOrigin(p)}
+                <Catchers geo={geo} occlude={view === 'shot'} shadowOpacity={showClay ? 0 : 0.5} onTeleport={p => setVrOrigin(p)}
                   onPointerMove={e => { if (ev) { const p = threeToEnu(e.point); ev.cursor({ x: p.x, y: p.y, z: p.z }); } }}
                   onClick={e => { e.stopPropagation(); pick(null, e.point, e.nativeEvent.altKey); }} />
                 {scene.rows.map(r => {
@@ -670,7 +686,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
             <div className="st-camctl">
               <Seg label="View" value={view} onChange={setView} options={[{ value: 'persp', label: 'World' }, { value: 'shot', label: `Through ${shotName}` }]} />
               {vp.w > 1100 && <span>Backplate</span>}
-              <Seg label="Backplate" value={backplate} onChange={setBackplate} options={[{ value: 'photo', label: 'Your photo' }, { value: 'world', label: splatUrl ? 'Splat' : '3D Tiles' }]} />
+              <Seg label="Backplate" value={backplate} onChange={setBackplate} options={[{ value: 'photo', label: 'Your photo' }, { value: 'world', label: WORLD_LABEL[world === 'off' ? 'tiles' : world] }]} />
               {vp.w > 1100 && <span>Aspect</span>}
               <Seg label="Aspect" value={shot.aspect} onChange={v => setShot({ aspect: v })} options={['4:3', '4:5', '3:2', '16:9'].map(a => ({ value: a, label: aspectLabel(a) }))} />
               <span style={{ position: 'relative' }}>
@@ -690,7 +706,19 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
 
         {view !== 'shot' && (
           <div className="st-chrome">
-            {!focus && <div className="st-viewswitch">{viewSwitch}</div>}
+            {!focus && (
+              <div className="st-viewswitch">
+                {viewSwitch}
+                <span style={{ position: 'relative' }}>
+                  <button className="st-btn small" aria-expanded={worldMenu} onClick={() => setWorldMenu(v => !v)} title="World style">{WORLD_LABEL[world]}</button>
+                  {worldMenu && (
+                    <div className="st-menu" style={{ left: 0, top: 40 }} role="menu" aria-label="World style">
+                      {worlds.map(w => <button key={w} role="menuitemradio" aria-checked={world === w} onClick={() => { setWorld(w); setWorldMenu(false); }}>{WORLD_LABEL[w]}</button>)}
+                    </div>
+                  )}
+                </span>
+              </div>
+            )}
             {!focus && (
               <div className="st-rail st-float" role="toolbar" aria-label="Tools">
                 {([['select', 'cursor', 'Select (W)'], ['translate', 'move', 'Move (G)'], ['rotate', 'rotate', 'Rotate (R)'], ['scale', 'scale', 'Scale (S)']] as const).map(([t, i, l]) => (

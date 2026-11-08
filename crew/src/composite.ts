@@ -97,14 +97,44 @@ export function over(rgb: Buffer, rgba: Buffer): Buffer {
   return out;
 }
 
-/** Where a generator may change pixels: the objects plus their shadows and a feathered band around them (contact areas). */
+/** Where a generator may change pixels: the objects, their shadows, and a band running DOWN from each object's lowest pixels
+ *  (contact under feet and wheels). Nothing spreads upward or sideways, so no smear rises into the scene behind an object. */
 export async function contactMask(beautyA: Buffer, shadowA: Buffer | null, w: number, h: number): Promise<Buffer> {
-  const m = Buffer.alloc(w * h);
-  for (let i = 0; i < m.length; i++) m[i] = Math.max(beautyA[i], shadowA ? Math.round(shadowA[i] * 0.8) : 0);
-  const r = Math.max(2, Math.hypot(w, h) * 0.006);
-  const soft = await blur1(m, w, h, r);
-  for (let i = 0; i < m.length; i++) m[i] = Math.max(m[i], Math.min(255, soft[i] * 2));
-  return blur1(m, w, h, r / 2);
+  const m = Buffer.alloc(w * h), band = Math.max(2, Math.round(h * 0.015));
+  for (let x = 0; x < w; x++) {
+    let run = 0;
+    for (let y = 0; y < h; y++) {
+      const i = y * w + x;
+      if (beautyA[i] > 8) { m[i] = beautyA[i]; run = band; }
+      else if (run > 0) { m[i] = Math.round((255 * run) / band); run--; }
+    }
+  }
+  if (shadowA) for (let i = 0; i < m.length; i++) m[i] = Math.max(m[i], Math.round(shadowA[i] * 0.8));
+  return blur1(m, w, h, 1.2);
+}
+
+/** Pastes an edited crop back at full opacity, colour-matched to the original at its border, with only the outer
+ *  `feather` px blended (a person comes back solid, no see-through body, no seam). Returns a new RGB frame. */
+export function pasteCrop(frame: Buffer, w: number, crop: Buffer, box: { left: number; top: number; width: number; height: number }, feather: number): Buffer {
+  const out = Buffer.from(frame), bw = box.width, bh = box.height, ring = Math.max(2, Math.round(Math.min(bw, bh) * 0.08));
+  // Per-channel mean and spread over the crop's border ring, original against edited, so the edit's tone matches its surroundings.
+  const st = [0, 1, 2].map(() => ({ so: 0, so2: 0, se: 0, se2: 0, n: 0 }));
+  for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+    if (x >= ring && y >= ring && x < bw - ring && y < bh - ring) continue;
+    const o = ((box.top + y) * w + box.left + x) * 3, e = (y * bw + x) * 3;
+    for (let c = 0; c < 3; c++) { const a = frame[o + c], b = crop[e + c], k = st[c]; k.so += a; k.so2 += a * a; k.se += b; k.se2 += b * b; k.n++; }
+  }
+  const tf = st.map(k => {
+    const mo = k.so / k.n, me = k.se / k.n, so = Math.sqrt(Math.max(1, k.so2 / k.n - mo * mo)), se = Math.sqrt(Math.max(1, k.se2 / k.n - me * me));
+    const g = Math.max(0.7, Math.min(1.4, so / se));
+    return (v: number) => Math.max(0, Math.min(255, Math.round((v - me) * g + mo)));
+  });
+  for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+    const a = Math.min(1, (Math.min(x, y, bw - 1 - x, bh - 1 - y) + 1) / Math.max(1, feather));
+    const o = ((box.top + y) * w + box.left + x) * 3, e = (y * bw + x) * 3;
+    for (let c = 0; c < 3; c++) out[o + c] = Math.round(tf[c](crop[e + c]) * a + frame[o + c] * (1 - a));
+  }
+  return out;
 }
 
 /** The surroundings of the objects (for colour stats): a band outside the silhouette. */
@@ -146,3 +176,44 @@ export function sunFromRead(light: LightLike | undefined, heading: number): { az
 
 /** Degrees between two azimuths. */
 export const azDiff = (a: number, b: number) => Math.abs(((a - b + 540) % 360) - 180);
+
+const hexRgb = (hex: string) => { const n = parseInt(hex.replace('#', ''), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+const toLinear = (c: number) => Math.round(255 * ((c / 255) <= 0.04045 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4));
+
+/** One 0/255 mask per object from the studio's object-ID layer (flat colours, black = none). Each pixel goes to the
+ *  nearest legend colour, tried both as sRGB and as linear, since the render target may write either. */
+export function objectMasks(maskRgb: Buffer, w: number, h: number, legend: { id: string; color: string }[]): Map<string, Buffer> {
+  const keys = legend.flatMap(l => { const c = hexRgb(l.color); return [{ id: l.id, c }, { id: l.id, c: c.map(toLinear) }]; });
+  const out = new Map<string, Buffer>(legend.map(l => [l.id, Buffer.alloc(w * h)]));
+  for (let i = 0, p = 0; i < w * h; i++, p += 3) {
+    const r = maskRgb[p], g = maskRgb[p + 1], b = maskRgb[p + 2];
+    if (r + g + b < 30) continue;
+    let best = '', bd = 3 * 40 * 40;
+    for (const k of keys) { const d = (r - k.c[0]) ** 2 + (g - k.c[1]) ** 2 + (b - k.c[2]) ** 2; if (d < bd) { bd = d; best = k.id; } }
+    if (best) out.get(best)![i] = 255;
+  }
+  return out;
+}
+
+/** Per-pixel blend strength: `base` over the contact areas, and each placeholder object's own (higher) strength inside its
+ *  dilated, feathered mask, so a mannequin is fully replaced while the street around it barely changes. */
+export async function strengthMap(contact: Buffer, base: number, objects: { mask: Buffer; strength: number }[], w: number, h: number): Promise<Buffer> {
+  const out = Buffer.alloc(w * h);
+  for (let i = 0; i < out.length; i++) out[i] = Math.round(contact[i] * base);
+  const r = Math.max(2, Math.hypot(w, h) * 0.004);
+  for (const o of objects) {
+    const soft = await blur1(o.mask, w, h, r);
+    for (let i = 0; i < out.length; i++) { const v = Math.min(255, Math.max(o.mask[i], soft[i] * 2)) * o.strength; if (v > out[i]) out[i] = Math.round(v); }
+  }
+  return out;
+}
+
+/** Bounding box of a mask, padded by `pad` of its size and clamped to the frame; null when the mask is empty. */
+export function maskBox(m: Buffer, w: number, h: number, pad = 0.35) {
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let i = 0; i < m.length; i++) if (m[i]) { const x = i % w, y = (i / w) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < 0) return null;
+  const px = Math.round((x1 - x0 + 1) * pad), py = Math.round((y1 - y0 + 1) * pad);
+  const left = Math.max(0, x0 - px), top = Math.max(0, y0 - py);
+  return { left, top, width: Math.min(w, x1 + px + 1) - left, height: Math.min(h, y1 + py + 1) - top };
+}

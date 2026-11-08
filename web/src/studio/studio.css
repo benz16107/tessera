@@ -73,7 +73,7 @@
 /* Buttons */
 .st-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 32px; padding: 0 12px !important; border-radius: var(--r) !important; background: var(--raise) !important; font: 500 13px var(--sans) !important; color: var(--text); white-space: nowrap; transition-property: background-color, scale; transition-duration: 120ms; transition-timing-function: ease-out; }
 .st-btn.primary { background: var(--amber) !important; color: var(--amber-ink) !important; font-weight: 600 !important; }
-.st-btn.ghost { background: transparent !important; color: var(--text-2); }
+.st-btn.ghost { background: transparent !important; color: var(--text-2); pointer-events: auto; mix-blend-mode: normal; } /* styles.css .ghost (the planner's) turns pointer events off */
 .st-btn.small { height: 28px; padding: 0 10px !important; border-radius: var(--r-sm) !important; }
 .st-btn.wide { width: 100%; }
 .st-btn[aria-pressed='true'] { background: var(--line-2) !important; }
@@ -269,7 +269,7 @@
 .st-chrome { position: absolute; inset: 0; pointer-events: none; }
 .st-chrome > * { pointer-events: auto; }
 .st-float { background: var(--glass); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35); }
-.st-viewswitch { position: absolute; left: 12px; top: 12px; }
+.st-viewswitch { position: absolute; left: 12px; top: 12px; display: flex; gap: 8px; align-items: center; }
 .st-rail { position: absolute; left: 12px; top: 56px; display: flex; flex-direction: column; gap: 2px; padding: 4px; }
 .st-rail button { position: relative; width: 36px; height: 36px; border-radius: var(--r-sm); display: grid; place-items: center; color: var(--text-2); }
 .st-rail button[aria-pressed='true'], .st-rail button[aria-expanded='true'] { background: var(--text); color: var(--bg); }
@@ -280,7 +280,7 @@
 .st-menu > hr { border: 0; height: 1px; margin: 4px 0; background: var(--line); }
 .st-menu > button[aria-checked='true']::after, .st-menu > button[aria-pressed='true']::after { content: ''; margin-left: auto; width: 6px; height: 6px; border-radius: 3px; background: var(--text); }
 @media (hover: hover) { .st-menu > button:hover, .st-menu > label:hover { background: var(--raise); } }
-.st-cmd { position: absolute; left: 50%; top: 12px; translate: -50% 0; width: min(480px, calc(100% - 504px)); min-width: 260px; z-index: 5; }
+.st-cmd { position: absolute; right: 120px; top: 12px; width: min(420px, calc(100% - 500px)); min-width: 260px; z-index: 5; }
 .st-cmd-pill { display: flex; align-items: center; gap: 8px; width: 100%; height: 36px; padding: 0 8px 0 14px !important; color: var(--text-2); font-size: 13px; text-align: left; }
 .st-cmd-pill .st-meta { margin-left: auto; padding: 2px 6px; border-radius: 4px; background: var(--line-2); color: var(--text-2); }
 @media (hover: hover) { .st-cmd-pill:hover { color: var(--text); } }

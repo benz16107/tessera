@@ -15,7 +15,7 @@ export const LAYERS = [
   { id: 'construction', name: 'Sheds and scaffolds', color: '#d9b44a', spatial: true, def: true, note: 'NYC DOB permits' },
   { id: 'shadow', name: 'Building shadows', color: '#7f8ea8', spatial: true, def: true, note: 'Real footprints cast shadows' },
   { id: 'buildings', name: 'Building outlines', color: '#a39f96', spatial: true, def: false, note: 'Footprints and heights' },
-  { id: 'photographers', name: 'Where photographers stand', color: '#f2a33a', spatial: true, def: true, note: 'Geotagged Commons photos' },
+  { id: 'photographers', name: 'Where photographers stand', color: '#e6d3a8', spatial: true, def: true, note: 'Geotagged Commons photos' },
   { id: 'pois', name: 'Places', color: '#5ec8c2', spatial: true, def: false, note: 'Viewpoints, transit, cafes, restrooms, parking' },
   { id: 'quakes', name: 'Earthquakes', color: '#b48ce0', spatial: true, def: false, note: 'USGS, 300 km, 30 days' },
   { id: 'weather', name: 'Clouds and rain', color: '#8fb3e8', spatial: false, def: true, note: 'On the timeline' },
