@@ -159,7 +159,7 @@ SpacetimeDB job rows.
 
 **Known limits.** Row-level security is marked experimental; `session_member` is public (numeric ids and anonymous
 identities, no names or content); clients with old bindings crash on appended columns, so every such publish is
-followed by a crew redeploy. The repo must be public for this track: Ben makes it public after a gitleaks scan.
+followed by a crew redeploy. The repo must be public for this track: it is, with the full history, at https://github.com/benz16107/tessera.
 
 ### Photon: the set in your texts
 
@@ -214,7 +214,7 @@ joins, the scout walks, Nemotron edits from a sentence, the render lands in the 
 | Track | Story | Waits on |
 |---|---|---|
 | NVIDIA | decided | nothing |
-| SpacetimeDB | decided | repo made public (Ben) |
+| SpacetimeDB | decided | nothing (repo public since Sunday morning) |
 | Photon | decided | Photon dashboard lines (Ben, `crew/PHOTON.md`) |
 | HackUTD Best Design | decided | nothing |
 | MLH Vultr | decided | nothing |

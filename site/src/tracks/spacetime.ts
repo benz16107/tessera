@@ -73,7 +73,7 @@ export default {
       line: 'Every edit is recorded, so anyone can undo a change or restore the whole set to any point.',
       where: 'scene_change (line 288), undoSceneChange (905), restoreSceneTo (928); History in the live data drawer',
       status: 'live',
-      detail: 'A drag folds into one history entry: the load test\'s 900 edits left 6 rows. Restores are history rows too, so a restore can be undone. The client rebuilds the set at any point for a ghost preview before restoring.',
+      detail: 'A drag folds into one history entry: the load test\'s 900 edits left 6 rows. Restores are history rows too, so a restore can be undone. Scrubbing the history shows how many objects the set had at that point; Restore puts the set back to then for everyone.',
     },
     {
       name: 'A text thread as a version tree',
@@ -143,6 +143,7 @@ export default {
   ],
   proof: [
     { value: '900 of 900', label: '3 clients dragging at 10 Hz for 30 s against production; p50 42 to 50 ms, p95 144 to 409 ms', check: 'cd module && node scripts/loadtest.ts shotmatch 3 10 30' },
+    { value: 'Public', label: 'repo with the full commit history, as the track requires', check: 'https://github.com/benz16107/tessera' },
     { value: '0 rows', label: 'An outsider subscribed to every table receives nothing of a shoot until joining by code', check: 'cd module && node scripts/proof.ts shotmatch (19 of 19)' },
     { value: '38 of 38', label: 'Every feature with two users and a crew, on the scratch database', check: 'cd module && node scripts/proof.ts shotmatch-scratch' },
     { value: '6 rows', label: 'History left by the load test\'s 900 edits (drags fold into one entry)', check: 'docs/SPACETIME.md section 8' },
@@ -175,7 +176,6 @@ export default {
     'Clients built with older bindings fail to decode a table that gained columns. The Vultr crew crash-looped for about a minute after the first such publish, so every column change is followed by new bindings and a crew redeploy.',
     'HTTP routes have no path parameters (/shot?code=), and TypeScript query builders don\'t take view arguments.',
     'Recreating a receiving database under the same name strands pending calls from senders that used the old one. We retired that scratch database.',
-    'The track requires a public repo. It becomes public after Ben\'s secrets scan.',
   ],
   video: {
     title: 'The set is the database',
@@ -186,7 +186,7 @@ export default {
       { t: '0:15 to 0:40', screen: 'Browser 2 (fresh profile) opens /studio/A9TVAN: the join card, then Join; both windows side by side, presence chips appear', say: 'Before joining, a stranger sees only the card. Row-level security sends a shoot\'s rows only to its members.', criterion: 'Security, primary function' },
       { t: '0:40 to 1:05', screen: 'Browser 1 drags a person with the gizmo; browser 2 sees it move, the other person\'s lock tag shows; laser ping "pointing here"', say: 'Every person, prop, light and camera is a row. Drags stream at ten a second. Pings are event rows, never stored.', criterion: 'Real-time sync' },
       { t: '1:05 to 1:25', screen: 'Press People to open the People and live data drawer: the Feed streaming reducer calls, changes per second, round trip', say: 'No server of ours in between. This is the module\'s own stream of calls and row changes.', criterion: 'SpacetimeDB as the backend' },
-      { t: '1:25 to 1:45', screen: 'History tab: scrub back, ghost preview, Restore; then undo the restore', say: 'Anyone can undo anyone\'s change, or rewind the whole set and restore it.', criterion: 'Scene history' },
+      { t: '1:25 to 1:45', screen: 'History tab: scrub back (the panel shows the object count at that point), Restore; then undo the restore', say: 'Anyone can undo anyone\'s change, or rewind the whole set and restore it.', criterion: 'Scene history' },
       { t: '1:45 to 2:05', screen: 'Timeline: Live sun at 600x; the light sweeps in both windows', say: 'A schedule in the database runs the sun, so every client\'s light moves together.', criterion: 'Schedules' },
       { t: '2:05 to 2:30', screen: 'Terminal: node scripts/loadtest.ts shotmatch 3 10 30 result, then scripts/demo.sh shotmatch SQL and the health route', say: 'Load test: 900 of 900 edits committed, median round trip one network hop.', criterion: 'Proof' },
     ],

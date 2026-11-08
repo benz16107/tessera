@@ -160,6 +160,5 @@ The tools in these threads (Google Earth, Street View, spot guides, sun apps) ea
 
 - Team members (up to 4) on the Devpost form.
 - The main video link, and each track video (shot lists on the track pages).
-- Make the repo public after a full-history gitleaks scan, then add the GitHub link here, in `site/src/site.ts` (`REPO`) and on Devpost.
 - A licence for the code (the README says none is chosen yet).
 - Photon dashboard lines (`crew/PHOTON.md`), so the iMessage, SMS, voice, email and WhatsApp beats can go live.
