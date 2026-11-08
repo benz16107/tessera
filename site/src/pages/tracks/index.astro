@@ -3,7 +3,7 @@
 import { Image } from 'astro:assets';
 import Landing from '../../layouts/Landing.astro';
 import { TRACKS } from '../../tracks/index.ts';
-import { APP_URL, DEMO_CODE } from '../../site.ts';
+import { APP_URL } from '../../site.ts';
 ---
 <Landing title="Tracks: Tessera" description="Every HackUTD 2026 track Tessera entered: what we built for each sponsor, where it runs, and how to check it." current="tracks">
   <div class="tx">
@@ -35,7 +35,7 @@ import { APP_URL, DEMO_CODE } from '../../site.ts';
     <section class="tx-foot">
       <p>The overall prizes are judged on the whole project. Try it on the demo shoot, or read how it works. Also kept: <a href="/tracks/design/">how we designed Tessera</a> (not a track we entered).</p>
       <div class="tx-links">
-        <a class="btn primary" href={`${APP_URL}/p/${DEMO_CODE}`}>Open the demo shoot</a>
+        <a class="btn primary" href={APP_URL}>Try it: pick a scene</a>
         <a class="btn secondary" href="/docs/get-started/">Read the docs</a>
       </div>
     </section>
