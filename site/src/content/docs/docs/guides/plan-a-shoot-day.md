@@ -11,9 +11,11 @@ Studio's timeline runs along the bottom of the screen.
 
 1. Drag the playhead, or press play. The time shows at the left ("4:28 PM, Saturday, Nov 7" in the demo set).
 2. Read the bands: **Golden hour** (for example 4:06 to 5:02 PM at DUMBO on November 7) and **Blue**. They are computed with suncalc for the mark's position and the camera's heading.
-3. **Light** jumps to **Dawn**, **Dusk** or **Day**.
+3. **Dawn**, **Day** and **Dusk** move the shared time for everyone: to the middle of the morning golden hour, to solar noon, or to the middle of the evening golden hour. Click the date to open a calendar.
 4. The sun line shows its altitude through the day, sunset, and where the sun sits relative to the camera: "Sun 2.4° up, 246°, from the left of Cam A".
 5. **Live sun** sets the shared clock: **Off**, **Live** (follows the real time), **60x** or **600x** (a time-lapse). A schedule inside SpacetimeDB moves the clock every second, so the light moves on every screen together. 600x moved the set 30.0 minutes in 3.2 s.
+
+Through Cam A meters the light once when it loads. After you move the time, press **Expose for this light** to meter again.
 
 In Simple, **Golden hour** and **Blue hour** on Make it yours set the clock to the middle of the next window. "Next good light" on Found it names it.
 

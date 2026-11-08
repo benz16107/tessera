@@ -28,7 +28,11 @@ A photo shows you a place, not where to stand. Google Lens names the landmark in
 3. **Make it yours.** The place becomes a 3D set: people, props, lights and a camera with real bodies and lenses. Describe a change in words and Nemotron places it. Move the sun to golden hour. Render, and your objects land in your own photo, labelled "AI interpretation".
 4. **Take me there.** The scout page walks you to the mark with the original photo as a ghost over your camera, while friends watch your dot move.
 
-Two views edit the same live set: **Simple** (`/p/<code>`), light and phone first, and **Studio** (`/studio/<code>`), the set editor for photographers. The 3D world is Google Photorealistic 3D Tiles (display only) plus our clay model of the block with the user's photo projected onto it.
+In Through Cam A, the backplate behind your objects is your photo, Google's 3D Earth (the default) or Street View when Google has a panorama within about 15 m of the camera. Street View carries Google's credit and the capture date and is display only: it never enters a render or a model.
+
+Two examples on the start page: **Try Manhattan Bridge from Washington St** (solved against our DUMBO model) and **Try Empire State Building from Top of the Rock** (photo by Daniel Schwen, CC BY-SA 4.0; a fresh shoot placed on the deck at 259 m, facing 205° at 65 mm). Shared demo shoots: [A9TVAN](https://app.tesseraphoto.com/p/A9TVAN) (DUMBO) and [7PL6L6](https://app.tesseraphoto.com/p/7PL6L6) (Top of the Rock); details in [docs/DEMO-SHOOTS.md](docs/DEMO-SHOOTS.md).
+
+Two views edit the same live set: **Simple** (`/p/<code>`), phone first, and **Studio** (`/studio/<code>`), the set editor for photographers. The 3D world is Google Photorealistic 3D Tiles (display only) plus our clay model of the block with the user's photo projected onto it.
 
 ## How it works
 

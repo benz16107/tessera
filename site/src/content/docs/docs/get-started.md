@@ -6,7 +6,7 @@ description: Open Tessera, drop a photo of a mapped spot, read the answer, invit
 Tessera runs in the browser. There is nothing to install.
 
 - **Simple:** https://app.tesseraphoto.com
-- **The demo shoot:** https://app.tesseraphoto.com/p/A9TVAN in Simple, https://app.tesseraphoto.com/studio/A9TVAN in Studio
+- **The demo shoots:** Manhattan Bridge from Washington St, DUMBO at https://app.tesseraphoto.com/p/A9TVAN (Studio: https://app.tesseraphoto.com/studio/A9TVAN), and Empire State Building from Top of the Rock at https://app.tesseraphoto.com/p/7PL6L6
 
 One spot is mapped today: **Manhattan Bridge from Washington St, DUMBO** in Brooklyn. Tessera can only place photos taken at a spot it has a 3D model of. A photo from anywhere else gets an honest "Couldn't place" instead of a guess.
 
@@ -16,7 +16,7 @@ One spot is mapped today: **Manhattan Bridge from Washington St, DUMBO** in Broo
 
 1. Open the app. The start page asks **Where did they stand?**
 2. Drop a photo on **Drop a photo here**, press **Choose a photo** (JPG, HEIC or PNG, straight from your camera roll), or use **Or paste a link to a photo**.
-3. No photo handy? Press **Try Manhattan Bridge from Washington St** to use the example photo (by Shah Ronak S, CC BY-SA 4.0).
+3. No photo handy? Press **Try Manhattan Bridge from Washington St** (photo by Shah Ronak S, CC BY-SA 4.0) or **Try Empire State Building from Top of the Rock** (photo by Daniel Schwen, CC BY-SA 4.0). The second makes a fresh shoot placed on the observation deck at 259 m, facing 205° with a 65 mm lens, opening at 4:20 PM spot time. It is placed, not solved, and says so: "Placed by you · Set on the Top of the Rock deck".
 
 What happens next, step by step on screen:
 

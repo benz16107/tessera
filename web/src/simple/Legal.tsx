@@ -34,6 +34,7 @@ function Privacy() {
         <li>Vultr hosts our servers and some models. OpenAI is a fallback for image edits when the NVIDIA path fails.</li>
         <li>Photon delivers invites and messages on iMessage, SMS, WhatsApp, Telegram and email. ElevenLabs runs the phone call.</li>
         <li>Google Photorealistic 3D Tiles draw the 3D view. Google receives the map requests, never your photo.</li>
+        <li>Street View, when you pick it behind Cam A, sends Cam A's location to Google to find a nearby panorama. Never your photo.</li>
       </ul>
       <h2>Deleting</h2>
       <p>The person who started a shoot can delete it from Share. That removes its photos, renders, people and messages from the database.</p>

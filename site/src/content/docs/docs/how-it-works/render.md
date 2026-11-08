@@ -20,7 +20,7 @@ The browser renders only your objects and lights, from the shot camera, at the p
 | depth | 8-bit grey, white is near |
 | mask | one flat colour per object, with a legend mapping colours to `scene_object` ids |
 
-The 3D world (Google's tiles or the clay model) and every editor helper (gizmos, frustums, the grid, light icons) are switched off for the whole capture. Tile pixels and tile depth never reach a render. The browser posts the layers to `POST /api/render`.
+The 3D world (Google's tiles or the clay model) and every editor helper (gizmos, frustums, the grid, light icons) are switched off for the whole capture. Tile pixels and tile depth never reach a render. The browser posts the layers to `POST /api/render`. Street View panoramas are display only as well: they never enter a render and are never sent to a model.
 
 The 3D sun comes from the set's clock and the spot's position (suncalc). Nemotron 3.5 Super VL also reads the light in your photo (`GET /api/set/light`), so the crew can flag a sun that is on the wrong side.
 

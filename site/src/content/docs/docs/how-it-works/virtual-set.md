@@ -35,6 +35,15 @@ The backdrops, switched in the outliner's Scene row:
 - **Clay + photo:** clay massing of the block from NYC building footprints (NYC Open Data), with your photo projected onto it from the pose the solver found. It is the sharpest view at street level near the shot; Earth offers a **Sharper here** button that switches to it.
 - **Clay** (the massing alone) and **Hidden** (just your objects on the street geometry).
 
+The sun lights the Earth tiles by its direction (a sky floor of 0.35 by day and 0.62 at night, the sun at 1.4), and World, Walk and Top take the same warm or cool time-of-day grade as the shot.
+
+## Behind Cam A
+
+In Through Cam A the **Backplate** switch picks what sits behind your objects: **Your photo**, **Earth** (the default) or **Street View**. The browser remembers the choice.
+
+- **Street View** shows only when Google has a panorama within about 15 m of Cam A. It comes from the Map Tiles API Street View tiles, drawn on a sphere around the camera, with Google's logo and the panorama's copyright and capture date on screen. It follows the time-of-day grade like your photo does.
+- Street View is display only: it never enters a render and is never sent to a model.
+
 We trained a Gaussian splat of the spot on an NVIDIA A100 and cleaned it with NVIDIA Difix3D; at street level it wasn't clear enough to ship, so the 3D world uses Google's tiles and our clay model with the user's photo projected onto it.
 
 ## Street geometry

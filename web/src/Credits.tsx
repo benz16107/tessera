@@ -29,6 +29,8 @@ export default function Credits() {
         <section className="sheet">
           <h2>Map data</h2>
           <p>The 3D view uses Google Photorealistic 3D Tiles through the Map Tiles API. Google's logo and the data providers for the tiles in view are shown on the map at all times. Tessera only displays the tiles. It does not analyse them: the solver places photos against open structure-from-motion models built from the photos below.</p>
+          <p>Street View panoramas come from Google Street View through the Map Tiles API. Each panorama is credited to its owner in the view, with Google's logo and the capture date. They are shown only, never rendered or sent to a model.</p>
+          <p>The Top of the Rock example photo: <a href="https://commons.wikimedia.org/wiki/File:NYC_Empire_State_Building.jpg">NYC Empire State Building</a> by Daniel Schwen, CC BY-SA 4.0.</p>
           <h2>AI interpretation</h2>
           <p>Previews are generated edits of the photo you uploaded, made by an image model from your lens, people and light settings. Every preview carries the label "AI interpretation". They show an idea of the shot, not a real photograph of the place.</p>
         </section>
