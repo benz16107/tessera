@@ -16,7 +16,6 @@ import { useConfig, NAME_KEY } from '../config.ts';
 import { navigate } from '../App.tsx';
 import { sunAt, spotZone, fmtTime } from '../geo.ts';
 import { ENU_TO_THREE, enuToThree, threeToEnu, llhToEnu, enuToLlh, cameraQuat, cameraHpr, yawQuat, type Origin } from './frame.ts';
-import { rememberView } from '../simple/view.ts';
 import { useGeoLayers, GeoScene, GeoButton, GeoPanel, GeoBands, GeoOverview, GeoMapView, zoomForHeight, type MapCamera, type ShotTarget } from '../layers/index.ts';
 import { sceneEv100, meterStops, whiteBalanceGains, fmtShutter, kelvinToRgb, shutterForScene, remainingMp, subjectLockedDistance, shakeBlurPx, tintGains } from './optics.ts';
 import type { Histogram, PointLight, Walker } from './post/LookThrough.tsx';
@@ -833,7 +832,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   return (
     <div className="studio" data-time={timeHover || timePinned ? 'open' : 'slim'} data-focus={focus} data-view={view}>
       <header className="st-top">
-        <a className="st-logo" href={`/p/${session.code}`} onClick={e => { e.preventDefault(); rememberView('simple'); navigate(`/p/${session.code}`); }} title="Back to the planner">TESSERA</a>
+        <a className="st-logo" href="/" onClick={e => { e.preventDefault(); navigate('/'); }} title="Start page">TESSERA</a>
         <ViewSwitch code={session.code} current="studio" selected={selected} onArrive={h => { if (h.selected !== null) setSelected(h.selected); if (h.first) setView('shot'); }} />
         <div className="st-setname"><span>{spot?.name ?? session.title}</span><span className="saved">Saved live</span></div>
         {/* Simple | Studio toggle: the "simple" thread owns this one spot. */}
@@ -1044,11 +1043,27 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                 <button className="st-btn small" aria-pressed={compareOn} onClick={() => { if (compareOn) endCompare(); else void holdA(); }}
                   title="Hold this frame as A, then change the camera for B beside it">{compareOn ? 'End compare' : 'Compare'}</button>
               </span>
-              {!compareOn && vp.w >= 1000 && <button className="st-btn small ghost" onClick={() => void comparePreset()} title="24 mm f/8 from close against 85 mm f/1.4 from further back, subject the same size">24 vs 85 mm</button>}
+              {!compareOn && <button className="st-btn small ghost" onClick={() => void comparePreset()} title="24 mm f/8 from close against 85 mm f/1.4 from further back, subject the same size">24 vs 85 mm</button>}
               {latestRender && <button className="st-btn small" aria-pressed={renderOpen} onClick={() => setRenderOpen(v => !v)}>{renderOpen ? 'Hide render' : 'Show render'}</button>}
               </div>
             </div>
           </>
+        )}
+        {!focus && !liveOpen && !geoOpen && view !== 'map' && (view !== 'shot' || cmdOpen) && (
+          <div className={`st-cmd${vp.w < 900 && !cmdOpen ? ' compact' : ''}`} style={view === 'shot' ? { top: vp.w < 1150 ? 104 : 56 } : undefined}>
+            <div className={`st-float${cmdOpen ? ' st-cmd-open' : ''}`} data-opts={cmdOpts}>
+              {!cmdOpen && (
+                <button className="st-cmd-pill" onClick={() => setCmdOpen(true)}><span className="st-cmd-text">Describe a change</span>{vp.w < 900 && <span>Describe</span>}<span className="st-meta st-cmd-who">Nemotron</span><span className="st-meta">⌘K</span></button>
+              )}
+              <div style={{ display: cmdOpen ? 'block' : 'none' }}>
+                <NvidiaSlot name="CommandBar" props={{ sessionId: sid, photoId: photo?.id }} fallbackText="" />
+                <div className="st-cmd-tools">
+                  <button className="st-btn small ghost" aria-pressed={cmdOpts} onClick={() => setCmdOpts(v => !v)}>Options</button>
+                  <button className="st-btn small ghost" onClick={() => setCmdOpen(false)}>Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {view !== 'shot' && (
@@ -1107,22 +1122,6 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                 <button role="menuitemcheckbox" aria-checked={gridOn} onClick={() => setGridOn(v => !v)}>Grid</button>
                 {splatUrl && <button role="menuitemcheckbox" aria-checked={splatFull} onClick={() => { setSplatFull(v => !v); setSplatState({ loaded: false, progress: 0 }); }}>Full-quality set (155 MB)</button>}
                 <button role="menuitem" onClick={() => { setFocus(true); setViewMenu(false); }}>Focus mode <span className="st-meta" style={{ marginLeft: 'auto' }}>Tab</span></button>
-              </div>
-            )}
-            {!focus && !liveOpen && !geoOpen && view !== 'map' && (
-              <div className={`st-cmd${vp.w < 900 && !cmdOpen ? ' compact' : ''}`}>
-                <div className={`st-float${cmdOpen ? ' st-cmd-open' : ''}`} data-opts={cmdOpts}>
-                  {!cmdOpen && (
-                    <button className="st-cmd-pill" onClick={() => setCmdOpen(true)}><span className="st-cmd-text">Describe a change</span>{vp.w < 900 && <span>Describe</span>}<span className="st-meta st-cmd-who">Nemotron</span><span className="st-meta">⌘K</span></button>
-                  )}
-                  <div style={{ display: cmdOpen ? 'block' : 'none' }}>
-                    <NvidiaSlot name="CommandBar" props={{ sessionId: sid, photoId: photo?.id }} fallbackText="" />
-                    <div className="st-cmd-tools">
-                      <button className="st-btn small ghost" aria-pressed={cmdOpts} onClick={() => setCmdOpts(v => !v)}>Options</button>
-                      <button className="st-btn small ghost" onClick={() => setCmdOpen(false)}>Close</button>
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
             {focus && (
