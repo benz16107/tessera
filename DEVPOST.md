@@ -67,7 +67,7 @@ General Track is automatic.
 - Two example scenes on the start page: the Manhattan Bridge from Washington St (solved) and the Empire State Building from Top of the Rock (a far city shot on Google's 3D city). Or open the shared demo shoot in [Simple](https://app.tesseraphoto.com/p/A9TVAN) or [Studio](https://app.tesseraphoto.com/studio/A9TVAN), drop your own photo, or text one to @ShotMatchSetBot on Telegram.
 - Product and docs: https://tesseraphoto.com
 - Code: https://github.com/benz16107/tessera
-- Video (2:57): https://www.youtube.com/watch?v=SvSqGH4IKKk
+- Video (2:10): https://www.youtube.com/watch?v=KxeUG-_GlKs
 - Ten vertical reels for the Virality track: https://tesseraphoto.com/reels/
 
 ## A film set for the photo you want to take
