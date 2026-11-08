@@ -40,7 +40,7 @@ export default function Yours(p: Props) {
   const [since, setSince] = useState(0);
   const [status, setStatus] = useState<{ text: string; bad?: boolean } | null>(null);
   const [text, setText] = useState('');
-  const [mine, setMine] = useState<{ url: string; model?: string } | null>(null);
+  const [mine, setMine] = useState<{ url: string; words: string } | null>(null);
   const [picked, setPicked] = useState<bigint | null>(null);
   const rec = useRef<{ r: MediaRecorder; chunks: Blob[]; stream: MediaStream } | null>(null);
   const now = useNow(1000, !!busy);
@@ -58,6 +58,9 @@ export default function Yours(p: Props) {
   const latest = jobs.find(j => j.state === 'done' && j.imageUrl);
   const pickedV = versions.find(v => v.id === picked && v.imageUrl);
   const yourUrl = pickedV?.imageUrl || mine?.url || latest?.imageUrl || '';
+  // The caption describes the image on screen, not the current settings.
+  const yourWords = pickedV ? pickedV.label : mine ? mine.words
+    : latest ? `${latest.f35 ? `${Math.round(latest.f35)} mm, ` : ''}${latest.people} ${latest.people === 1 ? 'person' : 'people'}, ${latest.createdAt.toDate().toLocaleDateString([], { month: 'short', day: 'numeric' })}` : '';
   const working = busy === 'render' || !!running;
   const shown = versions.filter(v => v.imageUrl);
 
@@ -117,7 +120,7 @@ export default function Yours(p: Props) {
       if (!p.capture.current) throw new Error('the 3D view is still loading');
       const layers = await p.capture.current();
       const r = await postLayers(layers, { sessionId: sid, photoId: photo.id, text: words, settings });
-      setMine({ url: r.url, model: r.model });
+      setMine({ url: r.url, words });
       setStatus({ text: `Made with ${r.model}${r.fallback ? ` (${r.fallback})` : ''} in ${Math.round(r.ms / 1000)} s.` });
     } catch (e) {
       // The NVIDIA render needs the 3D layers and the crew; when either fails, the preview job edits the photo from words.
@@ -144,7 +147,7 @@ export default function Yours(p: Props) {
               : <span className="s-empty">Tap a change below, then Make it.</span>}
             {(yourUrl || working) && <span className="s-ai">AI interpretation</span>}
           </div>
-          <figcaption><b>Your version</b> {pickedV ? pickedV.label : `${f35} mm, ${lightWord}, ${p.people} ${p.people === 1 ? 'person' : 'people'}`}</figcaption>
+          <figcaption><b>Your version</b> {working ? 'in the works' : yourWords}</figcaption>
         </figure>
       </div>
 

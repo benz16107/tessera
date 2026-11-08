@@ -53,7 +53,7 @@
   -moz-osx-font-smoothing: grayscale;
   transition: grid-template-rows 200ms cubic-bezier(0.2, 0, 0, 1);
 }
-.studio[data-time='open'] { --time-h: 152px; }
+.studio[data-time='open'] { --time-h: 184px; }
 .studio[data-focus='true'] { grid-template-columns: 0 minmax(0, 1fr) 0; grid-template-rows: 0 minmax(0, 1fr) 0; }
 .studio[data-focus='true'] > .st-top, .studio[data-focus='true'] > .st-left, .studio[data-focus='true'] > .st-right, .studio[data-focus='true'] > .st-time { visibility: hidden; }
 .studio *, .studio *::before, .studio *::after { box-sizing: border-box; }
@@ -277,6 +277,7 @@
 @media (hover: hover) { .st-rail button:not([aria-pressed='true']):not([aria-expanded='true']):hover { background: var(--line-2); color: var(--text); } }
 .st-menu { position: absolute; z-index: 25; min-width: 200px; padding: 4px; background: var(--panel); border-radius: 10px; box-shadow: var(--shadow); display: flex; flex-direction: column; }
 .st-menu > button, .st-menu > label { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 8px !important; border-radius: var(--r-sm); font-size: 13px; color: var(--text); text-align: left; cursor: pointer; }
+.st-menu > hr { border: 0; height: 1px; margin: 4px 0; background: var(--line); }
 .st-menu > button[aria-checked='true']::after, .st-menu > button[aria-pressed='true']::after { content: ''; margin-left: auto; width: 6px; height: 6px; border-radius: 3px; background: var(--text); }
 @media (hover: hover) { .st-menu > button:hover, .st-menu > label:hover { background: var(--raise); } }
 .st-cmd { position: absolute; left: 50%; top: 12px; translate: -50% 0; width: min(480px, calc(100% - 504px)); min-width: 260px; z-index: 5; }
@@ -319,7 +320,7 @@
 .st-dropzone-hint { position: absolute; inset: 12px; border: 1.5px dashed var(--text-2); border-radius: 12px; display: grid; place-items: center; color: var(--text); font: 500 13px var(--sans); background: rgba(0, 0, 0, 0.25); pointer-events: none; z-index: 15; }
 
 /* Through the camera */
-.st-camctl { position: absolute; left: 12px; top: 12px; right: 12px; display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.st-camctl { position: absolute; left: 12px; top: 12px; right: 12px; display: flex; align-items: center; gap: 8px; }
 .st-overlays { position: absolute; inset: 0; pointer-events: none; }
 .st-overlays svg { position: absolute; inset: 0; }
 .st-ov-label { font: 11px var(--mono); fill: var(--z); }
@@ -360,7 +361,7 @@
 .st-sunread { position: absolute; top: 62px; padding: 0 8px; display: flex; flex-direction: column; pointer-events: none; }
 .st-sunread b { font: 400 11px var(--mono); color: var(--text); }
 .st-sunread span { font-size: 11px; color: var(--text-2); }
-.st-key { position: absolute; top: 122px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-2); white-space: nowrap; }
+.st-key { position: absolute; top: 154px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-2); white-space: nowrap; }
 .st-key i { width: 8px; height: 8px; rotate: 45deg; background: var(--text-3); }
 .st-key[aria-current='true'] { color: var(--text); }
 .st-key[aria-current='true'] i { background: var(--text); }

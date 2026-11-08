@@ -36,8 +36,9 @@ function readShots(p: Place): Shot[] {
 function shotsFor(p: Place): Shot[] {
   const extract = join(LAYERS_DIR, `photographers-${p.id}.json`);
   const fresh = readShots(p);
-  if (fresh.length) { mkdirSync(LAYERS_DIR, { recursive: true }); writeFileSync(extract, JSON.stringify(fresh)); return fresh; }
-  return existsSync(extract) ? JSON.parse(readFileSync(extract, 'utf8')) : [];
+  if (existsSync(join(REPO, 'data/lens/meta.jsonl'))) { mkdirSync(LAYERS_DIR, { recursive: true }); writeFileSync(extract, JSON.stringify(fresh)); return fresh; }
+  const saved: Shot[] = existsSync(extract) ? JSON.parse(readFileSync(extract, 'utf8')) : [];
+  return saved.length >= fresh.length ? saved : fresh; // never shrink to the spot photos alone
 }
 
 /** Circular mean of compass headings, in degrees. */

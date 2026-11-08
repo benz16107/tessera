@@ -14,11 +14,12 @@ interface Props {
   at: Date; lat: number; lon: number; zone: string; camHeading: number | null; camName: string;
   onChange: (d: Date) => void; keyframes: Keyframe[]; sunControl?: ReactNode;
   open: boolean; pinned: boolean; onHover: (over: boolean) => void; onPin: () => void;
+  extra?: (s: { x: (d: Date) => number; a: Date; b: Date; w: number; open: boolean }) => ReactNode; // the geo thread's weather and tide strip
 }
 
 const Q = 15 * 60_000;
 
-export default function Timeline({ at, lat, lon, zone, camHeading, camName, onChange, keyframes, sunControl, open, pinned, onHover, onPin }: Props) {
+export default function Timeline({ at, lat, lon, zone, camHeading, camName, onChange, keyframes, sunControl, open, pinned, onHover, onPin, extra }: Props) {
   const dayKey = Math.floor(at.getTime() / 3_600_000);
   const [d0, d1] = useMemo(() => solarDay(at, lat, lon), [dayKey, lat, lon]); // eslint-disable-line react-hooks/exhaustive-deps
   const all = useMemo(() => bands(d0, lat, lon), [d0, lat, lon]);
@@ -140,6 +141,7 @@ export default function Timeline({ at, lat, lon, zone, camHeading, camName, onCh
             <i />{k.label}
           </button>
         ))}
+        {extra?.({ x, a, b, w, open })}
         <button className="st-icon-btn st-time-toggle" onClick={onPin} aria-expanded={open} aria-pressed={pinned} aria-label={pinned ? 'Collapse the timeline' : 'Keep the timeline open'} title={pinned ? 'Collapse' : 'Keep open'}>
           <Ico n="down" s={12} style={{ rotate: open ? '0deg' : '180deg' }} />
         </button>

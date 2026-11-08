@@ -57,7 +57,8 @@ export function occluderGeometry(g: StreetGeometry, inset = 1) {
 // `urls` are tried in order (the lite file first: 27.5 MB on venue Wi-Fi), `full` is the high-quality option.
 export const SPLATS: Record<string, { urls: string[]; full: string[]; offset: [number, number, number]; credit: string }> = {
   nyc_dumbo: {
-    urls: ['/splat/nyc_dumbo_lite.compressed.ply', '/splat/nyc_dumbo_lite.splat', '/splat/nyc_dumbo.compressed.ply', '/splat/nyc_dumbo.splat'],
+    // shortcut: lite .splat (54 MB) leads because Spark 2.4 panics on the lite PLY's empty `sh` element; put the 27.5 MB PLY first once it's re-exported.
+    urls: ['/splat/nyc_dumbo_lite.splat', '/splat/nyc_dumbo_lite.compressed.ply', '/splat/nyc_dumbo.compressed.ply', '/splat/nyc_dumbo.splat'],
     full: ['/splat/nyc_dumbo.compressed.ply', '/splat/nyc_dumbo.splat'],
     offset: [5.349, 71.953, 0],
     credit: '3D scene trained from photos by 26 Wikimedia Commons contributors, CC BY-SA 4.0, credits at /credits',

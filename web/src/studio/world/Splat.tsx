@@ -3,7 +3,8 @@
 // renders; Google's tiles never do. Lives inside the east-north-up group at the offset from spots/<id>/SPLAT.md.
 import { useEffect, useMemo, useState } from 'react';
 import { useThree } from '@react-three/fiber';
-import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark';
+import { Quaternion, Vector3 } from 'three';
+import { SparkRenderer, SplatMesh, SplatEdit, SplatEditSdf, SplatEditSdfType, SplatEditRgbaBlendMode } from '@sparkjsdev/spark';
 import { SPLATS } from './geometry.ts';
 
 export const splatRef: { current: SplatMesh | null } = { current: null };
@@ -35,19 +36,26 @@ export function useSplatUrl(spotId: string, full = false, skip: string[] = []) {
   return url;
 }
 
-export default function Splat({ spotId, url, visible, onProgress, onLoaded, onError }: {
+/** A box (east-north-up centre, tilt, half sizes in metres) in which the splat fades: the smeared street near Cam A. */
+export interface Fade { center: Vector3; quat: Quaternion; half: [number, number, number] }
+
+export default function Splat({ spotId, url, visible, onProgress, onLoaded, onError, fade }: {
   spotId: string; url: string; visible: boolean; onProgress?: (f: number) => void; onLoaded?: () => void; onError?: (e: unknown) => void;
+  fade?: Fade | null;
 }) {
   const { gl, scene } = useThree();
   const cfg = SPLATS[spotId];
-  const spark = useMemo(() => new SparkRenderer({ renderer: gl }), [gl]);
+  // maxPixelRadius caps the huge near-camera splats that streak across the view (the street has few training points).
+  const spark = useMemo(() => new SparkRenderer({ renderer: gl, maxPixelRadius: 96 }), [gl]);
   const mesh = useMemo(() => {
     const m = new SplatMesh({
       url,
       lod: true, // Spark builds a level-of-detail tree in a worker, so far splats draw coarser and laptops keep their frame rate
       onProgress: e => { if (e.lengthComputable && e.total) onProgress?.(e.loaded / e.total); },
-      onLoad: () => onLoaded?.(),
+      onLoad: () => { m.opacity = 1; onLoaded?.(); },
     });
+    // Transparent (not invisible: Spark drops a hidden mesh's edits) until loaded, so the unfaded stream never shows; tiles stand in.
+    m.opacity = 0;
     m.userData.world = true;
     m.initialized.catch(e => onError?.(e)); // a file Spark can't parse: the studio moves to the next one
     splatRef.current = m;
@@ -59,6 +67,21 @@ export default function Splat({ spotId, url, visible, onProgress, onLoaded, onEr
     return () => { scene.remove(spark); spark.dispose(); if (sparkRef.current === spark) sparkRef.current = null; };
   }, [spark, scene]);
   useEffect(() => () => { mesh.dispose(); if (splatRef.current === mesh) splatRef.current = null; }, [mesh]);
+  // The street's smear (few ground points, parked cars) fades inside a soft box; the bridge and facades stay untouched.
+  const edit = useMemo(() => {
+    const e = new SplatEdit({ rgbaBlendMode: SplatEditRgbaBlendMode.MULTIPLY, softEdge: 4 });
+    const box = new SplatEditSdf({ type: SplatEditSdfType.BOX, opacity: 0.12 });
+    e.add(box);
+    return { e, box };
+  }, []);
+  useEffect(() => {
+    const off = new Vector3(...(cfg?.offset ?? [0, 0, 0]));
+    if (!fade) { if (edit.e.parent) edit.e.parent.remove(edit.e); return; }
+    edit.box.position.copy(fade.center).sub(off); // in the splat's own frame
+    edit.box.quaternion.copy(fade.quat);
+    edit.box.scale.set(...fade.half);
+    if (edit.e.parent !== mesh) mesh.add(edit.e);
+  }, [fade?.center.x, fade?.center.y, fade?.center.z, !!fade, mesh]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <>
       <primitive object={mesh} position={cfg?.offset ?? [0, 0, 0]} visible={visible} />

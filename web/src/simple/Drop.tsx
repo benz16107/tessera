@@ -8,6 +8,7 @@ import { navigate } from '../App.tsx';
 import { fetchLinkedPhoto, uploadPhoto, type Upload } from './lib.ts';
 import { preferredView, viewPath } from './view.ts';
 import { Link as LinkIcon, Photo, Viewfinder, Close } from './icons.tsx';
+import './simple.css';
 
 type Phase = 'idle' | 'uploading' | 'creating' | 'adding';
 const PHASE_TEXT: Record<Phase, string> = { idle: '', uploading: 'Uploading your photo', creating: 'Setting up your shoot', adding: 'Starting the search' };

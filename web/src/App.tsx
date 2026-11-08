@@ -2,6 +2,7 @@ import { Component, lazy, Suspense, useEffect, useRef, useState, type ReactNode 
 import Credits from './Credits.tsx';
 import { storedView, viewPath, type ViewName } from './simple/view.ts';
 
+const Home = lazy(() => import('./simple/Drop.tsx')); // the drop page stays light: no 3D libraries
 const Simple = lazy(() => import('./simple/Simple.tsx'));
 const Legal = lazy(() => import('./simple/Legal.tsx'));
 const Scout = lazy(() => import('./Scout.tsx'));
@@ -100,7 +101,7 @@ export default function App() {
   return (
     <LoadBoundary label="ShotMatch">
       <Suspense fallback={boot}>
-        {r.kind === 'scout' ? <Scout code={r.code} /> : r.kind === 'legal' ? <Legal page={r.page} /> : <Simple />}
+        {r.kind === 'scout' ? <Scout code={r.code} /> : r.kind === 'legal' ? <Legal page={r.page} /> : <Home />}
       </Suspense>
     </LoadBoundary>
   );

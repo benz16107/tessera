@@ -25,12 +25,12 @@ export default function Catchers({ geo, occlude, shadowOpacity, onTeleport, onPo
     <>
       <TeleportTarget onTeleport={p => onTeleport(p.clone())}>
         {ground
-          ? <mesh geometry={ground} receiveShadow userData={{ ground: true, catcher: true }} renderOrder={2} onPointerMove={onPointerMove} onClick={onClick}>{mat}</mesh>
-          : <mesh position={[0, 0, 0.01]} receiveShadow userData={{ ground: true, catcher: true }} renderOrder={2} onPointerMove={onPointerMove} onClick={onClick}>
+          ? <mesh geometry={ground} receiveShadow userData={{ ground: true, catcher: true }} renderOrder={11} onPointerMove={onPointerMove} onClick={onClick}>{mat}</mesh>
+          : <mesh position={[0, 0, 0.01]} receiveShadow userData={{ ground: true, catcher: true }} renderOrder={11} onPointerMove={onPointerMove} onClick={onClick}>
               <planeGeometry args={[3000, 3000]} />{mat}
             </mesh>}
       </TeleportTarget>
-      {walls && <mesh geometry={walls} receiveShadow userData={{ catcher: true, wall: true }} renderOrder={2}>{mat}</mesh>}
+      {walls && <mesh geometry={walls} receiveShadow userData={{ catcher: true, wall: true }} renderOrder={11}>{mat}</mesh>}
       {occ && <mesh geometry={occ} visible={occlude} renderOrder={-1} userData={{ occluder: true }} raycast={() => null}>
         <meshBasicMaterial colorWrite={false} side={2} />
       </mesh>}

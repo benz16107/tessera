@@ -29,7 +29,7 @@ export interface SunEvent { kind: 'sunrise' | 'sunset'; t: string; hour: string;
 export interface Summary {
   weather?: { hours: Hour[]; events: SunEvent[]; now: Hour | null; haze: { label: string; detail: string } | null; sky: string };
   tides?: { station: { id: string; name: string; km: number } | null; hilo: { t: string; type: 'H' | 'L'; ft: number }[]; hourly: { t: string; ft: number }[]; note: string };
-  shadow?: { probes: { label: string; lat: number; lon: number; bands: { start: string; end: string; by: string }[]; readout: string; now: { shadow: boolean } }[]; readout: string; casters: number };
+  shadow?: { probes: { label: string; lat: number; lon: number; bands: { start: string; end: string; by: string }[]; readout: string; now: { shadow: boolean } }[]; readout: string; casters: number; sun: { az: number; alt: number } };
   moon?: { rise: string | null; set: string | null; phaseName: string; illumination: number; at: { az: number; alt: number } };
   alerts?: { count: number };
   film?: { active: number; history: number; note: string };

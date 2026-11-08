@@ -15,7 +15,8 @@ import type { SceneObject, Session } from '../module_bindings/types.ts';
 import { useConfig, NAME_KEY } from '../config.ts';
 import { navigate } from '../App.tsx';
 import { sunAt, spotZone, fmtTime } from '../geo.ts';
-import { ENU_TO_THREE, enuToThree, threeToEnu, llhToEnu, cameraQuat, cameraHpr, yawQuat, type Origin } from './frame.ts';
+import { ENU_TO_THREE, enuToThree, threeToEnu, llhToEnu, enuToLlh, cameraQuat, cameraHpr, yawQuat, type Origin } from './frame.ts';
+import { useGeoLayers, GeoScene, GeoButton, GeoPanel, GeoBands, GeoOverview } from '../layers/index.ts';
 import { sceneEv100, meterStops, whiteBalanceGains, fmtShutter, kelvinToRgb } from './optics.ts';
 import { lightColorK, sunStrength, sunVector } from './light/sun.ts';
 import { useScene } from './state/useScene.ts';
@@ -98,6 +99,7 @@ const gizmoBusy = { current: false };
 const MADE_CAM = new Set<bigint>();
 const FIXED_CAM = new Set<bigint>();
 const camLetter = (i: number) => `Cam ${String.fromCharCode(65 + i)}`;
+const GUIDES = { thirds: 'Thirds', golden: 'Golden', spiral: 'Spiral', off: 'Off' } as const;
 
 function StudioView({ session, myName }: { session: Session; myName: string }) {
   const cfg = useConfig();
@@ -136,6 +138,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     clearTimeout(commit.current);
     commit.current = window.setTimeout(() => setPlanTime({ sessionId: sid, at: Timestamp.fromDate(d) }).then(() => setPlanLocal(null)).catch(console.error), 300);
   }, [setPlanTime, sid]);
+  const layers = useGeoLayers(sid, session.spotId, planTime); // weather, tides, permits, building shadows (web/src/layers)
+  const [geoOpen, setGeoOpen] = useState(false);
   const sun = origin ? sunAt(planTime, origin.lat, origin.lon) : { azimuth: 180, altitude: 45 };
   const sceneEv = sceneEv100(sun.altitude, 'clear', 'street');
   const expo = 3 / (2.5 * Math.pow(2, sceneEv)); // the viewport meters the ambient: incident light E = 2.5 * 2^EV100 lux maps to 3
@@ -468,6 +472,18 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     const pos = shotPose.pos.clone().add(flat.clone().multiplyScalar(-7)).add(new Vector3(0, 0, 1.4));
     return { pos, target };
   }, [!!shotPose, geo]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The splat's street smear near Cam A fades in the World view: a box 26 m wide, 62 m along the street (from 17 m behind Cam A), 3.6 m tall, on the slope.
+  const streetFade = useMemo(() => {
+    if (!shotPose) return null;
+    const flat = new Vector3(shotPose.fwd.x, shotPose.fwd.y, 0).normalize();
+    const c = shotPose.pos.clone().add(flat.multiplyScalar(14));
+    c.z = gz(c.x, c.y) + 1.2;
+    const n = geo ? new Vector3(...geo.ground.plane.normal) : new Vector3(0, 0, 1);
+    const heading = geo?.street ? geo.street.heading_deg : (Math.atan2(flat.x, flat.y) * 180) / Math.PI;
+    const quat = new Quaternion().setFromUnitVectors(new Vector3(0, 0, 1), n).multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), (-heading * Math.PI) / 180));
+    return { center: c, quat, half: [26, 62, 3.6] as [number, number, number] }; // Spark's box scale is the full size
+  }, [shotPose, geo, gz]);
+  const cone = origin && shotPose ? { ...enuToLlh(origin, shotPose.pos), heading: shotPose.hpr.heading, hfovDeg: o.hfovDeg } : null;
   const sunDir = sunVector(sun.azimuth, sun.altitude);
   const sunColor = kelvinToRgb(lightColorK(sun.altitude, 'clear'));
   const objectsForLayers = () => scene.rows.filter(r => r.visible && r.kind !== 'camera' && r.kind !== 'light' && groups.current.get(r.id))
@@ -519,7 +535,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
           <div className="st-avatars" aria-label="People on the set">
             {online.slice(0, 6).map(p => <span key={p.identity.toHexString()} title={`${p.name}${isMe(p.identity) ? ' (you)' : ''}, ${p.status}`} data-idle={p.status !== 'active'} style={{ ['--c' as string]: p.color || undefined }}>{p.name.slice(0, 1).toUpperCase()}</span>)}
           </div>
-          <button className="st-btn ghost" aria-pressed={liveOpen} onClick={() => setLiveOpen(v => !v)} title="People on iMessage, SMS and the web; SpacetimeDB live data and history">People</button>
+          <GeoButton geo={layers} open={geoOpen} onClick={() => { setGeoOpen(v => !v); setLiveOpen(false); }} />
+          <button className="st-btn ghost" aria-pressed={liveOpen} onClick={() => { setLiveOpen(v => !v); setGeoOpen(false); }} title="People on iMessage, SMS and the web; SpacetimeDB live data and history">People</button>
           <button className="st-btn ghost" title={`Session ${session.code}`} onClick={() => { navigator.clipboard?.writeText(`${location.origin}/studio/${session.code}`).then(() => setToast('Link copied. Anyone with it joins this set live.')).catch(() => setToast(`${location.origin}/studio/${session.code}`)); }}>Share</button>
           <VrButton />
           <button className="st-btn primary" onClick={() => { setPage('set'); setView('shot'); setRenderOpen(true); setSelected(shotRow?.id ?? null); }}><Ico n="camera" s={16} /> Render</button>
@@ -561,10 +578,11 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                     contextOnly={showSplat && splatState.loaded} groundAt={gz} onAttribution={setAttribution} onGround={setGroundOffset} />
                 )}
                 {splatUrl && world !== 'off' && (
-                  <Splat spotId={session.spotId} url={splatUrl} visible={showSplat}
+                  <Splat spotId={session.spotId} url={splatUrl} visible={showSplat} fade={view !== 'shot' ? streetFade : null}
                     onProgress={f => setSplatState(s => ({ ...s, progress: f }))} onLoaded={() => setSplatState({ loaded: true, progress: 1 })}
                     onError={e => { console.warn('splat failed, trying the next file', splatUrl, e); setSplatState({ loaded: false, progress: 0 }); setSplatSkip(k => [...k, splatUrl]); }} />
                 )}
+                {origin && <GeoScene geo={layers} origin={origin} groundAt={gz} labels={geoOpen && view !== 'shot'} />}
                 <Catchers geo={geo} occlude={view === 'shot'} shadowOpacity={0.5} onTeleport={p => setVrOrigin(p)}
                   onPointerMove={e => { if (ev) { const p = threeToEnu(e.point); ev.cursor({ x: p.x, y: p.y, z: p.z }); } }}
                   onClick={e => { e.stopPropagation(); pick(null, e.point, e.nativeEvent.altKey); }} />
@@ -640,11 +658,16 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               <Seg label="Backplate" value={backplate} onChange={setBackplate} options={[{ value: 'photo', label: 'Your photo' }, { value: 'world', label: splatUrl ? 'Splat' : '3D Tiles' }]} />
               {vp.w > 1100 && <span>Aspect</span>}
               <Seg label="Aspect" value={shot.aspect} onChange={v => setShot({ aspect: v })} options={['4:3', '4:5', '3:2', '16:9'].map(a => ({ value: a, label: aspectLabel(a) }))} />
-              {vp.w > 1100 && <span>Overlay</span>}
-              <Seg label="Overlay" value={overlay} onChange={setOverlay} options={[{ value: 'thirds', label: 'Thirds' }, { value: 'golden', label: 'Golden' }, { value: 'spiral', label: 'Spiral' }, { value: 'off', label: 'Off' }]} />
-              <div className="st-seg" role="group" aria-label="Guides">
-                {(['horizon', 'safe', 'grid'] as const).map(k => <button key={k} aria-pressed={extraOv.includes(k)} onClick={() => setExtraOv(v => (v.includes(k) ? v.filter(x => x !== k) : [...v, k]))}>{{ horizon: 'Horizon', safe: 'Safe', grid: 'Grid' }[k]}</button>)}
-              </div>
+              <span style={{ position: 'relative' }}>
+                <button className="st-btn small ghost" aria-expanded={viewMenu} onClick={() => setViewMenu(v => !v)}>Guides: {GUIDES[overlay as keyof typeof GUIDES] ?? 'Off'}</button>
+                {viewMenu && (
+                  <div className="st-menu" style={{ left: 0, top: 40 }} role="menu" aria-label="Guides">
+                    {Object.entries(GUIDES).map(([k, l]) => <button key={k} role="menuitemradio" aria-checked={overlay === k} onClick={() => setOverlay(k as typeof overlay)}>{l}</button>)}
+                    <hr />
+                    {(['horizon', 'safe', 'grid'] as const).map(k => <button key={k} role="menuitemcheckbox" aria-checked={extraOv.includes(k)} onClick={() => setExtraOv(v => (v.includes(k) ? v.filter(x => x !== k) : [...v, k]))}>{{ horizon: 'Horizon line', safe: 'Safe area', grid: 'Grid' }[k]}</button>)}
+                  </div>
+                )}
+              </span>
               {latestRender && <button className="st-btn small" aria-pressed={renderOpen} onClick={() => setRenderOpen(v => !v)}>{renderOpen ? 'Hide render' : 'Render'}</button>}
             </div>
           </>
@@ -716,6 +739,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
             )}
           </div>
         )}
+        {view === 'persp' && origin && <GeoOverview geo={layers} center={origin} camera={cone} heightM={camHeight} widthPx={vp.w} />}
         <div className="st-corner" aria-live="polite">
           {focusHint && !focus && <span className="st-chip">Press Tab for focus mode: just the view and a small toolbar</span>}
           {!shotRow && <span className="st-chip">{solved ? `Placing ${shotName} where the photo was taken` : 'No solved photo yet: place objects freely'}</span>}
@@ -793,10 +817,12 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
 
       {origin && <Timeline at={planTime} lat={origin.lat} lon={origin.lon} zone={zone} camHeading={shotPose?.hpr.heading ?? null} camName={shotName}
         onChange={changeTime} keyframes={keyframes} sunControl={<SpacetimeSlot name="SunClock" props={{ sessionId: sid }} />}
-        open={timeHover || timePinned} pinned={timePinned} onHover={hoverTime} onPin={() => setTimePinned(v => !v)} />}
+        open={timeHover || timePinned} pinned={timePinned} onHover={hoverTime} onPin={() => setTimePinned(v => !v)}
+        extra={st => (st.open ? <GeoBands geo={layers} {...st} top={116} zone={zone} /> : null)} />}
 
       <SetEventsBridge sessionId={sid} me={identity ?? undefined} onChange={setEv} />
       <CheckinBridge sessionId={sid} onChange={setCheckins} />
+      {geoOpen && origin && <GeoPanel geo={layers} zone={zone} center={origin} camera={cone} onClose={() => setGeoOpen(false)} />}
       {liveOpen && (
         <div className="st-drawer" role="dialog" aria-label="Live data">
           <header><span className="st-label">People and live data</span><button className="st-btn small" onClick={() => setLiveOpen(false)}>Close</button></header>

@@ -9,6 +9,7 @@ const browser = await chromium.launch({
   args: ['--use-angle=vulkan', '--enable-features=Vulkan', '--ignore-gpu-blocklist', '--enable-gpu-rasterization'],
 });
 const page = await browser.newPage({ viewport: { width: 1512, height: 982 } });
+page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') console.log(`[${m.type()}]`, m.text().slice(0, 300)); });
 await page.goto(new URL('/credits', url).href);
 await page.evaluate(() => localStorage.setItem('shotmatch/name', 'Studio'));
 await page.goto(url, { waitUntil: 'domcontentloaded' });

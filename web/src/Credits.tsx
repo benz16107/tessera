@@ -1,4 +1,5 @@
 // Every Commons photo used in a spot model, read from spots/*/CREDITS.tsv at build time.
+import GeoCredits from './layers/Credits.tsx';
 const files = import.meta.glob('../../spots/*/CREDITS.tsv', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
 
 interface Row { spot: string; file: string; role: string; title: string; author: string; license: string; page: string }
@@ -31,7 +32,8 @@ export default function Credits() {
           <h2>AI interpretation</h2>
           <p>Previews are generated edits of the photo you uploaded, made by an image model from your lens, people and light settings. Every preview carries the label "AI interpretation". They show an idea of the shot, not a real photograph of the place.</p>
         </section>
-        <section className="sheet">
+        <GeoCredits />
+        <section className="sheet" id="spot-photos">
           <h2>Spot model photos</h2>
           {rows.length === 0 ? (
             <p className="muted">No spot credits were bundled with this build yet.</p>

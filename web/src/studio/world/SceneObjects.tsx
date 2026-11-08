@@ -66,7 +66,7 @@ const blobTexture = () => {
 };
 export function ContactShadow({ w, d, opacity = 0.6 }: { w: number; d: number; opacity?: number }) {
   return (
-    <mesh position={[0, 0, 0.012]} scale={[w * 1.25, d * 1.25, 1]} userData={{ contact: true }} renderOrder={3} raycast={() => null}>
+    <mesh position={[0, 0, 0.012]} scale={[w * 1.25, d * 1.25, 1]} userData={{ contact: true }} renderOrder={12} raycast={() => null}>
       <planeGeometry />
       <meshBasicMaterial map={blobTexture()} color="#000" transparent opacity={opacity} depthWrite={false} toneMapped={false} />
     </mesh>

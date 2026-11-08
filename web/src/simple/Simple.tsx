@@ -24,14 +24,14 @@ import Found from './Found.tsx';
 import Yours from './Yours.tsx';
 import There from './There.tsx';
 import ShareSheet from './Share.tsx';
-import Home, { Wordmark, LegalLinks } from './Drop.tsx';
+import { Wordmark, LegalLinks } from './Drop.tsx';
 import { ViewSwitch } from './ViewSwitch.tsx';
 import { CONFIDENCE, initials, uploadPhoto, useNow } from './lib.ts';
 import { Close, Photo as PhotoIcon, Sun } from './icons.tsx';
 import './simple.css';
 
-export default function Simple({ code, active = true }: { code?: string; active?: boolean }) {
-  return code ? <Gate code={code} active={active} /> : <Home />;
+export default function Simple({ code, active = true }: { code: string; active?: boolean }) {
+  return <Gate code={code} active={active} />;
 }
 
 export type Step = 'found' | 'yours' | 'there';
@@ -180,7 +180,7 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
   }, [scene.ready, cams.length, solved, origin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [step, setStep] = useState<Step>('found');
-  const [blend, setBlend] = useState(0.6);
+  const [blend, setBlend] = useState(1); // open on the photo; the slider reveals the 3D on demand
   const [selected, setSelected] = useState<bigint | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const capture = useRef<(() => Promise<Layers>) | null>(null);
@@ -219,7 +219,7 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
         <section className="s-stage" aria-label={step === 'there' ? 'Camera' : 'Your photo over the 3D spot'}>
           {step === 'there' && stageReady ? <There.Stage session={session} result={result!} photo={photo!} live={active} />
             : stageReady ? (
-              <ShotView mapsKey={cfg.mapsKey} origin={origin!} geo={geo} gz={gz} cam={cam!} optics={o} rows={scene.rows} shotId={shotRow?.id ?? null}
+              <ShotView mapsKey={cfg.mapsKey} origin={origin!} spotId={spotId} geo={geo} gz={gz} cam={cam!} optics={o} rows={scene.rows} shotId={shotRow?.id ?? null}
                 sun={sun} expo={expo} photo={{ url: photo!.url || photo!.thumb, width: photo!.width, height: photo!.height }}
                 photoScale={o.f35 / solvedF35} blend={blend} selected={selected} onSelect={setSelected} capture={capture} live={active}>
                 {step === 'yours' && <p className="s-float s-sunpill"><Sun width={18} height={18} /> Sun {sunWords}, {fmtTime(planTime, zone)}</p>}
