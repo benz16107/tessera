@@ -41,3 +41,14 @@ test('a longer lens than the photo is a centre crop', async () => {
   const m = await sharp(out.jpeg).metadata();
   assert.equal(m.width, 32); assert.equal(m.height, 24);
 });
+
+test('lensfun vignetting, cat-eye and a starburst', async () => {
+  const flat = await png(() => [180, 180, 180]);
+  const v = await bakeCamera(flat, { vignette: true, vig: { k1: -0.5, k2: 0, k3: 0 }, vigUnitMm: 10, sensorMm: [36, 24] }, optic);
+  assert.ok((await pixel(v.jpeg, 1, 1))[0] < (await pixel(v.jpeg, 32, 24))[0] - 20, 'corners darker than the centre');
+  assert.match(v.applied.join(' '), /vignetting \(lensfun\)/);
+  const dark = await png(() => [10, 10, 10]);
+  const st = await bakeCamera(dark, { spikes: 6, starAmt: 1, lights: [{ x: 32, y: 24, strength: 2 }] }, { ...optic, aperture: 16 });
+  assert.ok((await pixel(st.jpeg, 32, 24))[0] > 150, 'the light glows');
+  assert.ok((await pixel(st.jpeg, 2, 46))[0] < 40, 'between spikes, far from the light, stays dark');
+});

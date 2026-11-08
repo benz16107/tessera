@@ -8,6 +8,8 @@ export type CameraBake = {
   exposureStops?: number; wbGains?: [number, number, number]; noiseSigma?: number; sensorMm?: [number, number];
   blades?: number; airyPx?: number; vignette?: boolean; distortionPoly?: [number, number, number, number, number] | null; unitMm?: number;
   tca?: { r: [number, number, number]; b: [number, number, number] } | null; shakePx?: number; photoF35?: number | null;
+  vig?: { k1: number; k2: number; k3: number } | null; vigUnitMm?: number; optVig?: number; shakeDir?: [number, number];
+  polyAmt?: number; catEye?: number; spikes?: number; starAmt?: number; lights?: { x: number; y: number; strength: number }[];
 };
 export type Optic = { focalMm: number; aperture: number; focusM: number; f35?: number };
 export type Depth = { png: Buffer; nearM: number; farM: number };
@@ -61,7 +63,7 @@ export async function bakeCamera(input: Buffer, cam: CameraBake, optic: Optic, d
     // Depth at the photo's full size, then the same centre crop as the image.
     const zFull = await depthMetres(depth, w0, crop ? Math.round(h * (w0 / w)) : h);
     const z = crop ? Float32Array.from({ length: w * h }, (_, i) => zFull[(((i / w) | 0) + crop!.top) * w0 + (i % w) + crop!.left]) : zFull;
-    const maxR = Math.max(28, Math.hypot(w, h) * 0.02), minR = (cam.airyPx ?? 0) / 2, blades = cam.blades ?? 9, polyAmt = optic.aperture > 2.8 ? 1 : 0, seg = (2 * Math.PI) / Math.max(3, blades);
+    const maxR = Math.max(28, Math.hypot(w, h) * 0.02), minR = (cam.airyPx ?? 0) / 2, blades = cam.blades ?? 9, polyAmt = cam.polyAmt ?? (optic.aperture > 2.8 ? 1 : 0), catEye = cam.catEye ?? 0, seg = (2 * Math.PI) / Math.max(3, blades);
     const coc = (zz: number) => Math.min(0.5 * blurCircleMm(optic.focalMm, optic.aperture, optic.focusM, zz) * pxPerMm, maxR);
     const taps = Array.from({ length: 48 }, (_, i) => {
       const fi = i + 0.5, th = fi * 2.39996323, ar = ((th - 0.3) % seg + seg) % seg - seg / 2;
@@ -76,7 +78,10 @@ export async function bakeCamera(input: Buffer, cam: CameraBake, optic: Optic, d
       if (r < 0.5) { out[p] = a[p]; out[p + 1] = a[p + 1]; out[p + 2] = a[p + 2]; continue; }
       if (r >= 1) blurred++;
       let w0 = hiW(a[p], a[p + 1], a[p + 2]), sr = a[p] * w0, sg = a[p + 1] * w0, sb = a[p + 2] * w0, ws = w0;
+      // Cat-eye: near the frame edge the aperture's clipping circle slides toward the centre (ce = -p x 2 x catEye).
+      const cex = catEye ? -((x - cx) / w) * 2 * catEye : 0, cey = catEye ? -((y - cy) / h) * 2 * catEye : 0;
       for (const t of taps) {
+        if (catEye && Math.hypot(t.dx - cex, t.dy - cey) > 1) continue;
         const sx = Math.round(x + t.dx * r), sy = Math.round(y + t.dy * r);
         if (sx < 0 || sy < 0 || sx >= w || sy >= h) continue;
         const j = sy * w + sx, q = j * 3, sz = z[j], rr = Math.hypot(t.dx, t.dy) * r;
@@ -92,16 +97,16 @@ export async function bakeCamera(input: Buffer, cam: CameraBake, optic: Optic, d
   }
 
   // 2. Handheld shake: the frame averaged along one direction (the viewport's preview uses a fixed direction too).
-  const shake = cam.shakePx ?? 0;
+  const shake = cam.shakePx ?? 0, sl = Math.hypot(...(cam.shakeDir ?? [1, 0])) || 1, sdx = (cam.shakeDir?.[0] ?? 1) / sl, sdy = (cam.shakeDir?.[1] ?? 0) / sl;
   if (shake >= 0.75) {
     const out = new Float32Array(a.length);
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) for (let c = 0; c < 3; c++) {
       let s = 0;
-      for (let k = 0; k < 12; k++) s += sample(a, w, h, x + shake * (k / 11 - 0.5), y, c);
+      for (let k = 0; k < 12; k++) s += sample(a, w, h, x + shake * sdx * (k / 11 - 0.5), y + shake * sdy * (k / 11 - 0.5), c);
       out[(y * w + x) * 3 + c] = s / 12;
     }
     a = out;
-    applied.push(`handheld shake ${shake.toFixed(1)} px`);
+    applied.push(`handheld shake ${shake.toFixed(1)} px along ${sdx.toFixed(2)}, ${sdy.toFixed(2)}`);
   }
 
   // 3. Distortion (lensfun, Rd = Ru (c0 + c1 Ru + ... + c4 Ru^4), inverted with Newton as in the shader) and TCA.
@@ -126,14 +131,41 @@ export async function bakeCamera(input: Buffer, cam: CameraBake, optic: Optic, d
 
   // 4. Vignetting (cos^4 of the field angle), exposure, white balance and tint; 5. sensor noise, stronger in the shadows.
   const gain = 2 ** (cam.exposureStops ?? 0), wb = cam.wbGains ?? [1, 1, 1], noise = cam.noiseSigma ?? 0;
+  // Starbursts on point lights stopped down (optics.ts starSpikes): spikes evenly spaced from 0.35 rad, each
+  // exp(-perp / 0.9) x exp(-along / (2.2 N)), plus a glow exp(-d^2 / 18), times 0.5 x starAmt x strength, warm white.
+  const star = new Float32Array(w * h * 3), spikes = Math.round(cam.spikes ?? 0), amt = cam.starAmt ?? 0, lenPx = 2.2 * optic.aperture;
+  if (amt > 0 && spikes > 0 && cam.lights?.length) {
+    const reach = Math.ceil(Math.max(12, lenPx * 7));
+    for (const L of cam.lights.slice(0, 8)) {
+      const k = 0.5 * amt * L.strength, lx = crop ? L.x - crop.left : L.x, ly = crop ? L.y - crop.top : L.y;
+      for (let y = Math.max(0, Math.floor(ly - reach)); y < Math.min(h, ly + reach); y++) for (let x = Math.max(0, Math.floor(lx - reach)); x < Math.min(w, lx + reach); x++) {
+        const dx = x - lx, dy = -(y - ly); // the shader's y points up
+        let sp = 0;
+        for (let j = 0; j < spikes; j++) {
+          const an = 0.35 + (j * 2 * Math.PI) / spikes, ux = Math.cos(an), uy = Math.sin(an), along = dx * ux + dy * uy;
+          if (along >= 0) sp += Math.exp(-Math.abs(dx * uy - dy * ux) / 0.9) * Math.exp(-along / lenPx);
+        }
+        const add = k * (sp + Math.exp(-(dx * dx + dy * dy) / 18)), o = (y * w + x) * 3;
+        star[o] += add; star[o + 1] += add * 0.97; star[o + 2] += add * 0.9;
+      }
+    }
+    applied.push(`starbursts on ${Math.min(8, cam.lights.length)} lights (${spikes} spikes)`);
+  }
   let s = seed >>> 0 || 1;
   const rnd = () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
   const out = Buffer.alloc(w * h * 3);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const o = (y * w + x) * 3;
     let v = 1;
-    if (cam.vignette) { const rmm = Math.hypot((x - cx) / pxPerMm, (y - cy) / pxPerMm), c = Math.cos(Math.atan(rmm / optic.focalMm)); v = c * c * c * c; }
-    const r = a[o] * v * gain * wb[0], g = a[o + 1] * v * gain * wb[1], b = a[o + 2] * v * gain * wb[2];
+    if (cam.vignette) {
+      const rmm = Math.hypot((x - cx) / pxPerMm, (y - cy) / pxPerMm);
+      if (cam.vig) { const r2 = (rmm / (cam.vigUnitMm ?? 21.6)) ** 2; v = 1 + cam.vig.k1 * r2 + cam.vig.k2 * r2 * r2 + cam.vig.k3 * r2 * r2 * r2; }
+      else {
+        const c = Math.cos(Math.atan(rmm / optic.focalMm)), t = Math.max(0, Math.min(1, (rmm / (0.5 * Math.hypot(sensor[0], sensor[1])) - 0.35) / 0.65));
+        v = c * c * c * c * (1 - (cam.optVig ?? 0) * t * t * (3 - 2 * t));
+      }
+    }
+    const r = a[o] * v * gain * wb[0] + star[o], g = a[o + 1] * v * gain * wb[1] + star[o + 1], b = a[o + 2] * v * gain * wb[2] + star[o + 2];
     let nl = 0, nr = 0, ng = 0, nb = 0;
     if (noise > 0) {
       const l = Math.max(0, Math.min(1, 0.2126 * r + 0.7152 * g + 0.0722 * b)), sig = noise * (0.6 + 0.6 * (1 - l));
@@ -141,7 +173,7 @@ export async function bakeCamera(input: Buffer, cam: CameraBake, optic: Optic, d
     }
     out[o] = toSrgb(r + nl + nr); out[o + 1] = toSrgb(g + nl + ng); out[o + 2] = toSrgb(b + nl + nb);
   }
-  if (cam.vignette) applied.push('vignetting');
+  if (cam.vignette) applied.push(cam.vig ? 'vignetting (lensfun)' : `vignetting (cos^4${cam.optVig ? ' and optical' : ''})`);
   if (gain !== 1) applied.push(`exposure ${(cam.exposureStops ?? 0) >= 0 ? '+' : ''}${(cam.exposureStops ?? 0).toFixed(2)} EV`);
   if (wb.some(g => Math.abs(g - 1) > 1e-3)) applied.push(`white balance ${wb.map(g => g.toFixed(2)).join('/')}`);
   if (noise > 0) applied.push(`sensor noise ${noise.toFixed(4)}`);

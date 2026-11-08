@@ -211,6 +211,11 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
       distortionPoly: (nums(c.distortionPoly, 5, -5, 5) as [number, number, number, number, number] | undefined) ?? null, unitMm: fin(c.unitMm, 1, 100),
       tca: c.tca && nums(c.tca.r, 3, 0.9, 1.1) && nums(c.tca.b, 3, 0.9, 1.1) ? { r: nums(c.tca.r, 3, 0.9, 1.1) as [number, number, number], b: nums(c.tca.b, 3, 0.9, 1.1) as [number, number, number] } : null,
       shakePx: fin(c.shakePx, 0, 40), photoF35: fin(c.photoF35, 5, 2000) ?? null,
+      vig: c.vig && [c.vig.k1, c.vig.k2, c.vig.k3].every(v => Number.isFinite(Number(v))) ? { k1: fin(c.vig.k1, -5, 5)!, k2: fin(c.vig.k2, -5, 5)!, k3: fin(c.vig.k3, -5, 5)! } : null,
+      vigUnitMm: fin(c.vigUnitMm, 1, 100), optVig: fin(c.optVig, 0, 1), shakeDir: nums(c.shakeDir, 2, -1e3, 1e3) as [number, number] | undefined,
+      polyAmt: fin(c.polyAmt, 0, 1), catEye: fin(c.catEye, 0, 0.5), spikes: fin(c.spikes, 0, 22), starAmt: fin(c.starAmt, 0, 1),
+      lights: Array.isArray(c.lights) ? c.lights.slice(0, 8).filter((l: any) => [l?.x, l?.y, l?.strength].every(v => Number.isFinite(Number(v))))
+        .map((l: any) => ({ x: Number(l.x), y: Number(l.y), strength: fin(l.strength, 0, 50)! })) : undefined,
     } : undefined;
     const focalMm = num('focalMm'), sd = form.get('sceneDepth');
     const optic = camera && focalMm ? { focalMm, aperture: num('aperture') ?? 4, focusM: num('focusM') ?? 10, f35: num('f35') } : undefined;

@@ -643,6 +643,17 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     const f = new Vector3(0, 1, 0).applyQuaternion(new Quaternion(r.qx, r.qy, r.qz, r.qw).normalize()).setZ(0).normalize().multiplyScalar(1.4); // walking pace
     return [{ root: g, velocity: enuToThree(f) }];
   }), [scene.rows]);
+  /** Point lights in the photo's frame pixels (the shot camera's pinhole model; camera looks down -Z in its own frame). */
+  const framedLights = () => {
+    if (!shotPose) return [];
+    const inv = shotPose.q.clone().invert();
+    return scene.rows.filter(r => r.kind === 'light' && r.visible).flatMap(r => {
+      const v = new Vector3(r.x, r.y, r.z).sub(shotPose.pos).applyQuaternion(inv);
+      if (v.z > -0.2) return [];
+      const x = frame.w / 2 + (o.fpx * v.x) / -v.z, y = frame.h / 2 - (o.fpx * v.y) / -v.z;
+      return x < -0.1 * frame.w || x > 1.1 * frame.w || y < -0.1 * frame.h || y > 1.1 * frame.h ? [] : [{ x: Math.round(x), y: Math.round(y), strength: 1 }];
+    });
+  };
   const pointLights = useCallback((): PointLight[] => scene.rows.filter(r => r.kind === 'light' && r.visible).map(r => ({ pos: enuToThree({ x: r.x, y: r.y, z: r.z }), strength: 1 })), [scene.rows]);
   const cone = origin && shotPose ? { ...enuToLlh(origin, shotPose.pos), heading: shotPose.hpr.heading, hfovDeg: o.hfovDeg } : null;
   const sunDir = sunVector(sun.azimuth, sun.altitude);
@@ -1130,7 +1141,15 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               sunMatch={sunMatch} sunSource={sunSource} onSunSource={setSunSource} onSunFix={applySunFix} fixNote={fixNote} onFixDone={() => setFixNote('')}
               camera={{ exposureStops: +meter.toFixed(2), wbGains: wb.map(v => +v.toFixed(4)), tint, noiseSigma: +o.noise.toFixed(4), sensorMm: o.sensorMm.map(v => +v.toFixed(2)),
                 cocMm: o.cocMm, blades: o.blades, airyPx: +o.airyPx.toFixed(2), vignette, tca: o.tca ?? null, distortionPoly: o.poly, unitMm: o.unitMm,
-                shakePx: +shakePx.toFixed(2), photoF35, note: 'apply exposureStops, wbGains, depth of field (sceneDepth), vignetting and noise to the composite so it matches the viewport' }} />
+                shakePx: +shakePx.toFixed(2), photoF35, note: 'apply exposureStops, wbGains, depth of field (sceneDepth), vignetting and noise to the composite so it matches the viewport',
+                // lensfun "pa" vignetting when measured (radius unit vigUnitMm), else cos^4 times (1 - optVig toward the corner)
+                vig: o.vig ?? null, vigUnitMm: +o.vigUnitMm.toFixed(3), optVig: +o.optVig.toFixed(3),
+                // the viewport's shake runs along (0.8, 0.6) in image pixels, sampled symmetrically, so its sign doesn't matter
+                shakeDir: [0.8, 0.6],
+                // bokeh: blend from round to the blade polygon over two stops down; cat-eye clipping wide open (0.5 at the widest)
+                polyAmt: +Math.max(0, Math.min(1, o.stopsDown / 2)).toFixed(3), catEye: +(0.5 * Math.max(0, Math.min(1, 1 - o.stopsDown / 2))).toFixed(3),
+                // starbursts from f/8 (full at f/16): point lights in frame pixels, `spikes` per light, length 2.2 x N screen px
+                spikes: o.spikes, starAmt: +Math.max(0, Math.min(1, (shot.aperture - 8) / 8)).toFixed(3), lights: framedLights() }} />
             <NvidiaSlot name="ArtDirector" props={{ sessionId: sid, photoId: photo?.id, getLayers }} fallbackText="" />
             <div className="st-div" />
           </div>
