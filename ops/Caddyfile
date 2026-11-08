@@ -4,13 +4,13 @@
 # Moving to a real domain: ops/DOMAIN.md.
 
 # The app: everything to the crew.
-104-238-146-229.sslip.io {
+app.tesseraphoto.com, 104-238-146-229.sslip.io {
 	encode gzip
 	reverse_proxy 127.0.0.1:8790
 }
 
 # The docs site: static files from site/dist, pushed by ops/deploy-site.sh. No access log.
-site.104-238-146-229.sslip.io {
+tesseraphoto.com, www.tesseraphoto.com, site.104-238-146-229.sslip.io {
 	encode zstd gzip
 	root * /var/www/shotmatch-site
 	header /_astro/* Cache-Control "public, max-age=31536000, immutable"

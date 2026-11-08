@@ -511,7 +511,7 @@ const trace = (ctx: Ctx, sessionId: bigint, reducer: string, detail = '') => tra
 const COLORS = ['#E4572E', '#3A86FF', '#F3A712', '#2EC4B6', '#9B5DE5', '#F15BB5', '#8AC926', '#FF924C'];
 const colorFor = (participantId: bigint) => COLORS[Number(participantId % BigInt(COLORS.length))];
 
-const DEFAULT_PUBLIC_URL = 'https://104-238-146-229.sslip.io';
+const DEFAULT_PUBLIC_URL = 'https://app.tesseraphoto.com';
 const absUrl = (ctx: Ctx, u: string) =>
   /^https?:\/\//.test(u) ? u : `${(ctx.env.PUBLIC_URL ?? DEFAULT_PUBLIC_URL).replace(/\/$/, '')}${u.startsWith('/') ? '' : '/'}${u}`;
 

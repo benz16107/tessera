@@ -16,7 +16,7 @@ export const PORT = Number(process.env.PORT ?? 8790);
 export const SPACETIME_HOST = process.env.SPACETIME_HOST ?? 'wss://maincloud.spacetimedb.com';
 export const DB_NAME = process.env.DB_NAME ?? 'shotmatch';
 // The Vultr box (ops/VULTR.md). ops/fallback-linuxbox.sh overrides it with the Tailscale funnel URL.
-export const PUBLIC_URL = process.env.PUBLIC_URL ?? 'https://104-238-146-229.sslip.io';
+export const PUBLIC_URL = process.env.PUBLIC_URL ?? 'https://app.tesseraphoto.com';
 export const SOLVER_URL = process.env.SOLVER_URL ?? 'http://127.0.0.1:8791';
 export const MAX_UPLOAD = 25 * 1024 * 1024;
 
