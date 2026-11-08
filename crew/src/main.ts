@@ -5,6 +5,7 @@ import { verifyNvidiaModels } from './models.ts';
 import { startPhoton, startOutbox } from './photon.ts';
 import { buildAll } from './similar.ts';
 import { warmAssets } from './search.ts';
+import { warmLocate } from './locate.ts';
 
 startHttp();
 void verifyNvidiaModels();
@@ -15,6 +16,7 @@ startPhoton();
 startOutbox();
 void buildAll(); // embeds new spot photos once; cached in data/embeddings
 void warmAssets(); // the studio asset library for semantic search
+void warmLocate(); // one tiny Super VL call, so the first photo placed is not the slow one
 setInterval(() => void syncSpots(), 60_000); // picks up spot.json files the solver writes after start
 
 // Graceful restart (a deploy): refuse new long requests and job claims, let renders, generations and jobs already running

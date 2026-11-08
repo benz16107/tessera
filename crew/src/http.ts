@@ -101,7 +101,7 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
       const r = gps ? await locateGps(lat, lon, deps) : await locatePhoto(await dataUrl(file, 1024), deps, Date.now, hint);
       console.log(`locate ${b.photoUrl}${hint ? ' (with a hint)' : ''}: ${r.source} "${r.place}" ${r.confidence} ${r.lat?.toFixed(4) ?? '-'},${r.lon?.toFixed(4) ?? '-'} ${r.ms} ms`);
       json(res, 200, r);
-    } catch (e) { fail(503, e); }
+    } catch (e) { console.warn(`locate ${b.photoUrl} failed: ${(e as Error).message}`); fail(503, e); }
     return true;
   }
 

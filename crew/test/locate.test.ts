@@ -104,3 +104,13 @@ test('a long name the map lacks is retried without its most specific part', asyn
   assert.deepEqual(asked, ['Foxboro Station underpass, Patriot Place, Foxborough, Massachusetts, USA', 'Foxboro Station underpass', 'Patriot Place, Foxborough, Massachusetts, USA']);
   assert.deepEqual([r.lat, r.confidence], [42.09, 'high']);
 });
+
+test('a slow or rate-limited call gets exactly one retry', async () => {
+  const { retryOnce } = await import('../src/locate.ts');
+  let n = 0;
+  assert.equal(await retryOnce(async () => { if (++n === 1) throw new Error('The operation was aborted due to timeout'); return 'ok'; }, 1), 'ok');
+  assert.equal(n, 2);
+  let m = 0;
+  await assert.rejects(retryOnce(async () => { m++; throw new Error('HTTP 429'); }, 1), /429/);
+  assert.equal(m, 2, 'no third try');
+});

@@ -79,7 +79,7 @@ export async function locatePhoto(image: string, deps: Deps, now = Date.now, hin
   const areaName = area ? (await deps.reverse(area.lat, area.lon).catch(() => null))?.name ?? '' : '';
   // With a circle there is always an answer: if the model fails or times out, the pin goes at the centre (no dead end).
   const g = readGuess(await deps.ask(image, hintWords(hint, areaName) || undefined).catch(e => {
-    if (!area) throw e;
+    if (!area) throw new Error(`Nemotron: ${(e as Error).message}`);
     return JSON.stringify({ place: '', confidence: 'low', reason: `Nemotron did not answer (${(e as Error).message.slice(0, 60)}).` });
   }));
   const inside = (h: Hit | null) => (h && (!area || metres(area.lat, area.lon, h.lat, h.lon) <= area.radiusM * 1.05) ? h : null);
@@ -119,7 +119,9 @@ async function nominatim(path: string, key: string, pick: (j: any) => Hit | null
     if (wait > 0) await new Promise(r => setTimeout(r, wait));
     last = Date.now();
     const t0 = Date.now();
-    const r = await fetch(`https://nominatim.openstreetmap.org/${path}`, { headers: { 'user-agent': UA, 'accept-language': 'en' }, signal: AbortSignal.timeout(6_000) });
+    const r = await retryOnce(() => fetch(`https://nominatim.openstreetmap.org/${path}`, { headers: { 'user-agent': UA, 'accept-language': 'en' }, signal: AbortSignal.timeout(4_000) })
+      .then(x => (x.status >= 500 || x.status === 429 ? Promise.reject(new Error(`HTTP ${x.status}`)) : x)), 1_100)
+      .catch(e => { record('nominatim', 'OpenStreetMap Nominatim', 'geocode a place name', Date.now() - t0, false, (e as Error).message); throw new Error(`Nominatim: ${(e as Error).message}`); });
     record('nominatim', 'OpenStreetMap Nominatim', 'geocode a place name', Date.now() - t0, r.ok);
     if (!r.ok) throw new Error(`Nominatim HTTP ${r.status}`);
     const hit = pick(await r.json());
@@ -129,6 +131,20 @@ async function nominatim(path: string, key: string, pick: (j: any) => Hit | null
   });
   queue = run.then(() => undefined, () => undefined);
   return run;
+}
+
+/** One retry after a timeout, a 429 or a 5xx (anything thrown), after `waitMs`. */
+export async function retryOnce<T>(fn: () => Promise<T>, waitMs: number): Promise<T> {
+  try { return await fn(); } catch { await new Promise(r => setTimeout(r, waitMs)); return fn(); }
+}
+
+/** A tiny call at crew start so the first user's locate does not pay for a cold connection. */
+export async function warmLocate() {
+  const key = secret('nvidia_key');
+  if (!key) return;
+  const t0 = Date.now();
+  await chat(NVIDIA_BASE, key, { model: MODELS.agent, ...thinking(false), max_tokens: 3, messages: [{ role: 'user', content: 'Reply OK.' }] }, 15_000, 'warm-up at start')
+    .then(() => console.log(`locate model warm in ${Date.now() - t0} ms`)).catch(e => console.warn(`locate warm-up: ${e.message}`));
 }
 
 const viewbox = (a: Area) => {
@@ -146,8 +162,10 @@ export const realDeps = (): Deps => ({
   async ask(image, hint) {
     const key = secret('nvidia_key');
     if (!key) throw new Error('NVIDIA key not set');
-    const m = await chat(NVIDIA_BASE, key, { model: MODELS.agent, ...thinking(false), temperature: 0, max_tokens: 700, messages: [{ role: 'user', content: [
-      { type: 'text', text: hint ? `${PROMPT}\n${hint}` : PROMPT }, { type: 'image_url', image_url: { url: image } }] }] }, 17_000, 'place a photo from anywhere');
+    const body = { model: MODELS.agent, ...thinking(false), temperature: 0, max_tokens: 700, messages: [{ role: 'user', content: [
+      { type: 'text', text: hint ? `${PROMPT}\n${hint}` : PROMPT }, { type: 'image_url', image_url: { url: image } }] }] };
+    // Usually 2 to 3 s; under load tonight some calls took 10 to 13 s or got a 429. Two tries of 10 s beat one of 17 s.
+    const m = await retryOnce(() => chat(NVIDIA_BASE, key, body, 10_000, 'place a photo from anywhere'), 800);
     return String(m.content ?? '');
   },
   // With an area: Nominatim's viewbox around the circle with bounded=1 (only results inside the box); locatePhoto then keeps
