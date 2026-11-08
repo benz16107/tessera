@@ -13,25 +13,49 @@ export type Area = { lat: number; lon: number; radiusM: number };
 export type Hint = { area?: Area; text?: string };
 export type Located = {
   place: string; lat: number | null; lon: number | null; confidence: Confidence; reason: string; headingDeg: number | null;
-  source: 'gps' | 'nemotron'; nearestSpot: string | null; query: string; model: string; ms: number; area: Area | null;
+  source: 'gps' | 'nemotron'; nearestSpot: string | null; query: string; model: string; ms: number; area: Area | null; evidence?: Evidence[];
 };
-export type Guess = { place: string; query: string; confidence: Exclude<Confidence, 'area'>; reason: string; headingDeg: number | null };
+export type Guess = { place: string; query: string; confidence: Exclude<Confidence, 'area'>; reason: string; headingDeg: number | null; evidence: Evidence[] };
 export type Hit = { lat: number; lon: number; name: string };
 export type Deps = { ask: (image: string, hint?: string) => Promise<string>; geocode: (q: string, area?: Area) => Promise<Hit | null>; reverse: (lat: number, lon: number) => Promise<Hit | null> };
 
 const PROMPT = `Where was this photo taken? Read every clue: shop and street signs, landmarks, the language and script, licence plates, architecture, vegetation, road markings.
-Name the most specific real place you can (a named landmark, street or neighbourhood, with the city and country).
-Reply with strict JSON only: {"place": "<name as people say it>", "query": "<a search string a map can find: landmark or street, city, region, country>",
-"confidence": "high|medium|low", "reason": "<one sentence: which clues>", "heading_deg": <the compass direction the camera faces if the photo shows it, else null>}
-high: a readable sign or an unmistakable landmark names the place. medium: strong clues point to one city or district. low: a guess. If you cannot tell, use an empty place and low.`;
+Name the most specific real place you can (a named landmark, street or neighbourhood, with the city and country), or an empty place if the photo does not show where it is.
+Reply with strict JSON only: {"place": "<name as people say it, or empty>", "query": "<a search string a map can find: landmark or street, city, region, country>",
+"evidence": [{"type": "sign|landmark|architecture|other", "text": "<exactly what you can see, e.g. the words on the sign>"}],
+"confidence": "high|medium|low", "reason": "<one sentence>", "heading_deg": <the compass direction the camera faces if the photo shows it, else null>}
+Confidence must be earned by evidence you can point to in the picture:
+- high: a readable sign naming this place or a business at it, or a named landmark nobody could mistake.
+- medium: architecture found in only one city or district, together with a second clue.
+- low: anything else, including generic streets, tunnels, underpasses, night scenes, arches or brick that could be in many cities. Do not guess a famous place from a generic look.`;
 
-/** The model's reply, normalised. Anything malformed becomes an empty, low-confidence guess. */
+// Answers that are not a place: never geocode them (Nominatim matched "unknown" to a village in India).
+const NOT_A_PLACE = /^(unknown|none|n\/?a|null|not sure|unsure|no idea|unclear|undetermined|unidentified|unspecified|somewhere|anywhere|cannot|can't|not (?:enough|possible|identifiable|determinable))\b/i;
+const isPlace = (s: string) => !!s && !NOT_A_PLACE.test(s) && /\p{Lu}/u.test(s); // a real place name has a proper noun
+
+export type Evidence = { type: 'sign' | 'landmark' | 'architecture' | 'other'; text: string };
+
+/** The confidence the evidence supports, whatever the model claimed: high needs a sign or a landmark; medium needs a sign,
+ *  a landmark, or distinctive architecture with a second clue; anything less is low. */
+export function earnedConfidence(claimed: string, ev: Evidence[]): Guess['confidence'] {
+  const has = (t: Evidence['type']) => ev.some(e => e.type === t);
+  const strong = has('sign') || has('landmark');
+  if (claimed === 'high' && strong) return 'high';
+  if ((claimed === 'high' || claimed === 'medium') && (strong || (has('architecture') && ev.length >= 2))) return 'medium';
+  return 'low';
+}
+
+/** The model's reply, normalised. Non-places become an empty place; confidence is capped by the evidence. */
 export function readGuess(raw: string): Guess {
   const j = parseJson(raw) ?? {};
-  const place = String(j.place ?? '').trim().slice(0, 160), query = String(j.query ?? '').trim().slice(0, 200) || place;
-  const confidence: Guess['confidence'] = ['high', 'medium', 'low'].includes(j.confidence) && place ? j.confidence : 'low';
+  let place = String(j.place ?? '').trim().slice(0, 160), query = String(j.query ?? '').trim().slice(0, 200) || place;
+  if (!isPlace(place)) { place = ''; query = ''; }
+  const evidence: Evidence[] = (Array.isArray(j.evidence) ? j.evidence : []).filter((e: any) => e && ['sign', 'landmark', 'architecture', 'other'].includes(e.type) && String(e.text ?? '').trim().length >= 3)
+    .slice(0, 8).map((e: any) => ({ type: e.type, text: String(e.text).trim().slice(0, 120) }));
+  const confidence = place ? earnedConfidence(String(j.confidence ?? ''), evidence) : 'low';
   const h = Number(j.heading_deg);
-  return { place, query, confidence, reason: String(j.reason ?? '').trim().slice(0, 300), headingDeg: j.heading_deg !== null && Number.isFinite(h) ? ((h % 360) + 360) % 360 : null };
+  const said = String(j.reason ?? '').trim().slice(0, 300), capped = place && j.confidence !== confidence && ['high', 'medium'].includes(j.confidence) ? ` (said ${j.confidence}; the evidence supports ${confidence})` : '';
+  return { place, query, confidence, evidence, reason: said + capped, headingDeg: j.heading_deg !== null && Number.isFinite(h) ? ((h % 360) + 360) % 360 : null };
 }
 
 const near = (lat: number | null, lon: number | null) => (lat === null || lon === null ? null : nearestSpot(loadSpots(), lat, lon)?.id ?? null);
@@ -60,8 +84,11 @@ export async function locatePhoto(image: string, deps: Deps, now = Date.now, hin
   }));
   const inside = (h: Hit | null) => (h && (!area || metres(area.lat, area.lon, h.lat, h.lon) <= area.radiusM * 1.05) ? h : null);
   const find = async (q: string) => (q ? inside(await deps.geocode(q, area ?? undefined)) : null);
-  const hit = (await find(g.query)) ?? (g.place && g.place !== g.query ? await find(g.place) : null);
-  const base = { headingDeg: g.headingDeg, source: 'nemotron' as const, query: g.query, model: MODELS.agent, area };
+  // The full query, the place as named, then the query without its most specific part ("Foxboro Station underpass,
+  // Patriot Place, ..." is not in OpenStreetMap; "Patriot Place, ..." is).
+  const broader = g.query.split(',').slice(1).join(',').trim();
+  const hit = (await find(g.query)) ?? (g.place && g.place !== g.query ? await find(g.place) : null) ?? (broader.includes(',') ? await find(broader) : null);
+  const base = { headingDeg: g.headingDeg, source: 'nemotron' as const, query: g.query, model: MODELS.agent, area, evidence: g.evidence };
   if (hit) return { ...base, place: g.place || hit.name, lat: hit.lat, lon: hit.lon, confidence: g.confidence, reason: g.reason, nearestSpot: near(hit.lat, hit.lon), ms: now() - t0 };
   if (area) return {
     ...base, place: areaName || `${area.lat.toFixed(4)}, ${area.lon.toFixed(4)}`, lat: area.lat, lon: area.lon, confidence: 'area',
@@ -119,8 +146,8 @@ export const realDeps = (): Deps => ({
   async ask(image, hint) {
     const key = secret('nvidia_key');
     if (!key) throw new Error('NVIDIA key not set');
-    const m = await chat(NVIDIA_BASE, key, { model: MODELS.agent, ...thinking(false), temperature: 0, max_tokens: 400, messages: [{ role: 'user', content: [
-      { type: 'text', text: hint ? `${PROMPT}\n${hint}` : PROMPT }, { type: 'image_url', image_url: { url: image } }] }] }, 14_000, 'place a photo from anywhere');
+    const m = await chat(NVIDIA_BASE, key, { model: MODELS.agent, ...thinking(false), temperature: 0, max_tokens: 700, messages: [{ role: 'user', content: [
+      { type: 'text', text: hint ? `${PROMPT}\n${hint}` : PROMPT }, { type: 'image_url', image_url: { url: image } }] }] }, 17_000, 'place a photo from anywhere');
     return String(m.content ?? '');
   },
   // With an area: Nominatim's viewbox around the circle with bounded=1 (only results inside the box); locatePhoto then keeps

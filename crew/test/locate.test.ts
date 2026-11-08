@@ -10,7 +10,7 @@ const deps = (reply: string, hits: Record<string, { lat: number; lon: number; na
 const clock = () => { let t = 0; return () => (t += 50); };
 
 test('a named place is geocoded; coordinates come from the geocoder, not the model', async () => {
-  const reply = '```json\n{"place": "Clifton Hill, Niagara Falls", "query": "Clifton Hill, Niagara Falls, Ontario, Canada", "confidence": "high", "reason": "A Ruby Tuesday sign on the Clifton Hill strip.", "heading_deg": null, "lat": 1, "lon": 2}\n```';
+  const reply = '```json\n{"place": "Clifton Hill, Niagara Falls", "query": "Clifton Hill, Niagara Falls, Ontario, Canada", "confidence": "high", "evidence": [{"type": "sign", "text": "Ruby Tuesday"}], "reason": "A Ruby Tuesday sign on the Clifton Hill strip.", "heading_deg": null, "lat": 1, "lon": 2}\n```';
   const r = await locatePhoto('img', deps(reply, { 'Clifton Hill, Niagara Falls, Ontario, Canada': { lat: 43.0912, lon: -79.0745, name: 'Clifton Hill' } }), clock());
   assert.equal(r.lat, 43.0912); assert.equal(r.lon, -79.0745);
   assert.equal(r.confidence, 'high'); assert.equal(r.source, 'nemotron'); assert.equal(r.nearestSpot, null);
@@ -25,7 +25,7 @@ test('no map match means no coordinates and low confidence; the plain place name
 });
 
 test('a guess at DUMBO reports the mapped spot so the client solves as today', async () => {
-  const r = await locatePhoto('img', deps('{"place": "Manhattan Bridge from Washington St", "query": "Washington Street, Brooklyn", "confidence": "high", "reason": "the bridge"}',
+  const r = await locatePhoto('img', deps('{"place": "Manhattan Bridge from Washington St", "query": "Washington Street, Brooklyn", "confidence": "high", "evidence": [{"type": "landmark", "text": "Manhattan Bridge"}], "reason": "the bridge"}',
     { 'Washington Street, Brooklyn': { lat: 40.70319, lon: -73.9896, name: 'Washington Street' } }), clock());
   assert.equal(r.nearestSpot, 'nyc_dumbo');
 });
@@ -46,7 +46,7 @@ test('GPS photos keep their own coordinates and get a place name', async () => {
 test('an area hint reaches the prompt and bounds the geocoding; matches outside the circle are refused', async () => {
   const area = { lat: 43.08, lon: -79.07, radiusM: 5000 };
   const prompts: (string | undefined)[] = [], areas: unknown[] = [];
-  const reply = '{"place": "Ruby Tuesday, Clifton Hill", "query": "Ruby Tuesday Clifton Hill Niagara Falls", "confidence": "medium", "reason": "a Ruby Tuesday sign"}';
+  const reply = '{"place": "Ruby Tuesday, Clifton Hill", "query": "Ruby Tuesday Clifton Hill Niagara Falls", "confidence": "medium", "evidence": [{"type": "sign", "text": "Ruby Tuesday"}], "reason": "a Ruby Tuesday sign"}';
   const mk = (hit: { lat: number; lon: number; name: string } | null): Deps => ({
     ask: async (_img, hint) => { prompts.push(hint); return reply; },
     geocode: async (_q, a) => { areas.push(a); return hit; },
@@ -75,4 +75,32 @@ test('with an area, a model failure still answers with the centre', async () => 
   const r = await locatePhoto('img', failing, clock(), { area });
   assert.deepEqual([r.lat, r.lon, r.confidence, r.place], [37.77, -122.44, 'area', 'San Francisco']);
   await assert.rejects(locatePhoto('img', failing, clock()), /timeout/, 'without an area the error reaches the route (503)');
+});
+
+test('non-places are never geocoded', async () => {
+  for (const place of ['unknown', 'Unknown location', 'none', '', 'N/A', 'not identifiable', 'a dark underpass at night']) {
+    const asked: string[] = [];
+    const r = await locatePhoto('img', deps(JSON.stringify({ place, query: place || 'unknown', confidence: 'medium', evidence: [{ type: 'other', text: 'tiled walls' }] }), { unknown: { lat: 24.09, lon: 81.41, name: 'India' } }, asked), clock());
+    assert.deepEqual([r.place, r.lat, r.lon, r.confidence, asked.length], ['', null, null, 'low', 0], `"${place}"`);
+  }
+});
+
+test('confidence has to be earned by evidence in the picture', async () => {
+  const { earnedConfidence } = await import('../src/locate.ts');
+  // The rickroll underpass frame: "Paris, Viaduc des Arts" at medium on arches alone.
+  const g = readGuess('{"place": "Viaduc des Arts, Paris", "confidence": "medium", "evidence": [{"type": "architecture", "text": "brick arches"}], "reason": "arched viaduct"}');
+  assert.equal(g.confidence, 'low');
+  assert.match(g.reason, /said medium; the evidence supports low/);
+  assert.equal(earnedConfidence('high', [{ type: 'architecture', text: 'a rotunda' }, { type: 'other', text: 'a lagoon' }]), 'medium');
+  assert.equal(earnedConfidence('high', [{ type: 'landmark', text: 'Eiffel Tower' }]), 'high');
+  assert.equal(earnedConfidence('medium', [{ type: 'sign', text: 'Ruby Tuesday' }]), 'medium');
+  assert.equal(earnedConfidence('low', [{ type: 'sign', text: 'Ruby Tuesday' }]), 'low', 'never raised above what the model said');
+});
+
+test('a long name the map lacks is retried without its most specific part', async () => {
+  const asked: string[] = [];
+  const r = await locatePhoto('img', deps('{"place": "Foxboro Station underpass", "query": "Foxboro Station underpass, Patriot Place, Foxborough, Massachusetts, USA", "confidence": "high", "evidence": [{"type": "sign", "text": "WELCOME TO PATRIOT PLACE"}], "reason": "the sign"}',
+    { 'Patriot Place, Foxborough, Massachusetts, USA': { lat: 42.09, lon: -71.26, name: 'Patriot Place' } }, asked), clock());
+  assert.deepEqual(asked, ['Foxboro Station underpass, Patriot Place, Foxborough, Massachusetts, USA', 'Foxboro Station underpass', 'Patriot Place, Foxborough, Massachusetts, USA']);
+  assert.deepEqual([r.lat, r.confidence], [42.09, 'high']);
 });
