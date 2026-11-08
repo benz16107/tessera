@@ -66,7 +66,7 @@ export default {
       where: 'web/src/simple/, web/src/studio/, the toggle in web/src/simple/ViewSwitch.tsx',
       status: 'live',
       img: twoViews,
-      alt: 'The same shoot in two interfaces: Simple on the left, light, with the photo and the answer card; Studio on the right, dark, with the outliner, the view through Cam A and the camera inspector.',
+      alt: 'The same shoot in two interfaces: Simple on the left, with the photo and the answer card; Studio on the right, with the outliner, the view through Cam A and the camera inspector.',
       detail: 'Darkroom became Studio because in a set editor the scene, the photo and the render must be the brightest things on screen, and dark chrome matches the tools creators already use (Blender, Capture One, Resolve). Amber marks one thing at a time: the selection, the shot camera or the main action. Viewfinder became Simple: calmer, phone first, closer to the iMessage side.',
     },
     {
@@ -83,7 +83,7 @@ export default {
       where: 'web/src/simple/ShotView.tsx',
       status: 'live',
       img: slider,
-      alt: 'The bottom of the Manhattan Bridge photo in Simple with parked cars on the cobbles and a white pill slider labelled 3D on the left and Photo on the right.',
+      alt: 'The bottom of the Manhattan Bridge photo in Simple with parked cars on the cobbles and a dark slider labelled 3D on the left and Photo on the right.',
     },
     {
       name: 'Real camera instruments',

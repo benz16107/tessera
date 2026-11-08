@@ -16,6 +16,7 @@ import found from '../assets/shots/simple-found-phone.png';
 import yours from '../assets/shots/simple-yours-phone.png';
 import there from '../assets/shots/simple-there-start-phone.png';
 import live from '../assets/shots/studio-live-prod.png';
+import anywhere from '../assets/shots/simple-anywhere-phone.png';
 import renderPair from '../assets/camera/render-pair.png';
 import vf16 from '../assets/camera/vf-16mm.png';
 import vf35 from '../assets/camera/vf-35mm.png';
@@ -89,16 +90,19 @@ const demo = `${APP_URL}/p/${DEMO_CODE}`;
     <section class="research" aria-labelledby="research-h">
       <p class="label">The problem</p>
       <h2 id="research-h"><span class="num">{research.count}</span> {research.line}</h2>
+      <p class="research-detail">{research.detail}</p>
       <ul class="quotes">
         {research.quotes.map((q) => (
-          <li class="panel">
-            <img src={q.shot} alt={q.alt} loading="lazy" />
-            <blockquote><p>{q.text}</p></blockquote>
-            <a href={q.href}>{q.where}</a>
+          <li>
+            <figure>
+              <blockquote><p>"{q.text}"</p></blockquote>
+              <figcaption><a href={q.href}>{q.where}</a></figcaption>
+            </figure>
+            <img src={q.shot} alt={q.alt} loading="lazy" decoding="async" />
           </li>
         ))}
       </ul>
-      <a class="more" href={research.href}>Read the research</a>
+      <a class="more" href={research.href}>Read the research: 8 posts, how we searched, what we counted</a>
     </section>
   )}
 
@@ -119,20 +123,13 @@ const demo = `${APP_URL}/p/${DEMO_CODE}`;
     <div class="copy">
       <p class="label">Works anywhere</p>
       <h2 id="anywhere-h">Any photo opens a shoot at its place.</h2>
-      <p>With GPS in the photo, Tessera uses it. Without, Nemotron reads the signs, landmarks and script, and OpenStreetMap finds the place it names. The exact standing spot and lens are solved where the place has a mapped model, like DUMBO.</p>
+      <p>With GPS in the photo, Tessera uses it. Without, Nemotron reads the signs, landmarks and script, and OpenStreetMap finds the place it names, in about <span class="num">2.5 s</span>. The exact standing spot and lens are solved where the place has a mapped model, like DUMBO; anywhere else the shoot says it is approximate.</p>
+      <p class="fine">Coordinates come from the photo's GPS or the geocoder, never from the model.</p>
     </div>
-    <div class="panel readout-card">
-      <p class="label">POST /api/locate, measured live</p>
-      <dl>
-        <div><dt>Photo</dt><dd>Ben's photo of Clifton Hill</dd></div>
-        <div><dt>Read from</dt><dd>the Travelodge and Ruby Tuesday signs</dd></div>
-        <div><dt>Place</dt><dd>Clifton Hill, Niagara Falls</dd></div>
-        <div><dt>Confidence</dt><dd><span class="dot" />high</dd></div>
-        <div><dt>Off by</dt><dd><span class="num">40 m</span> from the photo's own GPS</dd></div>
-        <div><dt>Time</dt><dd>about <span class="num">2.5 s</span></dd></div>
-      </dl>
-      <p class="fine">Coordinates come from the photo's GPS or the geocoder, never from the model. A Commons photo of the Eiffel Tower came back as the Eiffel Tower, high.</p>
-    </div>
+    <figure class="anywhere-shot">
+      <div class="anywhere-phone"><Iphone><Image src={anywhere} alt="Simple on a phone, dark: a photo of the Eiffel Tower from the Seine with no GPS, marked Approximate, Eiffel Tower, Paris, Nemotron's guess from the photo, with Change place, facing not measured and lens unknown" widths={[400, 800]} sizes="(max-width: 900px) 70vw, 300px" loading="lazy" /></Iphone></div>
+      <figcaption>Production, a photo with no GPS. Photo: <a href="https://commons.wikimedia.org/wiki/File:Eiffel_Tower,_Paris,_France_(Unsplash_PM4VZZn-YyM).jpg">John Towner</a>, CC0.</figcaption>
+    </figure>
   </section>
 
   <section class="split camera" data-camera data-lenses={JSON.stringify(Object.fromEntries(lenses.map((l) => [l.key, { note: l.note, readout: l.readout }])))} aria-labelledby="camera-h">
@@ -228,12 +225,16 @@ const demo = `${APP_URL}/p/${DEMO_CODE}`;
 
   /* Research: a count, three quotes, a link. Filled from src/research.ts. */
   .research { max-width: 1088px; margin: 96px auto 0; }
-  .research h2 { margin-top: 12px; max-width: 24ch; }
-  .quotes { list-style: none; margin: 32px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-  .quotes li { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-  .quotes img { width: 100%; height: auto; border-radius: var(--r); }
-  .quotes blockquote { margin: 0; color: var(--text); }
+  .research h2 { margin-top: 12px; max-width: 30ch; }
+  .research h2 .num { color: var(--amber); }
+  .research-detail { margin: 12px 0 0; color: var(--text-2); font-size: var(--t-sm); }
+  .quotes { list-style: none; margin: 40px 0 0; padding: 0; display: grid; gap: 32px; }
+  .quotes li { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 32px; align-items: start; padding-top: 32px; border-top: 1px solid var(--line); }
+  .quotes figure { margin: 0; }
+  .quotes blockquote { margin: 0; color: var(--text); font-size: var(--t-lg); line-height: 1.4; letter-spacing: -0.01em; }
   .quotes blockquote p { margin: 0; }
+  .quotes figcaption { margin-top: 12px; }
+  .quotes img { width: 100%; height: auto; border-radius: var(--r-panel); }
   .quotes a, .more, .proof-line a { color: var(--text-2); font-size: var(--t-sm); text-underline-offset: 0.2em; }
   .quotes a:hover, .more:hover, .proof-line a:hover { color: var(--text); }
   .more { display: inline-block; margin-top: 24px; }
@@ -253,13 +254,11 @@ const demo = `${APP_URL}/p/${DEMO_CODE}`;
   .split .copy p:not(.label) { margin: 16px 0 0; color: var(--text-2); max-width: 46ch; }
   .split h2 { margin-top: 12px; }
 
-  .readout-card { padding: 20px; }
-  .readout-card dl { margin: 16px 0 0; display: grid; }
-  .readout-card dl > div { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 16px; padding: 10px 0; border-top: 1px solid var(--line); font-size: var(--t-sm); }
-  .readout-card dt { color: var(--text-3); }
-  .readout-card dd { margin: 0; color: var(--text); }
-  .readout-card .dot { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--teal); vertical-align: 0.05em; }
-  .fine { margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--line); color: var(--text-3); font-size: var(--t-xs); line-height: 1.5; }
+  .split .copy p.fine { margin-top: 16px; color: var(--text-3); font-size: var(--t-sm); }
+  .anywhere-shot { margin: 0; justify-self: center; text-align: center; }
+  .anywhere-phone { width: min(300px, 70vw); margin: 0 auto; }
+  .anywhere-shot figcaption { margin-top: 16px; max-width: 36ch; color: var(--text-3); font-size: var(--t-xs); line-height: 1.5; }
+  .anywhere-shot figcaption a { color: inherit; }
 
   .camera .seg { margin-top: 24px; flex-wrap: wrap; }
   .lens-note { min-height: 3em; font-size: var(--t-sm); }
@@ -300,6 +299,7 @@ const demo = `${APP_URL}/p/${DEMO_CODE}`;
     .steps-list { grid-template-columns: repeat(2, 1fr); gap: 32px 16px; }
     .split { grid-template-columns: 1fr; gap: 32px; margin-top: 96px; }
     .bake-copy { grid-template-columns: 1fr; gap: 12px; }
+    .quotes li { grid-template-columns: 1fr; gap: 16px; }
     .tracks { margin-top: 96px; }
     .tracks a { grid-template-columns: 1fr; gap: 4px; }
   }

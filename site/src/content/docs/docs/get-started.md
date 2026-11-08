@@ -76,7 +76,7 @@ Details: [Messaging](/docs/how-it-works/messaging/).
 
 A switch at the top of every shoot flips between **Simple** and **Studio**. Both read and write the same rows, so you can change views at any time without losing anything.
 
-- **Simple** (`/p/<code>`) is light and phone-first: Found it, Make it yours, Take me there.
+- **Simple** (`/p/<code>`) is phone-first: Found it, Make it yours, Take me there.
 - **Studio** (`/studio/<code>`) is the full set editor: the outliner, the asset library, gizmos, the shot camera with real lenses, render layers, the timeline, Conditions and live data. Start with [The virtual set](/docs/how-it-works/virtual-set/).
 
 Your last choice is remembered on that browser, and a link opens in that view.

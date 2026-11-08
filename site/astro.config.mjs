@@ -54,7 +54,7 @@ export default defineConfig({
         { label: 'Tessera home', link: '/' },
         { label: 'Open the app', link: APP_URL, attrs: { rel: 'noopener' } },
         { label: 'Tracks', link: '/tracks/' },
-        { label: 'Get started', items: ['docs/get-started', 'docs/why-tessera'] },
+        { label: 'Get started', items: ['docs/get-started', 'docs/why-tessera', 'docs/research'] },
         {
           label: 'How it works',
           items: [
