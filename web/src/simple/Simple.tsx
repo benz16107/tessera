@@ -15,7 +15,7 @@ import { useScene } from '../studio/state/useScene.ts';
 import { useShotSettings, defaultShot } from '../studio/state/useShotSettings.ts';
 import { optics as opticsOf, frameFromPhoto } from '../studio/camera/shot.ts';
 import { sceneEv100 } from '../studio/optics.ts';
-import { cameraHpr, cameraQuat, llhToEnu, type Origin } from '../studio/frame.ts';
+import { cameraHpr, cameraQuat, enuToLlh, llhToEnu, type Origin } from '../studio/frame.ts';
 import { geometryFor, groundZ } from '../studio/world/geometry.ts';
 import { newUid, parseParams, stateOf, withParams } from '../studio/scene/objects.ts';
 import type { Layers } from '../studio/render/layers.ts';
@@ -161,10 +161,14 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
   const cams = scene.rows.filter(r => r.kind === 'camera');
   const shotRow = cams.find(r => parseParams(r.params).shot === '1') ?? cams[0];
   // The pin's stand-in pose: the pin, 1.6 m up, Cam A's heading once someone aims it, the photo's EXIF lens else a phone's 26 mm.
+  // Studio drags and turns Cam A on the Map and in World (case 4), so the mark follows Cam A once it leaves the pin.
+  const camAt = shotRow && geoSpot && Math.hypot(shotRow.x, shotRow.y) > 0.5 ? enuToLlh(geoSpot, new Vector3(shotRow.x, shotRow.y, 0)) : null;
+  const camHeading = shotRow ? cameraHpr(new Quaternion(shotRow.qx, shotRow.qy, shotRow.qz, shotRow.qw).normalize()).heading : 0;
   const pose: Pose | undefined = solved?.pose ?? (pinShoot && geoSpot ? {
-    lat: geoSpot.lat, lon: geoSpot.lon, alt: 1.6, pitch: 0, roll: 0, f35: photo?.exifF35 ?? 26,
-    heading: shotRow ? cameraHpr(new Quaternion(shotRow.qx, shotRow.qy, shotRow.qz, shotRow.qw).normalize()).heading : 0,
+    lat: camAt?.lat ?? geoSpot.lat, lon: camAt?.lon ?? geoSpot.lon, alt: 1.6, pitch: 0, roll: 0, f35: photo?.exifF35 ?? 26, heading: camHeading,
   } : undefined);
+  // shortcut: a pin's Cam A starts at exactly 0°, so any other heading means someone aimed it; store an aimed flag if 0° is ever aimed on purpose.
+  const aimed = pinShoot && Math.abs(((camHeading % 360) + 540) % 360 - 180) > 0.5 ? camHeading : null; // |signed heading| above 0.5°
   const cam = useMemo(() => {
     if (shotRow) return { pos: new Vector3(shotRow.x, shotRow.y, shotRow.z), q: new Quaternion(shotRow.qx, shotRow.qy, shotRow.qz, shotRow.qw).normalize() };
     if (!pose || !origin) return null;
@@ -224,7 +228,7 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
   if (!photo) panel = <AddPhoto session={session} spotId={spotId} />;
   else if (!pose) panel = <Solving photo={photo} job={job} result={result} spots={spots} onPlace={placeAt} />;
   else if (step === 'found') panel = solved ? <Found result={solved} photo={photo} spot={spot} zone={zone} credit={owner} onGo={() => setStep('there')} />
-    : <PinFound sessionId={sid} photo={photo} geo={geoSpot!} title={session.title} zone={zone} credit={owner} onPlace={placeAt} onGo={() => setStep('there')}
+    : <PinFound sessionId={sid} photo={photo} geo={pose!} aimed={aimed} title={session.title} zone={zone} credit={owner} onPlace={placeAt} onGo={() => setStep('there')}
       placed={placedBy} areaM={placedArea} placeName={placedName} />;
   else if (step === 'yours') panel = (
     <Yours sessionId={sid} photo={photo} spotId={spotId} pose={pose} shot={shot} setShot={setShot} o={o} planTime={planTime} zone={zone}

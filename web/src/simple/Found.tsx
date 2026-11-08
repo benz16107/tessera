@@ -113,8 +113,8 @@ export default function Found({ result, photo, spot, zone, credit, onGo }: {
  *  searched place, an exact spot someone set, or the centre of an area. Only an exact spot drops the "Approximate" label. */
 const UNTITLED = new Set(['', 'Untitled shoot', 'New shoot']); // the module's own list: these may be renamed by any member
 
-export function PinFound({ sessionId, photo, geo, title, zone, placed, areaM, placeName, credit, onPlace, onGo }: {
-  sessionId: bigint; photo: Photo; geo: { lat: number; lon: number }; title: string; zone: string; placed?: PlacedBy; areaM?: number;
+export function PinFound({ sessionId, photo, geo, aimed, title, zone, placed, areaM, placeName, credit, onPlace, onGo }: {
+  sessionId: bigint; photo: Photo; geo: { lat: number; lon: number }; aimed?: number | null; title: string; zone: string; placed?: PlacedBy; areaM?: number;
   placeName?: string; credit?: string; onPlace: OnPlace; onGo: () => void;
 }) {
   const rename = useReducer(reducers.renameSession);
@@ -170,8 +170,17 @@ export function PinFound({ sessionId, photo, geo, title, zone, placed, areaM, pl
       <div className="s-two">
         <div>
           <p className="s-label">Facing</p>
-          <p className="s-mid">Not measured</p>
-          <p className="s-muted small s-approx">Only mapped spots give a heading. Line the photo up on site, or aim Cam A in Studio.</p>
+          {aimed != null ? (
+            <>
+              <p className="s-big"><span>{Math.round(((aimed % 360) + 360) % 360)}°</span><small> {compassWord(aimed)}</small><Compass heading={aimed} /></p>
+              <p className="s-muted small s-approx">Aimed by hand in Studio, not measured from the photo.</p>
+            </>
+          ) : (
+            <>
+              <p className="s-mid">Not measured</p>
+              <p className="s-muted small s-approx">Only mapped spots give a heading. Line the photo up on site, or aim Cam A in Studio.</p>
+            </>
+          )}
         </div>
         <div>
           <p className="s-label">Lens</p>
