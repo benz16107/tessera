@@ -39,7 +39,7 @@ export default {
     { title: 'One answer, two kinds of people', body: 'The solve is technical: a position, a heading, a 35 mm equivalent focal length, a confidence. A casual user needs "stand here, 2.2x on your phone". A photographer needs the body, the lens and the depth of field. Two interfaces over one set serve both without hiding the numbers from one or burying the other in them.' },
     { title: 'The design does the explaining', body: 'A lens ring shows where the focal length sits in the lens\'s range. The Figma compass cone draws the lens\'s field of view. Simple\'s blend slider lays your photo over the 3D view so you can check the match yourself.' },
     { title: 'Trust is designed, not added later', body: 'A tool that guesses where a photo was taken must show how sure it is. "Couldn\'t place this photo" is a designed screen, every AI image says "AI interpretation", and every view credits its sources.' },
-    { title: 'Built from the frames', body: 'Studio\'s colours, fonts and icons came out of the Figma frames through the Figma MCP. Colours are CSS variables, so the light direction is a token swap. This site uses the same tokens.' },
+    { title: 'Built from the frames', body: 'Studio\'s icons were exported from the round 3 Figma file (web/src/studio/catalog/CREDITS.md), and the code names the Figma frame each panel was built from, such as frame 26:12 for the outliner. Archivo sets the text and Martian Mono the camera HUD and codes. Colours are CSS variables, so a palette change is a change of values; this site uses the same values.' },
   ],
   uses: [
     {
@@ -67,7 +67,7 @@ export default {
       status: 'live',
       img: twoViews,
       alt: 'The same shoot in two interfaces: Simple on the left, with the photo and the answer card; Studio on the right, with the outliner, the view through Cam A and the camera inspector.',
-      detail: 'Darkroom became Studio because in a set editor the scene, the photo and the render must be the brightest things on screen, and dark chrome matches the tools creators already use (Blender, Capture One, Resolve). Since Ben\'s 4:15 AM note the chrome is neutral grey (a near-white primary button, edged secondaries); colour is kept for what means something, the sun, golden hour and warnings. Viewfinder became Simple: calmer, phone first, closer to the iMessage side.',
+      detail: 'Darkroom became Studio because in a set editor the scene, the photo and the render must be the brightest things on screen, and dark chrome matches the tools creators already use (Blender, Capture One, Resolve). Since Ben\'s 4:15 AM note the chrome is neutral grey (a near-white primary button, edged secondaries); colour is kept for what means something, the sun, golden hour and warnings. Viewfinder gave Simple its layout: calmer, phone first, closer to the iMessage side. Since the 4:08 AM CT deploy (25760b1), Simple uses Studio\'s dark colours too.',
     },
     {
       name: 'The answer in plain words',
@@ -125,7 +125,7 @@ export default {
     },
     {
       name: 'Accessibility',
-      line: 'Simple\'s buttons are at least 44 px tall and its fields 48 px, both stylesheets honour reduced motion, Studio has keyboard shortcuts, and text contrast passes AA in the Figma frames.',
+      line: 'Simple\'s buttons, chips and fields are 36 px tall on desktop and 44 px on screens under 760 px wide, both stylesheets honour reduced motion, Studio has keyboard shortcuts, and text contrast passes AA in the Figma frames.',
       where: 'web/src/simple/simple.css, web/src/studio/studio.css',
       status: 'built',
       detail: 'Studio shortcuts: G, R and S for move, rotate and scale; W select; M measure; L laser pointer; X delete; Shift+A add; F focus; 0, 1, 3, 5 and 7 for views. The AA ratios are written in each Figma page\'s note. No screen-reader audit was run.',
@@ -144,7 +144,7 @@ export default {
     { value: '3 x 4', label: 'directions by screens in round 1 (Drop, Found it, Make it yours, Scout)', check: 'design/directions/A-1 to C-4; node ids in design/REPORT.md' },
     { value: '7', label: 'round 3 frames for the virtual set', check: 'design/directions/V-1-enter.png to V-7-vr.png; node ids in design/REPORT.md' },
     { value: '2 views', label: 'over one shoot, switched by one toggle', check: 'https://app.tesseraphoto.com/p/A9TVAN and /studio/A9TVAN' },
-    { value: '44 px', label: 'minimum height of Simple\'s buttons (48 px for fields)', check: 'web/src/simple/simple.css lines 38, 63 and 70' },
+    { value: '44 px', label: 'height of Simple\'s buttons, chips and fields on screens under 760 px wide (36 px on desktop)', check: 'web/src/simple/simple.css line 388; --control-h and --control-h-touch in web/src/ui/tokens.css' },
     { value: '75 matches', label: 'on the held-out photo d0473.jpg, which gets the designed "Couldn\'t place" screen', check: 'spots/nyc_dumbo/eval.md, row T3' },
     { value: '0', label: 'AI images without the "AI interpretation" label', check: 'Simple: Make it yours, then Make it; Studio: Render. Every result carries the label' },
   ],
@@ -156,7 +156,7 @@ export default {
     'This site: layout, copy, motion and the reduced-motion static page',
   ],
   theirs: [
-    'Figma: the design file, and the Figma MCP that exported tokens and icons from the frames',
+    'Figma: the design file, the round 3 file the icons were exported from, and the frame ids named in code comments',
     'Magic UI: the iPhone and browser window frames on this site (MIT)',
     'Phosphor Icons (MIT), Archivo and Martian Mono (SIL Open Font License)',
     'GSAP with ScrollTrigger and Lenis for this site\'s motion',
