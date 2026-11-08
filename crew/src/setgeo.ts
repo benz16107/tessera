@@ -163,3 +163,20 @@ export function readDims(j: any, source: string): Dims {
   return { length_m: Math.round(l * 100) / 100, width_m: Math.round(w * 100) / 100, height_m: Math.round(h * 100) / 100, source };
 }
 
+
+/** A free-location shoot's spot id, 'geo:<lat>,<lon>,<height>' (the form the studio's geoSpot reads), or null. */
+export function parseGeoSpot(id: string): { lat: number; lon: number; height: number } | null {
+  const m = /^geo:(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)$/.exec(id);
+  if (!m) return null;
+  const [lat, lon, height] = m.slice(1).map(Number);
+  return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 && Number.isFinite(height) ? { lat, lon, height } : null;
+}
+
+/** Where a shoot is: its mapped spot row, else its 'geo:' pin, named by the shoot's title (or the coordinates). */
+export function placeFor(spotId: string, row: { lat: number; lon: number; name: string; radiusM: number } | undefined, title = '') {
+  if (row) return { lat: row.lat, lon: row.lon, name: row.name, radiusM: row.radiusM };
+  const g = parseGeoSpot(spotId);
+  if (!g) return null;
+  const name = title && !/^(photon:|nvidia-|Untitled)/.test(title) ? title : `${g.lat.toFixed(4)}, ${g.lon.toFixed(4)}`;
+  return { lat: g.lat, lon: g.lon, name, radiusM: 500 };
+}

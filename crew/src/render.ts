@@ -176,7 +176,7 @@ export async function render(inp: RenderIn): Promise<RenderOut> {
     light, f35: inp.f35 ?? ctx?.cam.f35 ?? 35, aperture: inp.aperture ?? settings?.aperture, focusM: inp.focusM ?? settings?.focusM,
     sun, heading: ctx?.cam.heading, objects: [...new Set(names)], people,
     text: [placeholders.length ? `Turn every placeholder into the real thing: ${placeholders.map(p => p.prompt).join('; ')}` : '', inp.text].filter(Boolean).join('. '),
-    place: ctx ? conn.db.spot.id.find(ctx.spotId)?.name : undefined,
+    place: ctx?.placeName,
   }).slice(0, 2400);
   let jobId: bigint | undefined;
   try {

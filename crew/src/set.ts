@@ -5,14 +5,14 @@
 import { conn, until } from './stdb.ts';
 import { PROPS } from '../../web/src/studio/catalog/props.ts';
 import { bodyById } from '../../web/src/studio/catalog/bodies.ts';
-import { aimQuat, bearingTo, camRowHpr, enuOf, fpxOf, frameOf, groundAt, yawOf, yawQuat, type Cam, type Quat, type V3 } from './setgeo.ts';
+import { aimQuat, bearingTo, camRowHpr, enuOf, placeFor, fpxOf, frameOf, groundAt, yawOf, yawQuat, type Cam, type Quat, type V3 } from './setgeo.ts';
 import type { Photo, SceneObject } from './module_bindings/types.ts';
 
 export const POSES = ['stand', 'walk', 'sit', 'lean', 'point', 'jump', 'talk', 'crouch', 'push'] as const;
 export const LIGHT_TYPES = ['point', 'spot', 'area', 'sun'] as const;
 export const ASSET_IDS = PROPS.map(p => p.id);
 
-export type SetCtx = { sessionId: bigint; spotId: string; origin: { lat: number; lon: number }; cam: Cam; camSource: string; camObjectId?: bigint; photo?: Photo };
+export type SetCtx = { sessionId: bigint; spotId: string; placeName: string; origin: { lat: number; lon: number }; cam: Cam; camSource: string; camObjectId?: bigint; photo?: Photo };
 
 export function parseParams(s: string): Record<string, string> {
   const out: Record<string, string> = {};
@@ -40,7 +40,8 @@ export function setContext(sessionId: bigint): SetCtx | null {
   if (!s) return null;
   const solved = latestSolved(sessionId);
   const spotId = s.spotId || (solved ? conn.db.solveJob.id.find(solved.r!.jobId)?.spotId ?? '' : '');
-  const spot = conn.db.spot.id.find(spotId);
+  // A mapped spot, or a free-location shoot's 'geo:<lat>,<lon>,<h>' pin (photos from anywhere).
+  const spot = placeFor(spotId, conn.db.spot.id.find(spotId) ?? undefined, s.title);
   if (!spot) return null;
   const origin = { lat: spot.lat, lon: spot.lon };
   const photo = solved?.p ?? [...conn.db.photo.sessionId.filter(sessionId)].sort((a, b) => Number(b.id - a.id))[0];
@@ -62,7 +63,7 @@ export function setContext(sessionId: bigint): SetCtx | null {
     cam = { x: e.x, y: e.y, z: Math.max(0.3, pose.alt), heading: pose.heading, pitch: pose.pitch, roll: pose.roll, f35: settings ? settings.focalMm * crop : pose.f35, w, h };
     camSource = conn.db.camera.sessionId.find(sessionId) ? 'shared camera row' : 'solved photo';
   }
-  return { sessionId, spotId, origin, cam, camSource, camObjectId: shotObj?.id, photo };
+  return { sessionId, spotId, placeName: spot.name, origin, cam, camSource, camObjectId: shotObj?.id, photo };
 }
 
 /** Where the ground enters the bottom of the frame, and the distance band for full-body people, in words for a prompt. */

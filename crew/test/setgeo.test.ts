@@ -90,3 +90,15 @@ test('real size: thickness given as height is turned upright', async () => {
   assert.ok(d.height_m >= 0.5 && d.width_m <= 0.1, JSON.stringify(d));
   assert.equal(readDims({ length_m: 1.75, width_m: 0.6, height_m: 1.0 }, 't').height_m, 1);
 });
+
+test('free-location shoots: geo: spot ids are the origin', async () => {
+  const { parseGeoSpot, placeFor } = await import('../src/setgeo.ts');
+  assert.deepEqual(parseGeoSpot('geo:43.0912,-79.0745,172.4'), { lat: 43.0912, lon: -79.0745, height: 172.4 });
+  assert.equal(parseGeoSpot('nyc_dumbo'), null);
+  assert.equal(parseGeoSpot('geo:91,0,0'), null);
+  const row = { lat: 40.7, lon: -73.99, name: 'DUMBO', radiusM: 150 };
+  assert.deepEqual(placeFor('nyc_dumbo', row), { ...row });
+  assert.deepEqual(placeFor('geo:43.0912,-79.0745,172.4', undefined, 'Clifton Hill, Niagara Falls'), { lat: 43.0912, lon: -79.0745, name: 'Clifton Hill, Niagara Falls', radiusM: 500 });
+  assert.equal(placeFor('geo:43.0912,-79.0745,0', undefined, '')?.name, '43.0912, -79.0745');
+  assert.equal(placeFor('', undefined), null);
+});

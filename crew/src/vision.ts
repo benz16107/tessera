@@ -193,7 +193,6 @@ Reply with strict JSON only: {"summary": "<two sentences>", "strengths": ["..."]
 export async function callSheet(sessionId: bigint) {
   const ctx = setContext(sessionId);
   if (!ctx) throw new Error('the session has no shot camera yet');
-  const spot = conn.db.spot.id.find(ctx.spotId);
   const ll = { lat: ctx.origin.lat, lon: ctx.origin.lon };
   const w = sunWindows(ll.lat, ll.lon, ctx.cam.heading);
   const win = (x: typeof w.golden) => x ? `${x.kind} ${fmtTime(x.start, ll.lat, ll.lon)} to ${fmtTime(x.end, ll.lat, ll.lon)}, sun ${x.sunBehind ? 'behind the camera' : Math.abs(x.sunRel) < 60 ? 'in frame' : x.sunRel < 0 ? 'left' : 'right'}` : 'none in the next days';
@@ -204,7 +203,7 @@ export async function callSheet(sessionId: bigint) {
   const planTime = conn.db.session.id.find(sessionId)?.planTime;
   // Conditions at the plan time, else at the next golden hour (the geo thread's live layers).
   const cond = await liveConditions(sessionId, planTime ? undefined : w.golden?.start);
-  const text = `Write a call sheet for a photo shoot at ${spot?.name ?? ctx.spotId}.
+  const text = `Write a call sheet for a photo shoot at ${ctx.placeName}.
 Hero shot: camera facing ${Math.round(ctx.cam.heading)} deg, ${Math.round(ctx.cam.f35)} mm equivalent${body ? ` on a ${body.name}` : ''}${s ? `, f/${s.aperture}, 1/${Math.round(1 / s.shutterS)} s, ISO ${s.iso}` : ''}.
 Light windows: ${win(w.golden)}; ${win(w.blue)}; front-lit golden hour: ${win(w.goldenFrontLit)}.
 ${planTime ? `The crew planned ${fmtTime(new Date(Number(planTime.microsSinceUnixEpoch / 1000n)), ll.lat, ll.lon)}.` : ''}

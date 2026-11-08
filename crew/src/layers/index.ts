@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { loadSpots, SPOTS_DIR } from '../config.ts';
 import { tzFor } from '../sun.ts';
 import { setContext } from '../set.ts';
+import { placeFor } from '../setgeo.ts';
 import { worldPhotos } from './photographers.ts';
 import { buildLayers, LAYER_IDS, type LayerId, type LayersResponse } from './build.ts';
 import type { Conditions } from './conditions.ts';
@@ -28,6 +29,9 @@ export function resolve(q: Query): { place: Place; at: Date; sessionId?: bigint 
     at ??= s.planTime?.toDate();
   }
   at ??= new Date();
+  // A free-location shoot ('geo:<lat>,<lon>,<h>', photos from anywhere) is a point, named like the set (crew/src/setgeo.ts).
+  const pin = spotId ? placeFor(spotId, undefined, q.sessionId !== undefined ? conn.db.session.id.find(q.sessionId)?.title : '') : null;
+  if (pin) return { place: { id: 'point', name: pin.name, lat: pin.lat, lon: pin.lon, radiusM: 500, zone: tzFor(pin.lat, pin.lon) }, at, sessionId: q.sessionId };
   if (spotId) {
     const row = conn.db.spot.id.find(spotId), file = loadSpots().find(s => s.id === spotId);
     const lat = row?.lat ?? file?.lat, lon = row?.lon ?? file?.lon;
