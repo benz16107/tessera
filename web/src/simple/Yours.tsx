@@ -185,6 +185,7 @@ export default function Yours(p: Props) {
         {busy ? `${BUSY_TEXT[busy]}${busy !== 'listening' ? ` · ${secs} s` : ''}` : status?.text ?? ''}
       </p>
 
+      <p className="s-muted small s-make-note">Made from your photo and only the people and props in the set. Map imagery never goes into it.</p>
       <div className="s-make">
         <p className="s-muted small">Made from your photo and only the people and props in the set. Map imagery never goes into it.</p>
         <button className="s-btn primary big" onClick={make} disabled={!!busy}>{busy === 'render' ? 'Making it' : 'Make it'}</button>

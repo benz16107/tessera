@@ -12,7 +12,7 @@
 .geo-chip[data-tone='poor'] { box-shadow: inset 0 0 0 1px rgba(232, 103, 94, 0.55); }
 .geo-map { width: 100%; border-radius: var(--r); overflow: hidden; background: var(--field); }
 .geo-map .maplibregl-ctrl-attrib { font: 10px var(--sans); background: rgba(14, 14, 13, 0.75) !important; color: var(--text-2); }
-.geo-map .maplibregl-ctrl-attrib a { color: var(--text-2); }
+.geo-map .maplibregl-ctrl-attrib a, .geo-map .maplibregl-ctrl-attrib-inner { color: var(--text-2); }
 .geo-popup .maplibregl-popup-content { background: var(--panel); color: var(--text); font: 12px/1.4 var(--sans); border-radius: var(--r-sm); box-shadow: var(--shadow); padding: 8px 10px; }
 .geo-popup .maplibregl-popup-content p { margin: 4px 0 0; color: var(--text-2); }
 .geo-popup .maplibregl-popup-tip { border-top-color: var(--panel) !important; border-bottom-color: var(--panel) !important; }
@@ -39,8 +39,8 @@
 .geo-hour { position: absolute; top: 0; height: 14px; display: flex; flex-direction: column; gap: 1px; pointer-events: auto; }
 .geo-hour i { display: block; height: 3px; background: #c9d8f5; border-radius: 1px; }
 .geo-hour em { display: block; height: 2px; margin-top: 1px; background: #5f9cf0; }
-.geo-shade { position: absolute; top: 16px; height: 6px; border-radius: 2px; background: repeating-linear-gradient(135deg, rgba(127, 142, 168, 0.55) 0 3px, rgba(127, 142, 168, 0.2) 3px 6px); font: 500 9px/6px var(--sans); color: transparent; pointer-events: auto; }
-.geo-tide { position: absolute; top: 22px; translate: -50% 0; font: 10px var(--mono); color: #8fb3e8; white-space: nowrap; pointer-events: auto; }
+.geo-shade { position: absolute; top: 15px; height: 12px; padding: 0 6px; overflow: hidden; white-space: nowrap; border-radius: 3px; background: repeating-linear-gradient(135deg, rgba(127, 142, 168, 0.5) 0 3px, rgba(127, 142, 168, 0.22) 3px 6px); font: 500 10px/12px var(--sans); color: #d5dbe6; pointer-events: auto; }
+.geo-tide { position: absolute; top: 15px; translate: -50% 0; font: 10px var(--mono); color: #8fb3e8; white-space: nowrap; pointer-events: auto; }
 .geo-tide::before { content: ''; display: inline-block; width: 0; height: 0; margin-right: 3px; border: 3px solid transparent; vertical-align: 1px; }
 .geo-tide[data-type='H']::before { border-bottom: 5px solid #8fb3e8; border-top-width: 0; }
 .geo-tide[data-type='L']::before { border-top: 5px solid #8fb3e8; border-bottom-width: 0; }

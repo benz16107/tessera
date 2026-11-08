@@ -1,19 +1,43 @@
 # Photon setup and operation
 
-The crew's Photon code (`src/photon.ts` inbound, `src/channels/` outbound, `src/voice.ts` calls) is built against the Photon 2.0 Beta API (https://photon.codes/docs/beta/, spec https://api.photon.codes/openapi.json and https://api.photon.codes/asyncapi.yaml). It runs fully against the fake Photon server in `test/fake-photon.ts` today. It switches to the real API the moment `photon_api_key` and `photon_project_id` exist on the box that runs the crew; nothing else changes.
+The crew's Photon code (`src/photon.ts` inbound, `src/channels/` outbound, `src/voice.ts` calls) is built against the Photon 2.0 Beta API (https://photon.codes/docs/beta/, spec https://api.photon.codes/openapi.json and https://api.photon.codes/asyncapi.yaml). It switches to the real API the moment `photon_api_key` and `photon_project_id` exist on the box that runs the crew; nothing else changes. `test/fake-photon.ts` stands in for Photon in tests.
+
+## Live state (checked Sun Nov 8, 12:30 AM CT)
+
+- **Project** "ShotMatch", `pho_prj_01m6wse3h8eh78gcxekd7hje5m`, Free plan, in the organization Ben shares with the Hatch project "HackUTD 2026". Never add numbers, testers, bots or webhooks to the Hatch project; every call here names the ShotMatch project id.
+- **Key** (full access, ShotMatch only) in `~/.config/shotmatch/photon_api_key` on linuxbox and the Vultr VM, with `photon_project_id`. The Vultr crew logs `Photon subscribed from seq 0`, so the live event stream is up.
+- **API checks:** `GET /projects/{id}` and `GET /platforms` answer 200 and list email, iMessage, SMS, Telegram, voice, WhatsApp Business and WhatsApp Personal. `GET /platforms/resources` is empty (no numbers yet). `GET /platforms/imessage` says shared mode, 25 assignments, none used, and a dedicated line would be available now. Billing endpoints answer 403 to a project key.
+- **Telegram:** `POST /platforms/telegram/bots` started operation `pho_opr_01m6wt29q4fvk94rn42mv3nwn0` (pending). Its setup link was given to the lead thread and is not in the repo: whoever opens it can attach a bot to this project. Ben opens it in Telegram, picks the bot's name and @username, then texts the bot `/start` or a photo for the first live round trip.
+- **Not yet:** an SMS and voice number, email domain, WhatsApp Business, iMessage testers, `photon_agents`.
+
+## What it costs on the Free plan (Photon's plans and billing pages)
+
+| Item | Price | Notes |
+|---|---|---|
+| iMessage shared line | $0 | 25 shared assignments included per project; no per-message fees |
+| Telegram, WhatsApp sends | $0 per message | |
+| Local US number (SMS and voice) | $2 per month | paid in advance, no proration; inbound voice works about 15 minutes after purchase |
+| Voice, US/Canada | $0.013 per minute | |
+| SMS, US/Canada | $0.01 per part plus carrier fees | US recipients need an approved 10DLC campaign |
+| 10DLC campaign | $20 per registration submission plus $15 per month | review can take days; registration fees are not refundable |
+| Email | $0.001 per email | one domain included |
+| Dedicated iMessage line | $250 per month | Business plan only |
+
+The $100 organization credit covers the number, an hour of calls and the SMS campaign many times over. It is shared with Hatch's project.
 
 ## Ben's dashboard checklist (one pass, about 30 minutes plus waits)
 
 Everything happens at https://app.beta.photon.codes in a project named ShotMatch. Do not reuse the hackutd26 project. Steps marked "wait" start a review or DNS propagation; start those first.
 
-1. **Project.** Create (or pick) the organization, then a project named ShotMatch. **Settings**, copy the **Project ID** (`pho_prj_...`).
-2. **API key.** **API keys**, **New API key**, name `shotmatch-crew`, tick `project:read`, `project:write` and `platforms:read` (add `platforms:write` only if you want the crew to connect the Telegram bot over the API). **Create key**. It is shown once.
+1. **Project.** Done: ShotMatch, `pho_prj_01m6wse3h8eh78gcxekd7hje5m`.
+2. **API key.** Done: full access, on linuxbox and the Vultr VM.
 3. **Email (wait: DNS).** **Email**, **Connect a domain**: a subdomain of a domain you own, for example `mail.<your domain>` (a subdomain keeps any real inbox's MX records untouched). Open its setup page and add every record it shows at the DNS host: three DKIM CNAMEs, the bounce MX and SPF TXT, and the receiving MX. On GoDaddy: `gddy dns` from macserver (memory `godaddy-cli`), CNAMEs as DNS only. Wait for **Connected**. The agent address is any name under it, for example `set@mail.<your domain>`; Photon creates it when the first email arrives.
 4. **SMS number (wait: 10DLC).** **SMS**, buy a number (any US area code). Sending SMS to US numbers needs an approved 10DLC campaign, and carrier review can take days, so outbound SMS may not clear before judging. Start the brand and campaign anyway (use case: account notifications; opt-in: "people text the number first or are added by a friend in the app"). Until it clears, the crew falls back to the person's other channels. Ask the booth whether in-network test numbers can receive.
 5. **Voice on that number.** **Voice**, **Lines**, the number, **Set up default**, **SIP**, **Create profile**. Then follow "Voice: connecting the number to the ElevenLabs agent" below.
 6. **WhatsApp Business (optional).** **WhatsApp Business**, **Use a Photon SMS number**, pick the number from step 4, complete Meta's signup window (Photon shows Meta's SMS code in the panel). Business-started messages outside a 24-hour window need approved templates, so invites on WhatsApp may be refused until the invitee messages first; the crew then hands the inviter a link to forward.
-7. **iMessage shared line.** **iMessage**, under "Add the number you or your user will send from" add each demo phone (Ben, teammates, every judge phone you will hand a demo to), **Add**, **Assign a number from the shared pool**. Each sender must text the assigned number once ("JOIN" and the set code works); the dashboard shows "Waiting for first text" until then. Shared lines are direct chats only, no groups, no calls, and cannot send first.
-8. **Telegram.** **Telegram**, follow the connect flow; it provisions a managed bot and you pick its name and @username in Telegram (for example `@ShotMatchSetBot`). Add the bot to a group for the group demo. In groups the crew answers photos, replies to its own messages, commands and messages that say "ShotMatch".
+7. **iMessage shared line.** **iMessage** in the ShotMatch project, under "Add the number you or your user will send from" add each phone that will text ShotMatch: Ben's, each teammate who demos, and any judge's phone at the table (a judge's number can be added in a minute during judging; 25 seats). **Add**, **Assign a number from the shared pool**, and write down the assigned number per person: each person texts their own assigned number once ("JOIN" and the set code works). The dashboard shows "Waiting for first text" until then. Shared lines are direct chats only, no groups, no calls, and cannot send first. For judges who just walk up, Telegram (no assignment) is quicker.
+   - *A phone that is already a tester on Hatch's shared line:* Photon's docs don't say how one sender assigned in two projects is routed. An assignment pairs a sender with a pooled line the server picks, and "only messages from the assigned sender reach this shared-line connection", so if ShotMatch gives that sender a different line number, texts to that number should reach ShotMatch and texts to the Hatch number stay with Hatch. Check the assigned number after adding: if it equals the person's Hatch line, release the ShotMatch assignment and ask Photon support before relying on it. Hatch's lines (memory): Maya +16283166196, Theo +16289988619, Jun +16283167976.
+8. **Telegram.** Started over the API (above): open the setup link from the lead thread in Telegram and pick the bot's name and @username (for example `@ShotMatchSetBot`). The dashboard's **Telegram** page shows the same flow. Add the bot to a group for the group demo. In groups the crew answers photos, replies to its own messages, commands and messages that say "ShotMatch".
 9. **No webhook destination.** The crew reads events over Socket.IO with a saved replay cursor.
 
 Then, on linuxbox (the crew runs on the Vultr box, so the files go there too):

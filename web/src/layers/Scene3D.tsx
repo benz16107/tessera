@@ -16,7 +16,10 @@ type Gz = (x: number, y: number) => number;
 interface Props { geo: GeoLayers; origin: Origin; groundAt: Gz; labels?: boolean }
 
 const COLORS = { film: '#f2a33a', closures: '#e8675e', construction: '#d9b44a', alerts: '#e8675e' } as const;
-const POI = { viewpoint: '#f2a33a', transit: '#5f9cf0', cafe: '#5ec8c2', restroom: '#a39f96', parking: '#75716a' } as Record<string, string>;
+// Amber belongs to the studio's selection and Render button: until the Conditions panel is open or the camera is high,
+// zones and shed volumes draw in this neutral at low opacity, so the street stays quiet.
+const QUIET = '#a39f96';
+const POI = { viewpoint: '#f2efe8', transit: '#5f9cf0', cafe: '#5ec8c2', restroom: '#a39f96', parking: '#75716a' } as Record<string, string>;
 
 /** lon/lat -> metres east and north of the spot, on the WGS84 ellipsoid (frame.ts). */
 function useProject(origin: Origin) {
@@ -58,13 +61,14 @@ export default function GeoScene({ geo, origin, groundAt, labels = true }: Props
   if (!d) return null;
   const L = d.layers;
   const quiet = labels && high;
+  const loud = labels || high; // the panel is open (labels only show then) or we look from above
   return (
     <group name="geo-layers" userData={{ helper: true }}>
       {geo.on('shadow') && L.buildings && <Casters fc={L.buildings} P={P} gz={groundAt} />}
       {geo.on('buildings') && L.buildings && <Outlines fc={L.buildings} P={P} gz={groundAt} />}
-      {geo.on('film') && L.film && <Zones fc={L.film} P={P} gz={groundAt} color={COLORS.film} lift={high ? 0.06 : 0.45} xray={high} labels={labels} quiet={quiet} />}
-      {geo.on('closures') && L.closures && <Zones fc={L.closures} P={P} gz={groundAt} color={COLORS.closures} lift={high ? 0.08 : 0.5} xray={high} labels={labels} quiet={quiet} />}
-      {geo.on('construction') && L.construction && <Sheds fc={L.construction} P={P} gz={groundAt} labels={labels} />}
+      {geo.on('film') && L.film && <Zones fc={L.film} P={P} gz={groundAt} color={loud ? COLORS.film : QUIET} dim={!loud} lift={high ? 0.06 : 0.45} xray={high} labels={labels} quiet={quiet} />}
+      {geo.on('closures') && L.closures && <Zones fc={L.closures} P={P} gz={groundAt} color={loud ? COLORS.closures : QUIET} dim={!loud} lift={high ? 0.08 : 0.5} xray={high} labels={labels} quiet={quiet} />}
+      {geo.on('construction') && L.construction && <Sheds fc={L.construction} P={P} gz={groundAt} labels={labels} dim={!loud} />}
       {geo.on('alerts') && L.alerts && <Alerts fc={L.alerts} P={P} gz={groundAt} />}
       {geo.on('pois') && L.pois && <Pins fc={L.pois} P={P} gz={groundAt} labels={quiet} />}
       {geo.on('photographers') && L.photographers && <Heat fc={L.photographers} P={P} gz={groundAt} high={high} hotspots={quiet ? d.summary.photographers?.hotspots ?? [] : []} />}
@@ -110,7 +114,7 @@ function Outlines({ fc, P, gz }: { fc: FC; P: (c: number[]) => XY; gz: Gz }) {
 }
 
 /** Permit and closure areas draped on the street; active ones bright and labelled, film history faint. */
-function Zones({ fc, P, gz, color, lift, xray, labels, quiet }: { fc: FC; P: (c: number[]) => XY; gz: Gz; color: string; lift: number; xray: boolean; labels: boolean; quiet: boolean }) {
+function Zones({ fc, P, gz, color, dim, lift, xray, labels, quiet }: { fc: FC; P: (c: number[]) => XY; gz: Gz; color: string; dim: boolean; lift: number; xray: boolean; labels: boolean; quiet: boolean }) {
   // From above every block shows; at street level only what is in force, so past film permits don't wash the street.
   const items = useMemo(() => fc.features.filter(f => xray || f.properties.active !== false).flatMap((f, i) => ringsOf(f).map((ring, j) => {
     const pts = ring.map(P);
@@ -129,10 +133,10 @@ function Zones({ fc, P, gz, color, lift, xray, labels, quiet }: { fc: FC; P: (c:
         return (
           <group key={it.key}>
             <mesh geometry={it.g} raycast={() => null} renderOrder={xray ? 12 : 3}>
-              <meshBasicMaterial color={color} transparent opacity={active ? 0.32 : 0.12} depthWrite={false} depthTest={!xray} toneMapped={false} side={DoubleSide} polygonOffset polygonOffsetFactor={-4} />
+              <meshBasicMaterial color={color} transparent opacity={dim ? 0.07 : active ? 0.32 : 0.12} depthWrite={false} depthTest={!xray} toneMapped={false} side={DoubleSide} polygonOffset polygonOffsetFactor={-4} />
             </mesh>
             <lineLoop geometry={it.edge} raycast={() => null} renderOrder={xray ? 12 : 3}>
-              <lineBasicMaterial color={color} transparent opacity={active ? 0.9 : 0.4} depthTest={!xray} toneMapped={false} />
+              <lineBasicMaterial color={color} transparent opacity={dim ? 0.25 : active ? 0.9 : 0.4} depthTest={!xray} toneMapped={false} />
             </lineLoop>
             {labels && labelled.has(it.key) && (
               <Html position={[it.c[0], it.c[1], gz(it.c[0], it.c[1]) + 2.5]} center zIndexRange={[20, 0]}>
@@ -147,7 +151,7 @@ function Zones({ fc, P, gz, color, lift, xray, labels, quiet }: { fc: FC; P: (c:
 }
 
 /** Sidewalk sheds and scaffolds: a 3 m translucent wall around the building that carries the permit. */
-function Sheds({ fc, P, gz, labels }: { fc: FC; P: (c: number[]) => XY; gz: Gz; labels: boolean }) {
+function Sheds({ fc, P, gz, labels, dim }: { fc: FC; P: (c: number[]) => XY; gz: Gz; labels: boolean; dim: boolean }) {
   const items = useMemo(() => fc.features.map((f, i) => {
     const pts = (ringsOf(f)[0] ?? []).map(P);
     if (pts.length < 3) return null;
@@ -162,7 +166,7 @@ function Sheds({ fc, P, gz, labels }: { fc: FC; P: (c: number[]) => XY; gz: Gz; 
       {items.map(it => (
         <group key={it.key}>
           <mesh geometry={it.g} raycast={() => null} renderOrder={4}>
-            <meshBasicMaterial color={COLORS.construction} transparent opacity={0.16} depthWrite={false} toneMapped={false} side={DoubleSide} />
+            <meshBasicMaterial color={dim ? QUIET : COLORS.construction} transparent opacity={dim ? 0.06 : 0.16} depthWrite={false} toneMapped={false} side={DoubleSide} />
           </mesh>
           {labels && Number(it.f.properties.m) < 160 && it.key < 4 && (
             <Html position={[it.c[0], it.c[1], it.top]} center zIndexRange={[20, 0]}>

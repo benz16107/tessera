@@ -204,6 +204,13 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
 
   const [page, setPage] = useState<Page>('set');
   const [view, setView] = useState<View>('persp');
+  // With a solved shot camera, open looking through it: the splat is sharpest from the photos' positions. World is one click away.
+  const autoShot = useRef(false);
+  useEffect(() => {
+    if (autoShot.current || !shotRow || !solved) return;
+    autoShot.current = true;
+    setView(v => (v === 'persp' ? 'shot' : v));
+  }, [shotRow, solved]);
   const [tool, setTool] = useState<Tool>('translate');
   const [selected, setSelected] = useState<bigint | null>(null);
   const [snap, setSnap] = useState(true);

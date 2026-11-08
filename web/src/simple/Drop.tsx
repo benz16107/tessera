@@ -32,9 +32,11 @@ export function LegalLinks() {
 }
 
 export default function Home() {
-  const { isActive } = useSpacetimeDB();
+  const { isActive, identity } = useSpacetimeDB();
   const [spots] = useTable(tables.spot);
-  const [mine] = useTable(tables.mySessions);
+  const [mine, mineReady] = useTable(tables.mySessions);
+  const latest = useRef({ mine, mineReady });
+  latest.current = { mine, mineReady };
   const createSession = useReducer(reducers.createSession);
   const addPhoto = useReducer(reducers.addPhoto);
   const [phase, setPhase] = useState<Phase>('idle');
@@ -45,11 +47,12 @@ export default function Home() {
   const input = useRef<HTMLInputElement>(null);
   const pending = useRef<{ u: Upload; spotId: string; before: Set<string> } | null>(null);
 
-  // createSession returns nothing: the new shoot is the one in my_sessions that was not there before the click.
+  // createSession returns nothing: the new shoot is the one I own in my_sessions that was not there before. The snapshot
+  // is taken only once my_sessions has loaded, so an older shoot arriving late is never mistaken for the new one.
   useEffect(() => {
     const p = pending.current;
     if (phase !== 'creating' || !p) return;
-    const s = [...mine].find(x => !p.before.has(String(x.id)));
+    const s = [...mine].find(x => !p.before.has(String(x.id)) && !!identity && x.owner.isEqual(identity));
     if (!s) return;
     pending.current = null;
     setPhase('adding');
@@ -59,16 +62,18 @@ export default function Home() {
       pinLat: u.gpsLat ?? undefined, pinLon: u.gpsLon ?? undefined, exifF35: u.exifF35 ?? undefined, source: 'web',
     }).then(() => navigate(viewPath(preferredView(false), s.code)))
       .catch(x => { setPhase('idle'); setErr(String(x?.message ?? x)); });
-  }, [mine, phase, addPhoto]);
+  }, [mine, phase, addPhoto, identity]);
 
-  const start = async (file: Blob, name = '') => {
+  const start = async (file: Blob, name = '', knownSpot = '') => {
     if (phase !== 'idle') return;
     setErr(''); setPhase('uploading');
     try {
       const u = await uploadPhoto(file, name);
       // The photo's GPS picks the spot; with one spot loaded, that one is the answer.
-      const spotId = u.nearestSpot ?? (spots.length === 1 ? spots[0].id : '');
-      pending.current = { u, spotId, before: new Set(mine.map(s => String(s.id))) };
+      const spotId = knownSpot || u.nearestSpot || (spots.length === 1 ? spots[0].id : '');
+      for (let i = 0; !latest.current.mineReady && i < 100; i++) await new Promise(r => setTimeout(r, 100));
+      if (!latest.current.mineReady) throw new Error('Still connecting to ShotMatch. Try again in a moment.');
+      pending.current = { u, spotId, before: new Set(latest.current.mine.map(s => String(s.id))) };
       setPhase('creating');
       const nm = localStorage.getItem(NAME_KEY) || 'Guest';
       await createSession({ spotId, title: 'New shoot', name: nm });
@@ -84,7 +89,7 @@ export default function Home() {
     try { await start(await fetchLinkedPhoto(link)); } catch (x) { setErr((x as Error).message); }
   };
   const example = async () => {
-    try { const r = await fetch('/simple/example-dumbo.jpg'); await start(await r.blob(), 'example.jpg'); }
+    try { const r = await fetch('/simple/example-dumbo.jpg'); await start(await r.blob(), 'example.jpg', 'nyc_dumbo'); }
     catch { setErr('Could not load the example photo.'); }
   };
 

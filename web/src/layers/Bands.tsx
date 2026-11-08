@@ -28,7 +28,7 @@ export default function GeoBands({ geo, x, a, b, top, zone }: Props) {
       ))}
       {bands.map((s, i) => {
         const l = Math.max(x(a), x(t(s.start))), r = Math.min(x(b), x(t(s.end)));
-        return <span key={i} className="geo-shade" style={{ left: l, width: Math.max(3, r - l) }} title={`${probe?.label}: in building shadow ${fmt(t(s.start))} to ${fmt(t(s.end))}`}>{r - l > 110 ? 'Street in shadow' : ''}</span>;
+        return <span key={i} className="geo-shade" style={{ left: l, width: Math.max(3, r - l) }} title={`${probe?.label}: in building shadow ${fmt(t(s.start))} to ${fmt(t(s.end))}`}>{r - l > 150 ? `Street in building shadow from ${fmt(t(s.start))}` : r - l > 70 ? 'Street in shadow' : ''}</span>;
       })}
       {tides.map(h => (
         <span key={h.t} className="geo-tide" data-type={h.type} style={{ left: x(t(h.t)) }} title={`${h.type === 'L' ? 'Low' : 'High'} tide ${fmt(t(h.t))}, ${h.ft.toFixed(1)} ft (${d.summary.tides?.station?.name})`}>

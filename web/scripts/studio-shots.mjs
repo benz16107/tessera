@@ -1,7 +1,7 @@
 // Screenshots of the studio in a GPU-backed headless Chrome (ANGLE on Vulkan), for splat views the software renderer
 // can't draw at a usable frame rate.
 //   node scripts/studio-shots.mjs <playwright-core dir> <url> <out-prefix> [steps]
-// steps (comma list): main, person, camera, add, generate, timeline, focus. Prints the measured frame rate.
+// steps (comma list): main (the opening view), world, person, camera, add, generate, timeline, focus. Prints the measured frame rate.
 const [, , pwDir, url, out, stepsArg = 'main'] = process.argv;
 const { chromium } = await import(`${pwDir}/index.mjs`);
 const browser = await chromium.launch({
@@ -24,6 +24,7 @@ await page.keyboard.press('Escape');
 const S = n => page.screenshot({ path: `${out}${n}.png` });
 for (const step of stepsArg.split(',')) {
   if (step === 'main') { await page.waitForTimeout(500); await S(''); }
+  if (step === 'world') { await page.keyboard.press('5'); await page.waitForTimeout(3000); await S('-world'); }
   if (step === 'person') { await page.locator('.st-ol-row', { hasText: 'Person' }).nth(0).locator('button').first().click(); await page.waitForTimeout(1500); await S('-person'); await page.keyboard.press('Escape'); }
   if (step === 'camera') { await page.keyboard.press('0'); await page.waitForTimeout(6000); await S('-camera'); await page.keyboard.press('5'); await page.waitForTimeout(2000); }
   if (step === 'add') { await page.keyboard.press('Shift+A'); await page.waitForTimeout(800); await S('-add'); }

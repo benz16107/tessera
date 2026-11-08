@@ -60,7 +60,7 @@ export function ViewSwitch({ code, current, selected = null, onArrive }: Props) 
   };
 
   return (
-    <div ref={el} className="vswitch" role="group" aria-label="View">
+    <div ref={el} className="vswitch" role="group" aria-label="Simple or Studio view">
       {(['simple', 'studio'] as const).map(v => (
         <button key={v} type="button" aria-pressed={v === current} onClick={() => go(v)}>{v === 'simple' ? 'Simple' : 'Studio'}</button>
       ))}

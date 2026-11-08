@@ -201,6 +201,7 @@
 .s-status[data-bad] { color: var(--red); }
 .s-make { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--line); }
 .s-make .s-muted { max-width: 380px; }
+.s-make-note { display: none; }
 
 /* Take me there */
 .s-howto { margin: 16px 0 24px; padding-left: 22px; display: grid; gap: 8px; font-size: 17px; }
@@ -346,7 +347,9 @@
   .s-selchip { right: 12px; top: 56px; }
   .s-compare figure > img, .s-yourimg { max-height: 40svh; }
   .s-presets .s-chip { flex: 1 1 calc(50% - 4px); justify-content: flex-start; }
-  .s-make { flex-direction: column; align-items: stretch; position: sticky; bottom: 0; background: var(--bg); padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+  .s-make-note { display: block; margin-top: 20px; }
+  .s-make .s-muted { display: none; }
+  .s-make { position: sticky; bottom: 0; z-index: 3; margin-top: 12px; padding-top: 12px; border-top: 0; background: linear-gradient(transparent, var(--bg) 14px); padding-bottom: max(12px, env(safe-area-inset-bottom)); }
   .s-make .s-btn { width: 100%; }
   .s-top-home { height: 64px; padding: 0 16px; }
   .s-home-main { padding-top: 32px; }
