@@ -492,7 +492,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
       else if (k === 's') setTool('scale');
       else if (k === 'w' || k === 'q') setTool('select');
       else if (k === 'm') setTool(v => (v === 'measure' ? 'select' : 'measure'));
-      else if (k === 'x' || k === 'delete') deleteSelected();
+      else if (k === 'x' || k === 'delete' || k === 'backspace') deleteSelected(); // a Mac's delete key sends Backspace
       else if (k === 'f') focusSelection();
       else if (k === 'l') setLaser(v => !v);
       else if (k === 'h' && selRow) editRow(selRow, { ...stateOf(selRow), visible: !selRow.visible }, '');
