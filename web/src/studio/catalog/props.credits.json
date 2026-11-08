@@ -1,0 +1,138 @@
+{
+ "car": {
+  "id": "car",
+  "title": "Car",
+  "author": "Quaternius",
+  "license": "CC0 1.0",
+  "page": "https://poly.pizza/m/Cz6yDaUcM9",
+  "source": "https://static.poly.pizza/59a67a6c-490e-472e-bae6-5a4d2541f1c7.glb"
+ },
+ "taxi": {
+  "id": "taxi",
+  "title": "Taxi",
+  "author": "Quaternius",
+  "license": "CC0 1.0",
+  "page": "https://poly.pizza/m/x43lOScTpN",
+  "source": "https://static.poly.pizza/3622a7bf-f213-44c8-8949-c1bdd1e961a9.glb"
+ },
+ "suv": {
+  "id": "suv",
+  "title": "SUV",
+  "author": "Quaternius",
+  "license": "CC0 1.0",
+  "page": "https://poly.pizza/m/xsMtZhBkxL",
+  "source": "https://static.poly.pizza/e5fbf2ee-5c9e-47d5-8ab6-80cacd463baa.glb"
+ },
+ "bike": {
+  "id": "bike",
+  "title": "Bike",
+  "author": "Zsky",
+  "license": "CC BY 3.0",
+  "page": "https://poly.pizza/m/NHjJnFYYCc",
+  "source": "https://static.poly.pizza/babd9a85-b6f5-4101-90f3-301dc0e1dc81.glb"
+ },
+ "bench": {
+  "id": "bench",
+  "title": "Bench",
+  "author": "Quaternius",
+  "license": "CC0 1.0",
+  "page": "https://poly.pizza/m/jLxjFxFRpw",
+  "source": "https://static.poly.pizza/1361c268-20f7-4e73-a931-ce434c6b503e.glb"
+ },
+ "chair": {
+  "id": "chair",
+  "title": "Chair",
+  "author": "Quaternius",
+  "license": "CC0 1.0",
+  "page": "https://poly.pizza/m/iMNqRzPwwe",
+  "source": "https://static.poly.pizza/84ecc6a3-2751-4f50-912a-b9f4ff033d7a.glb"
+ },
+ "table": {
+  "id": "table",
+  "title": "Small Table",
+  "author": "Quaternius",
+  "license": "CC0 1.0",
+  "page": "https://poly.pizza/m/rAEBvfb1FT",
+  "source": "https://static.poly.pizza/0f319f3b-b0d6-4691-bae5-c6c6e612df99.glb"
+ },
+ "parasol": {
+  "id": "parasol",
+  "title": "Parasol",
+  "author": "Zsky",
+  "license": "CC BY 3.0",
+  "page": "https://poly.pizza/m/FLEbO2jluO",
+  "source": "https://static.poly.pizza/5e470737-782d-446b-8994-bf6e26e96f55.glb"
+ },
+ "flowers": {
+  "id": "flowers",
+  "title": "Flowers",
+  "author": "Quaternius",
+  "license": "CC0 1.0",
+  "page": "https://poly.pizza/m/NBUxHir6FJ",
+  "source": "https://static.poly.pizza/c25cb5dc-3cd3-470c-a08c-045af0c0fe3d.glb"
+ },
+ "potted-plant": {
+  "id": "potted-plant",
+  "title": "Potted Plant",
+  "author": "Kenney",
+  "license": "CC0 1.0",
+  "page": "https://poly.pizza/m/23Dx9CC95C",
+  "source": "https://static.poly.pizza/6482596c-6423-415d-bfd5-e66bcc546642.glb"
+ },
+ "streetlight": {
+  "id": "streetlight",
+  "title": "Streetlight",
+  "author": "Quaternius",
+  "license": "CC0 1.0",
+  "page": "https://poly.pizza/m/Bq1Qj4DAre",
+  "source": "https://static.poly.pizza/7576487c-00cd-43cd-93a7-d2c217fa8c25.glb"
+ },
+ "traffic-light": {
+  "id": "traffic-light",
+  "title": "Traffic Light",
+  "author": "Quaternius",
+  "license": "CC0 1.0",
+  "page": "https://poly.pizza/m/apWcPbwhlq",
+  "source": "https://static.poly.pizza/25b4c51b-bcab-476e-9152-94d5049b27ee.glb"
+ },
+ "cone": {
+  "id": "cone",
+  "title": "Traffic Cone",
+  "author": "Quaternius",
+  "license": "CC0 1.0",
+  "page": "https://poly.pizza/m/aDIrUbMbW3",
+  "source": "https://static.poly.pizza/846de5e8-b6bf-4f84-ba21-54187a473c74.glb"
+ },
+ "hydrant": {
+  "id": "hydrant",
+  "title": "Fire Hydrant",
+  "author": "Quaternius",
+  "license": "CC0 1.0",
+  "page": "https://poly.pizza/m/DKkMQbEklp",
+  "source": "https://static.poly.pizza/0e892859-5ccd-4f9a-aa56-c7a9adb6f3de.glb"
+ },
+ "trash-can": {
+  "id": "trash-can",
+  "title": "Trashcan",
+  "author": "Quaternius",
+  "license": "CC0 1.0",
+  "page": "https://poly.pizza/m/vlVx279xut",
+  "source": "https://static.poly.pizza/9586bdcb-a768-4915-a8c6-8de8e4b0a4c6.glb"
+ },
+ "town-sign": {
+  "id": "town-sign",
+  "title": "Town Sign",
+  "author": "Quaternius",
+  "license": "CC0 1.0",
+  "page": "https://poly.pizza/m/VSZubp0ru3",
+  "source": "https://static.poly.pizza/37de9cf3-cc95-4658-96b1-b5872665ffbb.glb"
+ },
+ "arrow-sign": {
+  "id": "arrow-sign",
+  "title": "Arrow Sign",
+  "author": "Quaternius",
+  "license": "CC0 1.0",
+  "page": "https://poly.pizza/m/dwmvPHHCdq",
+  "source": "https://static.poly.pizza/8f3134c7-f206-41e1-9c67-55f3fe566490.glb"
+ }
+}

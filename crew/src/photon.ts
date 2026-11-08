@@ -7,6 +7,7 @@ import { basename } from 'node:path';
 import { conn, until } from './stdb.ts';
 import { PUBLIC_URL, secret } from './config.ts';
 import { ingest } from './images.ts';
+import { transcribe } from './models.ts';
 import { handleInbound } from './agent.ts';
 import { sharedStore, type ThreadInfo } from './store.ts';
 import { attachmentBody, parseInbound, type Inbound } from './photon-event.ts';
@@ -86,14 +87,16 @@ async function handle(m: Inbound) {
   const { t, isNew } = await sessionFor(m);
   const sessionId = BigInt(t.sessionId);
 
-  // HEIC is fine: ingest converts it. Only the first image of a message is used.
-  let upload;
+  // HEIC is fine: ingest converts it. Only the first image of a message is used. A voice note becomes message text
+  // (Vultr speech to text), so a spoken "make it 85mm" works like a typed one.
+  let upload, heard = '';
   for (const id of m.attachmentIds) {
-    const meta = await api('GET', `/attachments/${id}`, undefined, false);
-    if (!String(meta.contentType ?? '').startsWith('image/')) continue;
-    upload = await ingest(await api('GET', `/attachments/${id}/content`, undefined, false));
-    break;
+    const type = String((await api('GET', `/attachments/${id}`, undefined, false)).contentType ?? '');
+    if (type.startsWith('image/') && !upload) upload = await ingest(await api('GET', `/attachments/${id}/content`, undefined, false));
+    else if (type.startsWith('audio/') && !heard)
+      heard = (await transcribe(await api('GET', `/attachments/${id}/content`, undefined, false)).catch(e => { console.warn(`transcribe: ${e.message}`); return null; })) ?? '';
   }
+  if (heard) m.text = [m.text, heard].filter(Boolean).join('\n');
   await conn.reducers.postMessage({
     sessionId, channel: t.channel, threadId: t.chatId, externalId: m.messageId, parentExternalId: m.parentId, direction: 'in',
     author: m.handle.slice(0, 80), text: m.text.slice(0, 4000), imageUrl: upload?.url ?? '',

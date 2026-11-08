@@ -1,5 +1,10 @@
 // Calls to hosted models. Keys are read at call time, so dropping a key file in turns a feature on without a restart.
-import { MODELS, NVIDIA_BASE, NVIDIA_GENAI_BASE, secret } from './config.ts';
+import { execFile } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { promisify } from 'node:util';
+import { MODELS, NVIDIA_BASE, NVIDIA_GENAI_BASE, VULTR_INFERENCE_BASE, secret } from './config.ts';
 
 export type ChatMsg = { role: 'system' | 'user' | 'assistant' | 'tool'; content: any; tool_calls?: any[]; tool_call_id?: string };
 
@@ -101,12 +106,14 @@ let nvidiaEditModel: string | null | undefined; // undefined = not probed yet, n
 async function nvidiaEdit(key: string, jpeg: Buffer, prompt: string): Promise<Buffer | null> {
   const candidates = nvidiaEditModel ? [nvidiaEditModel] : nvidiaEditModel === null ? [] : MODELS.nvidiaEdit;
   for (const model of candidates) {
+    // flux.1-kontext-dev stopped answering at all on 2026-11-07 (nothing in 150 s), so while probing a timeout counts as "not accepted".
     const r = await fetch(`${NVIDIA_GENAI_BASE}/${model}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'application/json', authorization: `Bearer ${key}` },
       body: JSON.stringify({ prompt, image: `data:image/jpeg;base64,${jpeg.toString('base64')}`, steps: 30, seed: 0 }),
-      signal: AbortSignal.timeout(150_000),
-    });
+      signal: AbortSignal.timeout(nvidiaEditModel ? 150_000 : 30_000),
+    }).catch(e => { console.warn(`image edit ${model}: ${(e as Error).message}, trying the next`); return null; });
+    if (!r) continue;
     if (r.status === 404 || r.status === 403 || r.status === 422) { console.warn(`image edit ${model}: HTTP ${r.status}, trying the next`); continue; }
     if (!r.ok) throw new Error(`${model} HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
     const j: any = await r.json();
@@ -119,30 +126,56 @@ async function nvidiaEdit(key: string, jpeg: Buffer, prompt: string): Promise<Bu
   return null;
 }
 
-async function openaiEdit(key: string, jpeg: Buffer, prompt: string, size: string): Promise<Buffer> {
+/** OpenAI-style multipart /images/edits, which both OpenAI and Vultr Serverless Inference accept. */
+async function imagesEdit(base: string, key: string, model: string, jpeg: Buffer, prompt: string, size: string, extra: Record<string, string> = {}): Promise<Buffer> {
   const form = new FormData();
-  form.set('model', MODELS.openaiEdit);
-  form.set('prompt', prompt);
-  form.set('size', size);
+  for (const [k, v] of Object.entries({ model, prompt, size, ...extra })) form.set(k, v);
   form.set('image', new Blob([jpeg], { type: 'image/jpeg' }), 'photo.jpg');
-  const r = await fetch('https://api.openai.com/v1/images/edits', {
+  const r = await fetch(`${base}/images/edits`, {
     method: 'POST', headers: { authorization: `Bearer ${key}` }, body: form, signal: AbortSignal.timeout(170_000),
   });
-  if (!r.ok) throw new Error(`${MODELS.openaiEdit} HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  if (!r.ok) throw new Error(`${model} HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
   const j: any = await r.json();
   return Buffer.from(j.data[0].b64_json, 'base64');
 }
 
-/** Edits the photo. NVIDIA-hosted first, OpenAI as the fallback. Returns the image bytes and which model made it. */
+// 30 steps with guidance 4 placed people more naturally than the 6-step default, for 14 s instead of 4 s.
+const VULTR_EDIT = { response_format: 'b64_json', output_format: 'jpeg', steps: '30', guidance_scale: '4' };
+
+/** Edits the photo: NVIDIA-hosted if a free endpoint takes user photos, then Vultr, then OpenAI. Returns the bytes and the model. */
 export async function editImage(jpeg: Buffer, prompt: string, size: string): Promise<{ image: Buffer; model: string }> {
   const nv = secret('nvidia_key');
   if (nv) {
     const out = await nvidiaEdit(nv, jpeg, prompt);
     if (out) return { image: out, model: nvidiaEditModel! };
   }
+  const vk = secret('vultr_inference_key');
+  if (vk) {
+    try { return { image: await imagesEdit(VULTR_INFERENCE_BASE, vk, MODELS.vultrEdit, jpeg, prompt, size, VULTR_EDIT), model: MODELS.vultrEdit }; }
+    catch (e) { console.warn(`${(e as Error).message}; falling back to ${MODELS.openaiEdit}`); }
+  }
   const oa = secret('openai_key');
-  if (!oa) throw new Error('no image edit model: set ~/.config/shotmatch/nvidia_key or openai_key');
-  return { image: await openaiEdit(oa, jpeg, prompt, size), model: MODELS.openaiEdit };
+  if (!oa) throw new Error('no image edit model: set ~/.config/shotmatch/vultr_inference_key or openai_key');
+  return { image: await imagesEdit('https://api.openai.com/v1', oa, MODELS.openaiEdit, jpeg, prompt, size), model: MODELS.openaiEdit };
+}
+
+/** Speech to text on Vultr Serverless Inference; null when the key is not set. ffmpeg turns any format (Telegram's ogg, iMessage's CAF) into mp3. */
+export async function transcribe(audio: Buffer): Promise<string | null> {
+  const key = secret('vultr_inference_key');
+  if (!key) return null;
+  const dir = mkdtempSync(join(tmpdir(), 'voice-'));
+  let mp3: Buffer;
+  try {
+    writeFileSync(join(dir, 'in'), audio);
+    await promisify(execFile)('ffmpeg', ['-loglevel', 'error', '-i', join(dir, 'in'), '-ac', '1', '-ar', '16000', join(dir, 'out.mp3')], { timeout: 60_000 });
+    mp3 = readFileSync(join(dir, 'out.mp3'));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+  const form = new FormData();
+  form.set('model', MODELS.transcribe);
+  form.set('file', new Blob([mp3], { type: 'audio/mpeg' }), 'voice.mp3');
+  const r = await fetch(`${VULTR_INFERENCE_BASE}/audio/transcriptions`, { method: 'POST', headers: { authorization: `Bearer ${key}` }, body: form, signal: AbortSignal.timeout(120_000) });
+  if (!r.ok) throw new Error(`${MODELS.transcribe} HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  return String(((await r.json()) as any).text ?? '').trim();
 }
 
 /** Logs which configured NVIDIA chat model ids the key cannot see. Runs once at start when the key exists. */

@@ -1,0 +1,7 @@
+# Caddy on the Vultr box (shotmatch-app): HTTPS with an automatic certificate, everything to the crew.
+# Install: sudo cp ops/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy
+# Swap the sslip.io name for the real domain once it points here (ops/VULTR.md).
+104-238-146-229.sslip.io {
+	encode gzip
+	reverse_proxy 127.0.0.1:8790
+}

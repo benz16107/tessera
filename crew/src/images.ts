@@ -1,10 +1,11 @@
 import sharp from 'sharp';
 import exifr from 'exifr';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join, basename } from 'node:path';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join, basename, dirname } from 'node:path';
 import { PHOTOS_DIR, PREVIEWS_DIR, loadSpots } from './config.ts';
 import { nearestSpot } from './geo.ts';
+import { deleteObject, getObject, putObject } from './s3.ts';
 
 export const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/heic', 'image/heif', 'image/webp'];
 
@@ -14,6 +15,31 @@ const isHeic = (b: Buffer) => b.length > 12 && b.toString('ascii', 4, 8) === 'ft
 export function localPath(url: string): string | null {
   const m = /^\/(photo|preview)\/([A-Za-z0-9_-]+\.(?:jpg|png))$/.exec(url);
   return m ? join(m[1] === 'photo' ? PHOTOS_DIR : PREVIEWS_DIR, m[2]) : null;
+}
+
+/** Writes a stored image to disk and to the bucket. A bucket failure is logged, not thrown: the disk copy still serves. */
+export async function saveImage(url: string, file: string, data: Buffer) {
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, data);
+  await putObject(url.slice(1), data, 'image/jpeg').catch(e => console.warn(`${(e as Error).message}; kept on disk only`));
+}
+
+/** The disk copy of a stored image, pulled from the bucket when this box lacks it (another crew box saved it). Null if neither has it. */
+export async function ensureLocal(url: string, file = localPath(url)): Promise<string | null> {
+  if (!file) return null;
+  if (existsSync(file)) return file;
+  const data = await getObject(url.slice(1)).catch(e => { console.warn((e as Error).message); return null; });
+  if (!data) return null;
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, data);
+  return file;
+}
+
+/** Deletes a stored image from disk and from the bucket (refused uploads keep no copy anywhere). */
+export async function forget(url: string) {
+  const file = localPath(url);
+  if (file) rmSync(file, { force: true });
+  await deleteObject(url.slice(1)).catch(e => console.warn((e as Error).message));
 }
 
 export type Ingested = {
@@ -31,12 +57,11 @@ export async function ingest(buf: Buffer): Promise<Ingested> {
     src = Buffer.from(await convert({ buffer: buf, format: 'JPEG', quality: 0.92 }));
   }
   const id = randomUUID().replace(/-/g, '').slice(0, 16);
-  mkdirSync(PHOTOS_DIR, { recursive: true });
   const path = join(PHOTOS_DIR, `${id}.jpg`);
   // libheif applies HEIC's own rotation box while decoding; rotate() handles JPEG/PNG EXIF orientation.
   const { data, info } = await sharp(src, { failOn: 'error' }).rotate().resize({ width: 2048, height: 2048, fit: 'inside', withoutEnlargement: true })
     .jpeg({ quality: 90 }).toBuffer({ resolveWithObject: true });
-  writeFileSync(path, data);
+  await saveImage(`/photo/${id}.jpg`, path, data);
 
   let thumb = '';
   for (const q of [70, 55, 40, 25]) {

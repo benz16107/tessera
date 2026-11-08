@@ -13,13 +13,15 @@ export const SECRETS = join(homedir(), '.config/shotmatch');
 export const PORT = Number(process.env.PORT ?? 8790);
 export const SPACETIME_HOST = process.env.SPACETIME_HOST ?? 'wss://maincloud.spacetimedb.com';
 export const DB_NAME = process.env.DB_NAME ?? 'shotmatch';
-export const PUBLIC_URL = process.env.PUBLIC_URL ?? 'https://linuxbox.<tailnet>.ts.net:10000';
+// The Vultr box (ops/VULTR.md). ops/fallback-linuxbox.sh overrides it with the Tailscale funnel URL.
+export const PUBLIC_URL = process.env.PUBLIC_URL ?? 'https://104-238-146-229.sslip.io';
 export const SOLVER_URL = process.env.SOLVER_URL ?? 'http://127.0.0.1:8791';
 export const MAX_UPLOAD = 25 * 1024 * 1024;
 
 // Every hosted model id lives here, so a renamed endpoint is a one-line change.
 export const NVIDIA_BASE = 'https://integrate.api.nvidia.com/v1';
 export const NVIDIA_GENAI_BASE = 'https://ai.api.nvidia.com/v1/genai';
+export const VULTR_INFERENCE_BASE = 'https://api.vultrinference.com/v1';
 export const MODELS = {
   safety: 'nvidia/nemotron-3.5-content-safety',
   agent: 'nvidia/nemotron-3.5-super-vl-120b-a12b',
@@ -27,7 +29,12 @@ export const MODELS = {
   // Tried in order; the first endpoint the key accepts is kept for the life of the process. Checked 2026-11-07: the
   // free kontext-dev and klein endpoints answer 422 "Expected: example_id" for user images, qwen-image-edit is 404, so OpenAI runs.
   nvidiaEdit: ['black-forest-labs/flux.1-kontext-dev', 'qwen/qwen-image-edit', 'black-forest-labs/flux.2-klein-4b'],
+  // Vultr Serverless Inference (OpenAI-compatible, VULTR_INFERENCE_BASE). Edits keep the photo's geometry far better than
+  // gpt-image-2 and take 4 to 14 s instead of about 170 s (compared 2026-11-07). Evaluation-only license, fine for the hackathon.
+  vultrEdit: 'qwen-image-2.1',
   openaiEdit: 'gpt-image-2',
+  // Voice notes that arrive through Photon (Telegram, iMessage), converted to mp3 with ffmpeg first.
+  transcribe: 'whisper-large-v3-turbo',
   // Text and images share one vector space (checked 2026-11-07: both return 2048-d vectors).
   embed: 'nvidia/llama-nemotron-embed-vl-1b-v2',
   // Listed on the key but 404 "function not found" on 2026-11-07; physical_check skips itself while it 404s.

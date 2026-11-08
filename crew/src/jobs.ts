@@ -1,12 +1,11 @@
 // Claims queued solve and preview jobs and runs them. A worker that dies mid-job simply stops renewing
 // its lease; the module's sweep requeues the job. So nothing here turns a dying process into "failed".
 import sharp from 'sharp';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, basename } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { conn, step, logStep } from './stdb.ts';
 import { PREVIEWS_DIR, SOLVER_URL, loadSpots } from './config.ts';
-import { dataUrl, localPath } from './images.ts';
+import { dataUrl, ensureLocal, forget, saveImage } from './images.ts';
 import { safetyCheck, readLens, editImage, solverRange, physicalCheck, FINE_TUNED } from './models.ts';
 import { sunWindows, windowWords } from './sun.ts';
 import { cropForF35, lightWords, placementWords } from './geo.ts';
@@ -113,8 +112,8 @@ async function runSolve(j: SolveJob, spotLoaded: boolean) {
   try {
     if (!spotLoaded) return await finish(false, `We haven't mapped the spot "${j.spotId}" yet, so this photo can't be placed.`);
     const photo = conn.db.photo.id.find(j.photoId);
-    const path = photo && localPath(photo.url);
-    if (!path || !existsSync(path)) return await finish(false, 'The original photo is not on this crew box.');
+    const path = photo && (await ensureLocal(photo.url));
+    if (!path) return await finish(false, 'The original photo is not on this crew box or in the bucket.');
     const img = await dataUrl(path);
 
     report('safety check', true);
@@ -123,7 +122,7 @@ async function runSolve(j: SolveJob, spotLoaded: boolean) {
     if (safety && !safety.safe) {
       // Keep no exact location for refused uploads: fail the job (so clients get the toast), then drop the file and every row.
       await finish(false, 'Refused by the safety check. ShotMatch only places photos of public places, not homes or photos aimed at a person.');
-      rmSync(path, { force: true });
+      await forget(photo!.url);
       await conn.reducers.deletePhoto({ photoId: j.photoId }).catch(warn('deletePhoto'));
       return;
     }
@@ -193,8 +192,8 @@ async function runPreview(j: PreviewJob) {
   const fail = (error: string) => conn.reducers.finishPreview({ jobId, ok: false, imageUrl: '', error: error.slice(0, 480) });
   try {
     const photo = conn.db.photo.id.find(j.photoId);
-    const path = photo && localPath(photo.url);
-    if (!path || !existsSync(path)) return await fail('The original photo is not on this crew box.');
+    const path = photo && (await ensureLocal(photo.url));
+    if (!path) return await fail('The original photo is not on this crew box or in the bucket.');
     const solved = conn.db.solveResult.photoId.find(j.photoId);
     const baseF35 = solved && solved.confidence !== 'none' ? solved.pose.f35 : photo!.exifF35;
     const heading = solved && solved.confidence !== 'none' ? solved.pose.heading : undefined;
@@ -212,15 +211,15 @@ async function runPreview(j: PreviewJob) {
     const ask = previewInstruction(j, heading, placed);
     let model = 'crop only';
     if (ask) {
-      const prompt = `Edit this photo. Keep the same camera position, framing, perspective, lens and buildings exactly; change only what is asked. ${ask}. Photorealistic, no text or watermark.`;
+      // The ask goes first: Qwen-Image ignores the edit when the prompt opens with "keep everything the same" (tested 2026-11-07).
+      const prompt = `${ask}. Keep the same camera position, framing, perspective, lens and buildings. Photorealistic, no text or watermark.`;
       const renew = setInterval(() => conn.reducers.renewPreview({ jobId }).catch(warn('renewPreview')), 60_000);
       const r = await editImage(out, prompt, editSize(w, h)).finally(() => clearInterval(renew));
       model = r.model;
       out = await sharp(r.image).resize({ width: w, height: h, fit: 'fill' }).jpeg({ quality: 88 }).toBuffer();
     }
-    mkdirSync(PREVIEWS_DIR, { recursive: true });
     const file = `${randomUUID().replace(/-/g, '').slice(0, 16)}.jpg`;
-    writeFileSync(join(PREVIEWS_DIR, file), out);
+    await saveImage(`/preview/${file}`, join(PREVIEWS_DIR, file), out);
     await logStep(j.sessionId, 'make_preview',
       JSON.stringify({ f35: j.f35, people: j.people, sun: j.sunAzimuth !== undefined ? [Math.round(j.sunAzimuth), Math.round(j.sunAltitude ?? 0)] : null, text: j.instruction.slice(0, 80) }),
       `${crop ? `cropped ${Math.round(baseF35!)} to ${Math.round(j.f35!)} mm; ` : ''}${model}`, Date.now() - t0);
