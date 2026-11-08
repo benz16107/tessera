@@ -1018,7 +1018,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               </button>
             )}
             {focusTarget && <p className="st-focuslabel" style={{ left: fit.rect.x + fit.rect.w / 2, top: fit.rect.y + fit.rect.h * 0.62 }}>Focus {shot.focusM.toFixed(1)} m{Math.abs(focusTarget.distance - shot.focusM) < 0.5 ? ` · ${focusTarget.name}` : ''}</p>}
-            {photoBack && <p className="st-photocredit" style={{ left: fit.rect.x + 10, top: fit.rect.y + fit.rect.h - 28 }}>Your photo · {frame.w} × {frame.h}</p>}
+            {photoBack && fit.rect.w >= 300 && <p className="st-photocredit" style={{ left: fit.rect.x + 10, top: fit.rect.y + fit.rect.h - 28 }}>Your photo · {frame.w} × {frame.h}</p>}
             <div className="st-caption" style={{ left: fit.rect.x, top: fit.rect.y + fit.rect.h + 12, width: fit.rect.w }}>
               <b>{compare ? `B · ${settingsLabel}` : `Through ${shotName}: ${photoBack ? 'your photo with your objects and lights' : 'the 3D world with your objects'}`}</b>
               <span>{photoBack && graded ? `Preview grade. Render relights the photo${cropNote ? ` · ${cropNote}` : ''}` : cropNote ?? 'Lens, aperture, shutter and ISO behave like the real camera'}</span>

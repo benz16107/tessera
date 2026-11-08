@@ -74,7 +74,8 @@ export default function GeoScene({ geo, origin, groundAt, labels = true, overlay
       {geo.on('construction') && L.construction && <Sheds fc={L.construction} P={P} gz={groundAt} labels={labels} dim={!loud} />}
       {geo.on('alerts') && L.alerts && <Alerts fc={L.alerts} P={P} gz={groundAt} labels={labels} />}
       {geo.on('pois') && L.pois && <Pins fc={L.pois} P={P} gz={groundAt} labels={quiet} />}
-      {geo.on('photographers') && L.photographers && <Heat fc={L.photographers} P={P} gz={groundAt} high={high} hotspots={quiet ? d.summary.photographers?.hotspots ?? [] : []} />}
+      {/* From the aerial default view dozens of photo dots read as noise: in 3D they show only with the Conditions panel open (the 2D Map always draws them). */}
+      {geo.on('photographers') && L.photographers && labels && <Heat fc={L.photographers} P={P} gz={groundAt} high={high} hotspots={quiet ? d.summary.photographers?.hotspots ?? [] : []} />}
       {geo.on('shadow') && labels && d.summary.shadow?.probes.map((pr, i, all) => <Probe key={pr.label} probe={pr} label={i === all.length - 1} xray={high} sunUp={(d.summary.shadow?.sun.alt ?? 1) > 0} P={P} gz={groundAt} />)}
       </>}
     </group>
