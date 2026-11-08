@@ -26,7 +26,7 @@ under "Video": https://tesseraphoto.com/tracks/
 All in `site/public/devpost/` and served at https://tesseraphoto.com/devpost/. The first is the thumbnail.
 Regenerate with `node site/scripts/devpost-images.mjs`.
 
-1. `1-studio-camera.jpg`. Caption: "Studio, looking through Cam A: your photo as the backplate, two placed people, focus on a person, the horizon marked in the margin".
+1. `1-studio-camera.jpg`. Caption: "Studio, looking through Cam A over Google's 3D city at the spot: two placed people, focus on a person, the horizon marked in the margin".
 2. `2-simple-found.jpg`. Caption: "Simple: where to stand, which way to face, and the lens as 2.2x on your iPhone".
 3. `3-render.jpg`. Caption: "Through Cam A beside a fresh AI render of the same two people, labelled AI interpretation, with Nemotron's physics check on the right".
 4. `4-phones.jpg`. Caption: "The four steps on a phone: drop, found it, make it yours, take me there".

@@ -2,7 +2,7 @@
 
 Stand where the photo was taken, then make the shot yours. Drop a photo of a place and Tessera finds where the photographer stood, which way they faced and what lens they used, rebuilds the place as a 3D set, and your group plans its own version there together: in a browser, in a Telegram chat or by phone. Built at HackUTD 2026.
 
-![Studio looking through the solved camera, Cam A: the original photo as the backplate, two placed people, a 53 mm lens at f/2.8 focused on a person, and the golden hour band on the timeline](site/public/devpost/1-studio-camera.jpg)
+![Studio looking through the solved camera, Cam A, over the Google Photorealistic 3D Tiles of Washington St: two placed people, a 42 mm lens at f/2.8 focused on a person, and the golden hour band on the timeline](site/public/devpost/1-studio-camera.jpg)
 
 - **Try it:** the demo shoot at the Manhattan Bridge view in DUMBO, in [Simple](https://app.tesseraphoto.com/p/A9TVAN) or in [Studio](https://app.tesseraphoto.com/studio/A9TVAN)
 - **Site and docs:** https://tesseraphoto.com
