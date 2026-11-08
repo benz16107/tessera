@@ -1,0 +1,35 @@
+I built the Figma file: three design directions, each with the same four frames, a cover page and a note per direction. I took two screenshot review passes and fixed what they turned up. The report below is also saved to `design/REPORT.md`, and the screenshots of all 12 frames plus the cover are in `design/directions/`.
+
+**Figma file:** https://www.figma.com/design/QrpLuCwKGGFFBSDRMd7VqS (in benz.zhou's team, drafts folder)
+
+| Frame | A · Viewfinder | B · Darkroom | C · Call sheet |
+|---|---|---|---|
+| 1 Drop | 3:2 | 6:2 | 10:2 |
+| 2 Found it | 3:36 | 6:151 | 10:38 |
+| 3 Make it yours | 4:2 | 7:2 | 11:2 |
+| 4 Scout (both phones) | 4:113 | 8:2 | 11:129 |
+| Walking / you're there | 4:114 / 4:155 | 8:3 / 8:156 | 11:130 / 11:172 |
+
+The cover frame is 13:37.
+
+**What makes each one different**
+- **A · Viewfinder (light):** the photo fills the left of the screen and the answer is set in large SF Pro beside it. Blue is used only for the main button and the direction cues on the scout phone.
+- **B · Darkroom (dark):** the answer is laid out like camera instruments around the 3D view. A compass ring shows the 53 mm field of view as a cone, a lens ring slides past a fixed amber marker, and tick dials control the photo/3D blend and the ghost.
+- **C · Call sheet (editorial):** the answer is a ruled film-crew shot card with facing, lens, "call time" (the next good light), the mark and one line of notes. Photos look like bordered prints and the placed people are marks on the 3D view.
+
+All three use only the numbers from the brief and pass AA contrast. Every 3D view has the Google Maps logo and credit line, every frame with the photo has its credit, and every AI preview says "AI interpretation." I added Privacy and Terms links to the Drop screens because Ben's design checklist always flags their absence.
+
+**What I couldn't do, or changed**
+- **Fonts:** SF Pro is available in Figma, so I used it directly. None of the banned fonts appear.
+- **3D screenshot:** I removed the old person icons and logo strip by filling them in from the surrounding image. I also moved and scaled the 3D layer by about 12% so it lines up under the photo. A real solve may not line up this neatly.
+- **Google Maps logo:** I cut it from the old screenshot, so it's low resolution. Use Google's official file when building.
+- **AI preview:** Figma AI generated it from a text prompt, which used one call of your Figma AI credits. It was not made from your photo, unlike the real feature.
+- **Scout camera:** there's no real camera frame, so the camera view is the same photo shifted out of line with the ghost.
+- **Numbers I made up or worked out:** the people at 15 m, a custom light time of 6:52 AM, the sun angle drawn in the dials, "overcast" on the original photo, and "GPS ±5 m" taken from the old scout screen. "2.2× on iPhone" implies a 24 mm main camera.
+- **Not drawn:** the failure state ("Only 73 matches"), since it wasn't one of the four frames.
+- **Screenshot size:** the Figma export only goes up to 1x, so the screenshots aren't 2x.
+
+**My pick: B, Darkroom.** It's the most memorable, and its controls explain the answer instead of decorating it. The dark background also makes the 3D view and the photos the brightest things on screen. If it reads too dense on a projector, fall back to A and borrow its larger type for facing and lens.
+
+The cover shows copies of the three Found it frames, not linked versions, so it needs re-copying if those frames change. I did not test how the frames look on a projector.
+exit 0
