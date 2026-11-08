@@ -41,7 +41,7 @@ These are findings from both tests. Each one becomes a rule in the new code.
 - **A spot is required.** Pin, EXIF GPS or a named spot picks the model. Photos of unmodeled places get the lens read and an honest "we haven't mapped this spot".
 - **Original capture time is out.** Reading time from lighting missed by 52 to 123 degrees. The "light" answer is forward planning only.
 - **Lens means field of view.** The answer is the 35 mm equivalent of the final image. It does not identify the camera body, and a crop changes it.
-- **Five taps rescue normal lenses, not telephoto.** The manual fallback is for "Check this" on normal lenses.
+- **No 5-tap manual match.** Picking 3D points on Google tiles is geodata extraction, which the Map Tiles policy bans. "Check this" offers a re-run with a lens hint ("it was about 85 mm") instead.
 - **Cesium's `fov` is horizontal only when width >= height.** The browser and solver share one conversion.
 - **Google credits stay visible** on every screen that shows tiles.
 
@@ -152,7 +152,7 @@ The solver already reads focal length to 3% at modeled spots, so the lens reader
 - **People:** drag glTF figures in the Cesium scene. Their pixel box at the solved pose goes to the image edit as placement.
 - **Light:** a time slider moves the sun in Cesium, and the preview edit gets the sun direction relative to the camera.
 - **Preview:** NVIDIA-hosted image edit (FLUX.1 Kontext, `qwen-image-edit` or `flux.2-klein-4b`, whichever is a free endpoint) applied to the user's photo. Fallback: OpenAI image edit. Every preview carries the "AI interpretation" label.
-- **Uncertain:** "Check this" opens the 5-tap match view.
+- **Uncertain:** "Check this" and "Couldn't place" show the reason and offer a re-run with a lens hint or another spot.
 - **Credits page** (`/credits`): every Commons photo in a spot model or the lens dataset, with author, license and link, from the spots' `CREDITS.tsv`. The DUMBO model alone has 166 images from 53 authors under CC BY, CC BY-SA and CC0. Share-alike may reach the point cloud, so the model files stay out of git and off the public repo.
 
 ### Scout page (`web/` route `/s/:code`)
@@ -286,3 +286,26 @@ Send ShotMatch a photo of a place you love. It finds where the photographer stoo
 **What's next.** More spots, a calibrated confidence score, and an offline lens reader on the phone.
 
 Photo credits: every Creative Commons photo used for a 3D model or training is on the app's credits page and in `spots/*/CREDITS.tsv` and `lens/CREDITS.tsv`.
+
+## Build log
+
+Ben said go at 5:20 PM CT Saturday ("just build everything"). Status as of 7:55 PM CT:
+
+- **Module** live on Maincloud as `shotmatch`. Data cleared at 7:50 PM to drop test rows.
+- **Solver** runs on linuxbox as `shotmatch-solver.service`. DUMBO rebuilt in this repo: 127 of 155 images registered, 11 dropped by the mirror filter. Held-out: 10 of 11 placed, 9 within 25 m (T2, a telephoto, at 32 m), T3 flagged "Couldn't place" at 75 inliers, median focal error 3%, 11 to 18 s a photo. Table in `spots/nyc_dumbo/eval.md`.
+- **Crew** runs as `shotmatch-crew.service`. Safety, lens read, solve, sun and preview steps work. Killing it mid-solve requeues the job and a restart finishes it.
+- **Web** served by the crew at https://linuxbox.<tailnet>.ts.net:10000 (Tailscale funnel, port 10000).
+- **Lens dataset:** 4,500 Commons photos from 37 landmarks. Test landmarks held out whole: DUMBO, Big Ben, Gooderham. Baselines: always "wide" 57.5% bin accuracy, OpenAI zero-shot 68.3%.
+
+What the NVIDIA key showed:
+- `nvidia/nemotron-3.5-content-safety` is listed but returns 404, so safety screening runs on Nemotron 3.5 Super VL with a strict JSON prompt.
+- Nemotron 3.5 Super VL reasons by default and can spend its whole token budget on it; quick calls send `enable_thinking=false`.
+- No hosted NVIDIA image-edit model accepts a user's photo (FLUX.1 Kontext and flux.2-klein want an `example_id`, qwen-image-edit is 404). Previews use OpenAI `gpt-image-2` until that changes. Booth question.
+- The base VL lens read is poor on telephoto (read a 287 mm photo as 28 mm), so only the fine-tuned model or a user hint narrows the solver's focal search.
+
+## GPU cost log
+
+Cap: $50 total for the hackathon. One instance at most, deleted after judging Sunday. Details in `lens/COST.md`.
+
+| When (CT) | Event | Plan | $/h | Running total |
+|---|---|---|---|---|

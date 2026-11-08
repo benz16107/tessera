@@ -24,6 +24,7 @@ All in `~/.config/shotmatch/`, mode 600, read at runtime, never committed, never
 
 - **f35** is the 35 mm-equivalent focal length on the diagonal: `f35 = fpx * 43.2666 / hypot(w, h)`, where `fpx` is the focal length in pixels for an image `w` by `h`. To draw in Cesium: `fpx = f35 * hypot(w, h) / 43.2666`, `hfov = 2 * atan(w / (2 * fpx))`, `vfov = 2 * atan(h / (2 * fpx))`, and `camera.frustum.fov = w >= h ? hfov : vfov` (Cesium's `fov` is the larger dimension's angle). `aspectRatio = w / h`.
 - **Pose** (module type): `lat`, `lon` WGS84 degrees; `alt` = metres above the ground at that lat/lon (the client resolves the ground with Cesium `sampleHeightMostDetailed` and adds `alt`); `heading` degrees clockwise from true north; `pitch` degrees, up positive; `roll` degrees, clockwise positive as seen by the camera; `f35` as above.
+- **sunAzimuth / sunAltitude** in `requestPreview`: absolute degrees, azimuth clockwise from true north (same frame as `heading`); the crew subtracts the camera heading.
 - **Confidence**: `solid` | `check` | `none`, plus a human `reason` string ("1527 matches, 4 m from a mapped camera").
 - **Spot ids**: snake_case, `nyc_dumbo` first, `utd_<name>` for the campus spot.
 
@@ -68,8 +69,8 @@ Photos live in `data/photos/`, previews in `data/previews/` at the repo root (gi
 
 Source: `module/src/index.ts`. Generated bindings: `web/src/module_bindings`, `crew/src/module_bindings` (`cd module && npm run generate` after any module change, then `npm run publish`). Tables are public; clients subscribe with `WHERE session_id = <id>` queries.
 
-The crew becomes the worker identity by calling `registerCrew(code)` with `~/.config/shotmatch/crew_code`. Only the crew may `claimJob`, `reportProgress`, `finishJob`, `claimPreview`, `finishPreview`, `logAgentStep`, and post `out` messages or non-web channels. Leases last 60 s (180 s for previews) and are renewed by `reportProgress`. The `sweep` schedule requeues expired jobs every 10 s, giving up after 3 attempts.
+The crew becomes the worker identity by calling `registerCrew(code)` with `~/.config/shotmatch/crew_code`. Only the crew may `claimJob`, `reportProgress`, `finishJob`, `claimPreview`, `renewPreview`, `finishPreview`, `logAgentStep`, and post `out` messages or non-web channels. Leases last 60 s (180 s for previews) and are renewed by `reportProgress`. The `sweep` schedule requeues expired jobs every 10 s, giving up after 3 attempts.
 
-Web clients call `createSession`, `joinSession`, `addPhoto` (which also queues a solve when `spotId` is set), `enqueueSolve`, `moveCamera`, `placePerson`, `removePerson`, `setPlanTime`, `pushDevicePose`, `requestPreview`, `postMessage` (channel `web`).
+Web clients call `createSession`, `joinSession`, `addPhoto` (which also queues a solve when `spotId` is set), `enqueueSolve` (optional `lensHintF35`, which the crew turns into `f35_range` [0.75x, 1.33x]), `deletePhoto` (owner or crew), `moveCamera`, `placePerson`, `removePerson`, `setPlanTime`, `pushDevicePose`, `requestPreview`, `postMessage` (channel `web`).
 
 Event table `toast` (`sessionId`, `kind`, `text`): kinds `solve_done`, `solve_failed`, `job_reclaimed`, `scout_arrived`, `preview_done`, `preview_failed`.

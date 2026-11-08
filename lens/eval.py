@@ -161,12 +161,13 @@ if __name__ == "__main__":
             if not mid:
                 req = urllib.request.Request("https://integrate.api.nvidia.com/v1/models", headers={"Authorization": "Bearer " + key})
                 ids = [m["id"] for m in json.load(urllib.request.urlopen(req))["data"]]
-                cand = [i for i in ids if "nemotron" in i.lower() and re.search(r"vl|vision|nano-12b", i.lower())]
+                cand = [i for i in ids if "nemotron" in i.lower() and re.search(r"vl|vision|nano-12b", i.lower()) and "embed" not in i]
                 print("Nemotron VL candidates:", cand)
                 if not cand:
                     sys.exit("no Nemotron VL model listed; pass --nvidia-model")
                 mid = cand[0]
-            p = run_model("nvidia-" + mid, "https://integrate.api.nvidia.com/v1", key, mid, ZERO_SHOT_PROMPT, dict(max_tokens=200, temperature=0))
+            p = run_model("nvidia-" + mid, "https://integrate.api.nvidia.com/v1", key, mid, ZERO_SHOT_PROMPT,
+                          dict(max_tokens=200, temperature=0, chat_template_kwargs={"enable_thinking": False}))
             save(f"Base {mid} (zero-shot, hosted)", metrics(p))
         else:
             p = run_model("local-" + a.model, a.url, "", a.model, PROMPT, dict(max_tokens=60, temperature=0))
