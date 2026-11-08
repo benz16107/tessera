@@ -97,6 +97,8 @@ const person = table({ name: 'person', public: true }, {
   sessionId: t.u64().index('btree'),
   lat: t.f64(), lon: t.f64(), heading: t.f64(),
   label: t.string(),
+  pose: t.string().default('stand'), // stand | walk | sit | lean | point | jump
+  heightM: t.f64().default(1.7),
 });
 
 const devicePose = table({ name: 'device_pose', public: true }, {
@@ -147,6 +149,23 @@ const agentStep = table({ name: 'agent_step', public: true }, {
   at: t.timestamp(),
 });
 
+// The studio's shared camera settings: one row per session, edited live by every planner.
+const shotSettings = table({ name: 'shot_settings', public: true }, {
+  sessionId: t.u64().primaryKey(),
+  bodyId: t.string(),       // sensor/body id from web/src/studio/catalog
+  lensId: t.string(),       // lens id from the catalog
+  focalMm: t.f64(),         // actual focal length on that body (not 35 mm equivalent)
+  aperture: t.f64(),        // f-number
+  shutterS: t.f64(),        // seconds
+  iso: t.u32(),
+  whiteBalanceK: t.u32(),
+  focusM: t.f64(),          // focus distance in metres
+  aspect: t.string(),       // 3:2 | 4:3 | 4:5 | 1:1 | 16:9 | 65:24
+  overlays: t.string(),     // comma list: thirds,golden,center,horizon,safe
+  distortion: t.bool(),     // render the lens profile's distortion in the viewport
+  updatedBy: t.identity(),
+});
+
 // Toasts every client in the session sees once: "solve finished", "scout reached the spot".
 const toast = table({ name: 'toast', public: true, event: true }, {
   sessionId: t.u64(),
@@ -177,7 +196,7 @@ const sweepTimer = table({ name: 'sweep_timer' }, {
 
 const spacetimedb = schema({
   config, spot, session, participant, photo, solveJob, solveResult, camera, person,
-  devicePose, previewJob, message, agentStep, toast, sweepTimer, reminder, outbox,
+  devicePose, previewJob, message, agentStep, toast, sweepTimer, reminder, outbox, shotSettings,
 });
 export default spacetimedb;
 
@@ -397,8 +416,33 @@ export const placePerson = spacetimedb.reducer(
     const old = a.id ? ctx.db.person.id.find(a.id) : undefined;
     if (old) {
       if (old.sessionId !== a.sessionId) throw new SenderError('person is in another session');
-      ctx.db.person.id.update(row);
-    } else ctx.db.person.insert({ ...row, id: 0n });
+      ctx.db.person.id.update({ ...old, ...row });
+    } else ctx.db.person.insert({ ...row, id: 0n, pose: 'stand', heightM: 1.7 });
+  }
+);
+
+export const setPersonPose = spacetimedb.reducer({ id: t.u64(), pose: t.string(), heightM: t.f64() }, (ctx, a) => {
+  const p = ctx.db.person.id.find(a.id);
+  if (!p) throw new SenderError('no such person');
+  requireMember(ctx, p.sessionId);
+  if (!['stand', 'walk', 'sit', 'lean', 'point', 'jump'].includes(a.pose)) throw new SenderError('unknown pose');
+  if (!(a.heightM >= 0.5 && a.heightM <= 2.3)) throw new SenderError('height out of range');
+  ctx.db.person.id.update({ ...p, pose: a.pose, heightM: a.heightM });
+});
+
+export const setShotSettings = spacetimedb.reducer(
+  {
+    sessionId: t.u64(), bodyId: t.string(), lensId: t.string(), focalMm: t.f64(), aperture: t.f64(), shutterS: t.f64(),
+    iso: t.u32(), whiteBalanceK: t.u32(), focusM: t.f64(), aspect: t.string(), overlays: t.string(), distortion: t.bool(),
+  },
+  (ctx, a) => {
+    requireMember(ctx, a.sessionId);
+    finite(a.focalMm, a.aperture, a.shutterS, a.focusM);
+    if (!(a.focalMm > 1 && a.focalMm < 2000 && a.aperture >= 0.7 && a.aperture <= 64 && a.shutterS > 0 && a.shutterS <= 3600 && a.focusM > 0))
+      throw new SenderError('camera setting out of range');
+    if (a.iso < 25 || a.iso > 409600 || a.whiteBalanceK < 1500 || a.whiteBalanceK > 15000) throw new SenderError('camera setting out of range');
+    const row = { ...a, bodyId: text(a.bodyId, 64), lensId: text(a.lensId, 96), aspect: text(a.aspect, 8), overlays: text(a.overlays, 80), updatedBy: ctx.sender };
+    if (ctx.db.shotSettings.sessionId.find(a.sessionId)) ctx.db.shotSettings.sessionId.update(row); else ctx.db.shotSettings.insert(row);
   }
 );
 
@@ -538,6 +582,7 @@ export const deleteSession = spacetimedb.reducer({ sessionId: t.u64() }, (ctx, {
   for (const x of [...ctx.db.solveResult.sessionId.filter(sessionId)]) ctx.db.solveResult.photoId.delete(x.photoId);
   for (const x of [...ctx.db.previewJob.sessionId.filter(sessionId)]) ctx.db.previewJob.id.delete(x.id);
   for (const x of [...ctx.db.person.sessionId.filter(sessionId)]) ctx.db.person.id.delete(x.id);
+  ctx.db.shotSettings.sessionId.delete(sessionId);
   for (const x of [...ctx.db.devicePose.sessionId.filter(sessionId)]) ctx.db.devicePose.participantId.delete(x.participantId);
   for (const x of [...ctx.db.message.sessionId.filter(sessionId)]) ctx.db.message.id.delete(x.id);
   for (const x of [...ctx.db.agentStep.sessionId.filter(sessionId)]) ctx.db.agentStep.id.delete(x.id);

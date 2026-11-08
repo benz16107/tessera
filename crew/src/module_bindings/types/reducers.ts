@@ -30,8 +30,10 @@ import ReportProgressReducer from "../report_progress_reducer";
 import RequestPreviewReducer from "../request_preview_reducer";
 import ScheduleReminderReducer from "../schedule_reminder_reducer";
 import SetCrewCodeReducer from "../set_crew_code_reducer";
+import SetPersonPoseReducer from "../set_person_pose_reducer";
 import SetPlanTimeReducer from "../set_plan_time_reducer";
 import SetSessionSpotReducer from "../set_session_spot_reducer";
+import SetShotSettingsReducer from "../set_shot_settings_reducer";
 import UpsertSpotReducer from "../upsert_spot_reducer";
 
 export type AddPhotoParams = __Infer<typeof AddPhotoReducer>;
@@ -58,7 +60,9 @@ export type ReportProgressParams = __Infer<typeof ReportProgressReducer>;
 export type RequestPreviewParams = __Infer<typeof RequestPreviewReducer>;
 export type ScheduleReminderParams = __Infer<typeof ScheduleReminderReducer>;
 export type SetCrewCodeParams = __Infer<typeof SetCrewCodeReducer>;
+export type SetPersonPoseParams = __Infer<typeof SetPersonPoseReducer>;
 export type SetPlanTimeParams = __Infer<typeof SetPlanTimeReducer>;
 export type SetSessionSpotParams = __Infer<typeof SetSessionSpotReducer>;
+export type SetShotSettingsParams = __Infer<typeof SetShotSettingsReducer>;
 export type UpsertSpotParams = __Infer<typeof UpsertSpotReducer>;
 

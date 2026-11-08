@@ -91,6 +91,8 @@ export const Person = __t.object("Person", {
   lon: __t.f64(),
   heading: __t.f64(),
   label: __t.string(),
+  pose: __t.string(),
+  heightM: __t.f64(),
 });
 export type Person = __Infer<typeof Person>;
 
@@ -158,6 +160,23 @@ export const Session = __t.object("Session", {
   createdAt: __t.timestamp(),
 });
 export type Session = __Infer<typeof Session>;
+
+export const ShotSettings = __t.object("ShotSettings", {
+  sessionId: __t.u64(),
+  bodyId: __t.string(),
+  lensId: __t.string(),
+  focalMm: __t.f64(),
+  aperture: __t.f64(),
+  shutterS: __t.f64(),
+  iso: __t.u32(),
+  whiteBalanceK: __t.u32(),
+  focusM: __t.f64(),
+  aspect: __t.string(),
+  overlays: __t.string(),
+  distortion: __t.bool(),
+  updatedBy: __t.identity(),
+});
+export type ShotSettings = __Infer<typeof ShotSettings>;
 
 export const SolveJob = __t.object("SolveJob", {
   id: __t.u64(),

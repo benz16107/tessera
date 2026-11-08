@@ -17,4 +17,6 @@ export default __t.row({
   lon: __t.f64(),
   heading: __t.f64(),
   label: __t.string(),
+  pose: __t.string(),
+  heightM: __t.f64().name("height_m"),
 });

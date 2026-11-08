@@ -58,8 +58,10 @@ import ReportProgressReducer from "./report_progress_reducer";
 import RequestPreviewReducer from "./request_preview_reducer";
 import ScheduleReminderReducer from "./schedule_reminder_reducer";
 import SetCrewCodeReducer from "./set_crew_code_reducer";
+import SetPersonPoseReducer from "./set_person_pose_reducer";
 import SetPlanTimeReducer from "./set_plan_time_reducer";
 import SetSessionSpotReducer from "./set_session_spot_reducer";
+import SetShotSettingsReducer from "./set_shot_settings_reducer";
 import UpsertSpotReducer from "./upsert_spot_reducer";
 
 // Import all procedure arg schemas
@@ -76,6 +78,7 @@ import PhotoRow from "./photo_table";
 import PreviewJobRow from "./preview_job_table";
 import ReminderRow from "./reminder_table";
 import SessionRow from "./session_table";
+import ShotSettingsRow from "./shot_settings_table";
 import SolveJobRow from "./solve_job_table";
 import SolveResultRow from "./solve_result_table";
 import SpotRow from "./spot_table";
@@ -250,6 +253,17 @@ const tablesSchema = __schema({
       { name: 'session_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, SessionRow),
+  shotSettings: __table({
+    name: 'shot_settings',
+    indexes: [
+      { accessor: 'sessionId', name: 'shot_settings_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'shot_settings_session_id_key', constraint: 'unique', columns: ['sessionId'] },
+    ],
+  }, ShotSettingsRow),
   solveJob: __table({
     name: 'solve_job',
     indexes: [
@@ -331,8 +345,10 @@ const reducersSchema = __reducers(
   __reducerSchema("request_preview", RequestPreviewReducer),
   __reducerSchema("schedule_reminder", ScheduleReminderReducer),
   __reducerSchema("set_crew_code", SetCrewCodeReducer),
+  __reducerSchema("set_person_pose", SetPersonPoseReducer),
   __reducerSchema("set_plan_time", SetPlanTimeReducer),
   __reducerSchema("set_session_spot", SetSessionSpotReducer),
+  __reducerSchema("set_shot_settings", SetShotSettingsReducer),
   __reducerSchema("upsert_spot", UpsertSpotReducer),
 );
 
