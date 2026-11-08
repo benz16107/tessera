@@ -74,7 +74,7 @@ export async function bakeCamera(input: Buffer, cam: CameraBake, optic: Optic, d
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const i = y * w + x, p = i * 3, zc = z[i], r = Math.max(coc(zc), minR);
       if (r < 0.5) { out[p] = a[p]; out[p + 1] = a[p + 1]; out[p + 2] = a[p + 2]; continue; }
-      blurred++;
+      if (r >= 1) blurred++;
       let w0 = hiW(a[p], a[p + 1], a[p + 2]), sr = a[p] * w0, sg = a[p + 1] * w0, sb = a[p + 2] * w0, ws = w0;
       for (const t of taps) {
         const sx = Math.round(x + t.dx * r), sy = Math.round(y + t.dy * r);
