@@ -10,7 +10,7 @@ Stand where the photo was taken, then make the shot yours. Drop a photo of a pla
 
 ## Videos
 
-- Main video (1:35): https://youtu.be/TBKutDiVhSI
+- Main video (2:57): https://youtu.be/IPZ_BBfmesc (the 1:35 cut: https://youtu.be/TBKutDiVhSI)
 - NVIDIA (2:38, every Nemotron use): https://tesseraphoto.com/videos/tessera-nvidia.mp4, and a 1:14 cut: https://youtu.be/-thSL8iYLlU
 - SpacetimeDB (1:10): https://youtu.be/CyivsP2lXpc
 - Photon (1:09): https://tesseraphoto.com/videos/tessera-photon.mp4
