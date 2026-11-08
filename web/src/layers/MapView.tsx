@@ -23,7 +23,7 @@ export interface ShotTarget { objectId: bigint | null; lat: number; lon: number;
 interface Props {
   geo: GeoLayers; sessionId: bigint; origin: Origin; at: Date; zone: string;
   theme?: 'dark' | 'light';
-  /** Simple mode: no layer panel, no dragging, light theme by default. */
+  /** Simple mode: no layer panel, no dragging. Dark like Studio unless `theme` says otherwise. */
   compact?: boolean;
   /** Where to look; the studio sets it from the 3D camera when the user zooms out of the set. */
   camera?: MapCamera | null;
@@ -130,7 +130,7 @@ export default function MapView({ geo, sessionId, origin, at, zone, theme, compa
   const onMap = (m: MlMap) => {
     map.current = m;
     if (import.meta.env.DEV) (window as unknown as { __geoMap?: MlMap }).__geoMap = m; // test hook
-    const dark = (theme ?? (compact ? 'light' : 'dark')) === 'dark', ink = dark ? '#f2efe8' : '#1a1917', halo = dark ? '#0b0b0a' : '#ffffff';
+    const dark = (theme ?? 'dark') === 'dark', ink = dark ? '#f2efe8' : '#1a1917', halo = dark ? '#0b0b0a' : '#ffffff';
     for (const id of ['map-cones', 'map-shots', 'map-sun']) m.addSource(id, { type: 'geojson', data: EMPTY });
     m.addSource('map-world', { type: 'geojson', data: EMPTY, cluster: true, clusterRadius: 44, clusterMaxZoom: 11 });
     const text = { 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'text-offset': [0, 1.2] as [number, number], 'text-anchor': 'top' as const, 'text-optional': true };
@@ -258,8 +258,8 @@ export default function MapView({ geo, sessionId, origin, at, zone, theme, compa
   })();
   const onScreen = !!pos && !!m0 && pos.x >= 0 && pos.y >= 0 && pos.x <= m0.getContainer().clientWidth && pos.y <= m0.getContainer().clientHeight;
   return (
-    <div className="geo-mapview" data-theme={theme ?? (compact ? 'light' : 'dark')}>
-      <Map2D geo={compact ? simpleGeo : geo} center={origin} height="100%" zoom={17} theme={theme ?? (compact ? 'light' : 'dark')} shadow={compact ? null : shadow} onMap={onMap} />
+    <div className="geo-mapview" data-theme={theme ?? 'dark'}>
+      <Map2D geo={compact ? simpleGeo : geo} center={origin} height="100%" zoom={17} theme={theme ?? 'dark'} shadow={compact ? null : shadow} onMap={onMap} />
       {!compact && <LayerList geo={geo} innerRef={layersRef} />}
       {card && pos && onScreen && <ShotCard p={card.p} x={pos.x} y={pos.y} at={at} zone={zone} sun={sun} geo={geo} versions={card.p.isShot ? versions.filter(v => v.imageUrl) : []} photoUrl={card.p.isShot ? photo?.thumb || photo?.url : undefined}
         onClose={() => setCard(null)} onOpen={onOpenShot && (mode => onOpenShot({ objectId: card.p.id ? BigInt(card.p.id) : null, lat: card.lngLat[1], lon: card.lngLat[0], heading: Number(card.p.heading) || 0, pitch: Number(card.p.pitch) || 0 }, mode))} />}
@@ -306,7 +306,7 @@ function ShotCard({ p, x, y, at, zone, sun, geo, versions, photoUrl, onClose, on
   return (
     <div className="geo-shotcard" style={{ left: x, top: y }} role="dialog" aria-label={`${title} details`}>
       {img && <img src={img} alt="" loading="lazy" />}
-      <header><b>{title}</b><button className="st-btn small ghost" onClick={onClose} aria-label="Close">×</button></header>
+      <header><b>{title}</b><button className="geo-x" onClick={onClose} aria-label="Close">×</button></header>
       <ul>{lines.map((l, i) => <li key={i}>{l}</li>)}</ul>
       {versions.length > 0 && <div className="geo-versions">{versions.slice(-4).map(v => <img key={String(v.id)} src={v.imageUrl} alt={v.label} title={v.label} />)}</div>}
       <footer>

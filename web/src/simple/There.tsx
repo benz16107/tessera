@@ -5,22 +5,21 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSpacetimeDB, useTable } from 'spacetimedb/react';
 import QRCode from 'qrcode';
 import { tables } from '../module_bindings/index.ts';
-import type { Photo, Session, SolveResult, Spot } from '../module_bindings/types.ts';
+import type { Photo, Pose, Session, Spot } from '../module_bindings/types.ts';
 import { useGeoLayers, GeoMapView } from '../layers/index.ts';
 import { useConfig, shareBase } from '../config.ts';
 import { bearing, compassWord, metersBetween } from '../geo.ts';
 import { ScoutView } from '../Scout.tsx';
-import { fmtDistance } from './lib.ts';
+import { fmtDistance, parseGeo } from './lib.ts';
 import { Arrow } from './icons.tsx';
 
-function There({ session, result, spot, zone }: { session: Session; result: SolveResult; photo: Photo; zone: string; spot?: Spot }) {
+function There({ session, pose, spot, zone }: { session: Session; pose: Pose; photo: Photo; zone: string; spot?: Spot }) {
   const { identity } = useSpacetimeDB();
   const [parts] = useTable(tables.participant.where(r => r.sessionId.eq(session.id)));
   const [poses] = useTable(tables.devicePose.where(r => r.sessionId.eq(session.id)));
   const [qr, setQr] = useState('');
   const scoutUrl = `${shareBase(useConfig())}/s/${session.code}`;
   useEffect(() => { QRCode.toDataURL(scoutUrl, { margin: 1, width: 320, color: { dark: '#1d1d1f', light: '#ffffff' } }).then(setQr).catch(() => {}); }, [scoutUrl]);
-  const pose = result.pose;
   const planTime = session.planTime?.toDate() ?? new Date(); // useGeoLayers rounds to half-hour slots, so a fresh Date is fine
   const geo = useGeoLayers(session.id, session.spotId, planTime);
   const walk = `https://www.google.com/maps/dir/?api=1&destination=${pose.lat},${pose.lon}&travelmode=walking`;
@@ -36,20 +35,19 @@ function There({ session, result, spot, zone }: { session: Session; result: Solv
   return (
     <article className="s-there">
       <p className="s-eyebrow">Take me there</p>
-      <h1 className="s-title">Walk to the mark, then face {face}</h1>
+      {/* A free-location shoot has no measured heading: only the walk. */}
+      <h1 className="s-title">{parseGeo(session.spotId) ? 'Walk to the mark' : `Walk to the mark, then face ${face}`}</h1>
       <ol className="s-howto">
         <li>Open the camera. The original photo sits over it as a ghost.</li>
         <li>Follow the arrow until the card says you're there.</li>
         <li>Turn until the street lines up with the ghost, then take the photo.</li>
       </ol>
       <a className="s-btn primary big" href={walk} target="_blank" rel="noreferrer"><Arrow width={18} height={18} /> Walking directions</a>
-      {spot && (
-        <div className="s-map" aria-label="Map of the shot: the camera and its view, the sun, and anyone walking">
-          <Suspense fallback={<span className="s-sk s-sk-fill" />}>
-            <GeoMapView compact geo={geo} sessionId={session.id} origin={{ lat: spot.lat, lon: spot.lon, height: 0 }} at={planTime} zone={zone} />
-          </Suspense>
-        </div>
-      )}
+      <div className="s-map" aria-label="Map of the shot: the camera and its view, the sun, and anyone walking">
+        <Suspense fallback={<span className="s-sk s-sk-fill" />}>
+          <GeoMapView compact geo={geo} sessionId={session.id} origin={{ lat: spot?.lat ?? pose.lat, lon: spot?.lon ?? pose.lon, height: 0 }} at={planTime} zone={zone} />
+        </Suspense>
+      </div>
       {walkers.length > 0 && (
         <>
           <hr />
@@ -71,7 +69,7 @@ function There({ session, result, spot, zone }: { session: Session; result: Solv
   );
 }
 
-function Stage({ session, live }: { session: Session; result: SolveResult; photo: Photo; live: boolean }) {
+function Stage({ session, live }: { session: Session; live: boolean }) {
   return live ? <ScoutView session={session} /> : null;
 }
 

@@ -10,7 +10,7 @@ import { useSessionCard } from './spacetime/hooks.ts';
 import { useClaimInvite } from './photon/hooks.ts';
 import { bearing, metersBetween, angleDiff, compassWord, norm360 } from './geo.ts';
 import { Check, Turn, Up, Viewfinder } from './simple/icons.tsx';
-import { fmtDistance, photoCredit } from './simple/lib.ts';
+import { fmtDistance, parseGeo, photoCredit } from './simple/lib.ts';
 import './simple/simple.css';
 
 const ARRIVED_M = 8; // matches the module's scout_arrived toast
@@ -81,7 +81,9 @@ export function ScoutView({ session }: { session: Session }) {
 
   // Target: the shared camera row (the solved mark), else the newest placed result.
   const placed = [...results].filter(r => r.confidence !== 'none').sort((a, b) => Number(b.jobId - a.jobId))[0];
-  const target = cams[0]?.pose ?? placed?.pose;
+  // A free-location shoot (anywhere.md) has no solved pose: walk to its pin; its heading is unknown, so no turn at the mark.
+  const pin = parseGeo(session.spotId);
+  const target = cams[0]?.pose ?? placed?.pose ?? (pin ? { lat: pin.lat, lon: pin.lon, heading: NaN } : undefined);
   const ghost = placed ? photos.find(p => p.id === placed.photoId) : [...photos].sort((a, b) => Number(b.id - a.id))[0];
   const planners = parts.filter(p => p.online && p.role === 'planner' && !(identity && p.identity.isEqual(identity))).map(p => p.name);
 
@@ -135,7 +137,7 @@ export function ScoutView({ session }: { session: Session }) {
   const there = dist !== null && dist <= ARRIVED_M;
   const toMark = fix && target ? bearing(fix.lat, fix.lon, target.lat, target.lon) : null;
   // At the mark the arrow turns toward the shot's heading instead.
-  const aim = there && target ? target.heading : toMark;
+  const aim = there && target ? (Number.isFinite(target.heading) ? target.heading : null) : toMark;
   const turn = aim !== null && heading !== null ? angleDiff(aim, heading) : null;
   const walk = target ? `https://www.google.com/maps/dir/?api=1&destination=${target.lat},${target.lon}&travelmode=walking` : '';
   const credit = ghost ? photoCredit(ghost, session.spotId) : '';
@@ -181,7 +183,7 @@ export function ScoutView({ session }: { session: Session }) {
                     <span className="sc-ok" aria-hidden="true"><Check width={26} height={26} /></span>
                     <div>
                       <p className="sc-big">You're there.</p>
-                      <p className="sc-turn">{turn === null ? `Face ${Math.round(target.heading)}° ${compassWord(target.heading)}`
+                      <p className="sc-turn">{turn === null ? (Number.isFinite(target.heading) ? `Face ${Math.round(target.heading)}° ${compassWord(target.heading)}` : 'Line the street up with the ghost.')
                         : Math.abs(turn) < 6 ? 'Facing the right way. Take it.'
                         : <><Turn width={18} height={18} /> Turn {turn > 0 ? 'right' : 'left'} {Math.round(Math.abs(turn))}°</>}</p>
                     </div>

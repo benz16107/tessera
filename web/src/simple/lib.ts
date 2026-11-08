@@ -73,3 +73,51 @@ export function useNow(ms: number, on = true) {
 }
 
 export const initials = (name: string) => (name.trim()[0] ?? '?').toUpperCase();
+
+/** POST /api/locate (docs/NVIDIA.md, "Nemotron places photos from anywhere"): names the place from the photo's GPS, or
+ *  from its pixels when it has none. Coordinates come from the GPS or Nominatim, never from the model. Null on any failure. */
+export interface Located {
+  place: string; lat: number | null; lon: number | null; confidence: 'high' | 'medium' | 'low'; reason: string;
+  headingDeg: number | null; source: 'gps' | 'nemotron'; nearestSpot: string | null;
+}
+export async function locate(photoUrl: string, gps?: { lat: number; lon: number }): Promise<Located | null> {
+  try {
+    const r = await fetch('/api/locate', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(25_000),
+      body: JSON.stringify({ photoUrl, ...(gps ?? {}) }),
+    });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+
+/** A free-location shoot: spot id 'geo:<lat>,<lon>,<ground height above sea level>' (the same form Studio reads). */
+export const parseGeo = (spotId: string) => {
+  const m = spotId.match(/^geo:(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)$/);
+  return m ? { lat: +m[1], lon: +m[2], height: +m[3] } : null;
+};
+export const geoSpotId = (lat: number, lon: number, height: number) => `geo:${lat.toFixed(6)},${lon.toFixed(6)},${height.toFixed(1)}`;
+
+// shortcut: sea-level elevation from Open-Meteo stands in for height above the ellipsoid (the geoid differs by up to about
+// 100 m); the tiles' own ground alignment absorbs that. Use a geoid-corrected height if alignment ever misses.
+export async function groundHeight(lat: number, lon: number): Promise<number> {
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`, { signal: AbortSignal.timeout(4000) });
+    const h = (await r.json())?.elevation?.[0];
+    return Number.isFinite(h) ? h : 0;
+  } catch { return 0; }
+}
+
+// shortcut: a free location's zone is its longitude's whole-hour offset (no daylight saving), as in Studio; use a zone lookup when one ships.
+export const lonZone = (lon: number) => { const h = Math.round(lon / 15); return h === 0 ? 'UTC' : `Etc/GMT${h > 0 ? '-' : '+'}${Math.abs(h)}`; };
+
+/** Where a dropped photo's shoot lives: a mapped spot (solve it), or a free location at a pin (no solve; nothing to match). */
+export type Placement = { kind: 'spot'; spotId: string } | { kind: 'pin'; lat: number; lon: number; place: string; guessed: boolean };
+export function decidePlace(u: Pick<Upload, 'nearestSpot' | 'gpsLat' | 'gpsLon'>, loc: Located | null, onlySpot: string, knownSpot = ''): Placement {
+  const spotId = knownSpot || u.nearestSpot || loc?.nearestSpot;
+  if (spotId) return { kind: 'spot', spotId };
+  // GPS far from every mapped spot: plan at the photo's own location.
+  if (u.gpsLat != null && u.gpsLon != null) return { kind: 'pin', lat: u.gpsLat, lon: u.gpsLon, place: loc?.place ?? '', guessed: false };
+  // No GPS: Nemotron's guess, when it is not unsure and the map found the name.
+  if (loc && loc.lat != null && loc.lon != null && loc.confidence !== 'low') return { kind: 'pin', lat: loc.lat, lon: loc.lon, place: loc.place, guessed: true };
+  return { kind: 'spot', spotId: onlySpot }; // unsure: solve against the mapped spot, as before
+}

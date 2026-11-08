@@ -4,7 +4,7 @@
 import { useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { useTable, useReducer } from 'spacetimedb/react';
 import { tables, reducers } from '../module_bindings/index.ts';
-import type { Photo, SolveResult } from '../module_bindings/types.ts';
+import type { Photo, Pose } from '../module_bindings/types.ts';
 import { fmtTime, hfovDeg, lightWindows } from '../geo.ts';
 import { call, type CommandResult } from '../nvidia/api.ts';
 import { postLayers } from '../nvidia/RenderPanel.tsx';
@@ -17,7 +17,7 @@ import { iphoneZoom, photoCredit, useNow } from './lib.ts';
 import { Aperture, Mic, Moon, People, Person, Send, Sun, Wide } from './icons.tsx';
 
 interface Props {
-  sessionId: bigint; photo: Photo; spotId: string; solved: SolveResult;
+  sessionId: bigint; photo: Photo; spotId: string; pose: Pose; // the solved pose, or a free-location shoot's stand-in at its pin
   shot: Shot; setShot: (p: Partial<Shot>) => void; o: Optics;
   planTime: Date; zone: string; changeTime: (d: Date) => void;
   people: number; capture: MutableRefObject<(() => Promise<Layers>) | null>;
@@ -45,7 +45,7 @@ export default function Yours(p: Props) {
   const rec = useRef<{ r: MediaRecorder; chunks: Blob[]; stream: MediaStream } | null>(null);
   const now = useNow(1000, !!busy);
 
-  const pose = p.solved.pose;
+  const pose = p.pose;
   const hfov = hfovDeg(pose.f35, photo.width, photo.height);
   const windows = useMemo(() => lightWindows(new Date(), pose.lat, pose.lon, pose.heading, hfov, 2), [pose.lat, pose.lon, pose.heading, hfov]);
   const golden = windows.find(w => w.kind === 'Golden hour'), blue = windows.find(w => w.kind === 'Blue hour');

@@ -94,7 +94,7 @@ drapes every vertex on the street plane.
 ## Map view
 
 `GeoMapView` (web/src/layers/MapView.tsx, lazy) is the full-screen map. It uses the same dark OpenFreeMap style, or the
-light Positron style for Simple mode, and keeps the attribution on screen.
+light Positron style when a caller passes `theme="light"`, and keeps the attribution on screen. Simple mode uses the dark style like Studio.
 
 - **Shots.** Every camera object gets a pin, its view cone (from the lens's horizontal field of view) and a label with
   the lens. The shot camera's cone is amber. Also shown: the scout's live `device_pose`, check-ins, placed people and

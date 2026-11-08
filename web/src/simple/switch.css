@@ -1,9 +1,8 @@
-/* The Simple | Studio toggle: one control, themed by the view it sits in. */
+/* The Simple | Studio toggle: one control, the same in both views (Studio's dark view switch since Simple went Darkroom). */
 .vswitch {
-  --vs-bg: #e8e8ed; --vs-on: #fff; --vs-text: #424245; --vs-text-on: #1d1d1f; --vs-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --vs-bg: #1f1e1b; --vs-on: #3a3833; --vs-text: #a39f96; --vs-text-on: #f2efe8;
   display: inline-flex; flex: none; padding: 4px; gap: 4px; border-radius: var(--radius-panel); background: var(--vs-bg);
 }
-.studio .vswitch { --vs-bg: #1f1e1b; --vs-on: #3a3833; --vs-text: #a39f96; --vs-text-on: #f2efe8; --vs-shadow: none; }
 .vswitch[role] button {
   position: relative; min-width: 64px; height: var(--control-h-dense); padding: 0 12px; border: 0; border-radius: var(--radius-control); background: transparent;
   font: 500 var(--text-sm)/1 var(--font-sans);
@@ -11,6 +10,7 @@
 }
 /* A 28 px button in a 36 px track (tokens.css), with a 44 px tall hit area. */
 .vswitch[role] button::after { content: ''; position: absolute; inset: -8px 0; }
-.vswitch[role] button[aria-pressed='true'] { background: var(--vs-on); color: var(--vs-text-on); font-weight: 600; box-shadow: var(--vs-shadow); }
-.vswitch[role] button:focus-visible { outline: 2px solid #0066cc; outline-offset: 2px; }
+.vswitch[role] button[aria-pressed='true'] { background: var(--vs-on); color: var(--vs-text-on); font-weight: 600; }
+.vswitch[role] button:focus-visible { outline: 2px solid var(--vs-text-on); outline-offset: 2px; }
+@media (hover: hover) { .vswitch[role] button:not([aria-pressed='true']):hover { color: var(--vs-text-on); } }
 @media (prefers-reduced-motion: reduce) { .vswitch[role] button { transition: none; } }

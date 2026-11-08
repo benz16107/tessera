@@ -1,17 +1,18 @@
 // A-1 Drop: one action. Drop or pick a photo (the camera roll on a phone), or paste a link; joining with a code is the
-// quiet path. Dropping creates the shoot, adds the photo (which queues the solve) and opens the person's view.
+// quiet path. Dropping creates the shoot and opens the person's view. A photo of a mapped spot is solved; one from anywhere
+// else becomes a free-location shoot at its GPS or at Nemotron's guess (POST /api/locate).
 import { useEffect, useRef, useState } from 'react';
 import { useSpacetimeDB, useTable, useReducer } from 'spacetimedb/react';
 import { tables, reducers } from '../module_bindings/index.ts';
 import { NAME_KEY } from '../config.ts';
 import { navigate } from '../App.tsx';
-import { fetchLinkedPhoto, uploadPhoto, type Upload } from './lib.ts';
+import { decidePlace, fetchLinkedPhoto, geoSpotId, groundHeight, locate, uploadPhoto, type Upload } from './lib.ts';
 import { preferredView, viewPath } from './view.ts';
 import { Link as LinkIcon, Photo, Viewfinder, Close } from './icons.tsx';
 import './simple.css';
 
-type Phase = 'idle' | 'uploading' | 'creating' | 'adding';
-const PHASE_TEXT: Record<Phase, string> = { idle: '', uploading: 'Uploading your photo', creating: 'Setting up your shoot', adding: 'Starting the search' };
+type Phase = 'idle' | 'uploading' | 'locating' | 'creating' | 'adding';
+const PHASE_TEXT: Record<Phase, string> = { idle: '', uploading: 'Uploading your photo', locating: 'Finding the place', creating: 'Setting up your shoot', adding: 'Starting the search' };
 
 export function Wordmark() {
   return (
@@ -45,7 +46,7 @@ export default function Home() {
   const [link, setLink] = useState('');
   const [joinOpen, setJoinOpen] = useState(false);
   const input = useRef<HTMLInputElement>(null);
-  const pending = useRef<{ u: Upload; spotId: string; before: Set<string> } | null>(null);
+  const pending = useRef<{ u: Upload; spotId: string; pin?: { lat: number; lon: number }; source: string; before: Set<string> } | null>(null);
 
   // createSession returns nothing: the new shoot is the one I own in my_sessions that was not there before. The snapshot
   // is taken only once my_sessions has loaded, so an older shoot arriving late is never mistaken for the new one.
@@ -56,10 +57,10 @@ export default function Home() {
     if (!s) return;
     pending.current = null;
     setPhase('adding');
-    const { u, spotId } = p;
+    const { u, spotId, pin, source } = p;
     addPhoto({
       sessionId: s.id, spotId, url: u.url, thumb: u.thumb, width: u.width, height: u.height,
-      pinLat: u.gpsLat ?? undefined, pinLon: u.gpsLon ?? undefined, exifF35: u.exifF35 ?? undefined, source: 'web',
+      pinLat: pin?.lat ?? u.gpsLat ?? undefined, pinLon: pin?.lon ?? u.gpsLon ?? undefined, exifF35: u.exifF35 ?? undefined, source,
     }).then(() => navigate(viewPath(preferredView(false), s.code)))
       .catch(x => { setPhase('idle'); setErr(String(x?.message ?? x)); });
   }, [mine, phase, addPhoto, identity]);
@@ -69,14 +70,21 @@ export default function Home() {
     setErr(''); setPhase('uploading');
     try {
       const u = await uploadPhoto(file, name);
-      // The photo's GPS picks the spot; with one spot loaded, that one is the answer.
-      const spotId = knownSpot || u.nearestSpot || (spots.length === 1 ? spots[0].id : '');
+      // Only a mapped spot can be solved. Anywhere else becomes a free-location shoot at the photo's GPS or Nemotron's guess.
+      const gps = u.gpsLat != null && u.gpsLon != null ? { lat: u.gpsLat, lon: u.gpsLon } : undefined;
+      let loc = null;
+      if (!knownSpot && !u.nearestSpot) { setPhase('locating'); loc = await locate(u.url, gps); }
+      const at = decidePlace(u, loc, spots.length === 1 ? spots[0].id : '', knownSpot);
+      const pin = at.kind === 'pin' ? { lat: at.lat, lon: at.lon } : undefined;
+      // A pin shoot's session spot is 'geo:...' (Studio reads it); its photo has no spot, so no solve is queued.
+      const sessionSpot = at.kind === 'pin' ? geoSpotId(at.lat, at.lon, await groundHeight(at.lat, at.lon)) : at.spotId;
+      const title = at.kind === 'pin' && at.place ? at.place.split(',').slice(0, 2).join(',').trim().slice(0, 120) : 'Untitled shoot';
       for (let i = 0; !latest.current.mineReady && i < 100; i++) await new Promise(r => setTimeout(r, 100));
       if (!latest.current.mineReady) throw new Error('Still connecting to Tessera. Try again in a moment.');
-      pending.current = { u, spotId, before: new Set(latest.current.mine.map(s => String(s.id))) };
+      pending.current = { u, spotId: at.kind === 'spot' ? at.spotId : '', pin, source: at.kind === 'pin' && at.guessed ? 'locate' : 'web', before: new Set(latest.current.mine.map(s => String(s.id))) };
       setPhase('creating');
       const nm = localStorage.getItem(NAME_KEY) || 'Guest';
-      await createSession({ spotId, title: 'Untitled shoot', name: nm }); // the module's Nemotron title replaces this name after the solve
+      await createSession({ spotId: sessionSpot, title, name: nm }); // an 'Untitled shoot' gets the module's Nemotron title after the solve
     } catch (e) {
       pending.current = null;
       setPhase('idle');

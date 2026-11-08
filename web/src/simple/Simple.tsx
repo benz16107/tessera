@@ -6,7 +6,7 @@ import { useSpacetimeDB, useTable, useReducer } from 'spacetimedb/react';
 import { Timestamp } from 'spacetimedb';
 import { Quaternion, Vector3 } from 'three';
 import { tables, reducers } from '../module_bindings/index.ts';
-import type { Photo, Session, SolveJob, SolveResult, Spot } from '../module_bindings/types.ts';
+import type { Photo, Pose, Session, SolveJob, SolveResult, Spot } from '../module_bindings/types.ts';
 import { useConfig, NAME_KEY } from '../config.ts';
 import { navigate } from '../App.tsx';
 import { sunAt, spotZone, fmtTime, angleDiff } from '../geo.ts';
@@ -15,18 +15,18 @@ import { useScene } from '../studio/state/useScene.ts';
 import { useShotSettings, defaultShot } from '../studio/state/useShotSettings.ts';
 import { optics as opticsOf, frameFromPhoto } from '../studio/camera/shot.ts';
 import { sceneEv100 } from '../studio/optics.ts';
-import { cameraQuat, llhToEnu, type Origin } from '../studio/frame.ts';
+import { cameraHpr, cameraQuat, llhToEnu, type Origin } from '../studio/frame.ts';
 import { geometryFor, groundZ } from '../studio/world/geometry.ts';
 import { newUid, parseParams } from '../studio/scene/objects.ts';
 import type { Layers } from '../studio/render/layers.ts';
 import ShotView from './ShotView.tsx';
-import Found from './Found.tsx';
+import Found, { PinFound, ChangePlace } from './Found.tsx';
 import Yours from './Yours.tsx';
 import There from './There.tsx';
 import ShareSheet from './Share.tsx';
 import { Wordmark, LegalLinks } from './Drop.tsx';
 import { ViewSwitch } from './ViewSwitch.tsx';
-import { CONFIDENCE, initials, uploadPhoto, useNow } from './lib.ts';
+import { CONFIDENCE, initials, lonZone, parseGeo, uploadPhoto, useNow } from './lib.ts';
 import { Close, Photo as PhotoIcon, Sun } from './icons.tsx';
 import './simple.css';
 
@@ -123,12 +123,15 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
   const result = photo && results.find(r => r.photoId === photo.id);
   const job = photo && [...jobs].filter(j => j.photoId === photo.id).sort((a, b) => Number(b.id - a.id))[0];
   const solved = result && result.confidence !== 'none' ? result : undefined;
-  const spotId = job?.spotId || session.spotId;
+  // A free-location shoot (spot id 'geo:...', anywhere.md) plans at its pin: nothing is solved, so the stand and heading are approximate.
+  const geoSpot = useMemo(() => parseGeo(session.spotId), [session.spotId]);
+  const spotId = geoSpot ? session.spotId : job?.spotId || session.spotId;
   const spot = spots.find(s => s.id === spotId);
-  const origin: Origin | null = spot ? { lat: spot.lat, lon: spot.lon, height: 0 } : null;
+  const origin: Origin | null = useMemo(() => (spot ? { lat: spot.lat, lon: spot.lon, height: 0 } : geoSpot), [spot?.lat, spot?.lon, geoSpot]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pinShoot = !!geoSpot && !!photo && !solved;
   const geo = useMemo(() => geometryFor(spotId), [spotId]);
   const gz = useCallback((x: number, y: number) => groundZ(geo, x, y), [geo]);
-  const zone = spotZone(spotId, origin?.lon ?? 0);
+  const zone = geoSpot ? lonZone(geoSpot.lon) : spotZone(spotId, origin?.lon ?? 0);
   const owner = photo && parts.find(p => p.identity.isEqual(photo.owner))?.name;
 
   useEffect(() => {
@@ -146,8 +149,9 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
   const sceneEv = sceneEv100(sun.altitude, 'clear', 'street');
   const expo = 3 / (2.5 * Math.pow(2, sceneEv));
 
-  const defaults = useMemo(() => ({ ...defaultShot(solved?.pose.f35 ?? 35, 8, sceneEv), aspect: '4:3' }),
-    [solved?.pose.f35, Math.round(sceneEv * 3)]); // eslint-disable-line react-hooks/exhaustive-deps
+  const startF35 = solved?.pose.f35 ?? (pinShoot ? photo?.exifF35 ?? 26 : 35);
+  const defaults = useMemo(() => ({ ...defaultShot(startF35, 8, sceneEv), aspect: '4:3' }),
+    [startF35, Math.round(sceneEv * 3)]); // eslint-disable-line react-hooks/exhaustive-deps
   const { shot, set: setShot } = useShotSettings(sid, defaults);
   const frame = useMemo(() => frameFromPhoto(photo), [photo?.width, photo?.height]); // eslint-disable-line react-hooks/exhaustive-deps
   const o = useMemo(() => opticsOf(shot, frame), [shot, frame]);
@@ -155,30 +159,35 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
   // The shot camera is Cam A in the shared set; before anyone made it, the solved pose stands in.
   const cams = scene.rows.filter(r => r.kind === 'camera');
   const shotRow = cams.find(r => parseParams(r.params).shot === '1') ?? cams[0];
+  // The pin's stand-in pose: the pin, 1.6 m up, Cam A's heading once someone aims it, the photo's EXIF lens else a phone's 26 mm.
+  const pose: Pose | undefined = solved?.pose ?? (pinShoot && geoSpot ? {
+    lat: geoSpot.lat, lon: geoSpot.lon, alt: 1.6, pitch: 0, roll: 0, f35: photo?.exifF35 ?? 26,
+    heading: shotRow ? cameraHpr(new Quaternion(shotRow.qx, shotRow.qy, shotRow.qz, shotRow.qw).normalize()).heading : 0,
+  } : undefined);
   const cam = useMemo(() => {
     if (shotRow) return { pos: new Vector3(shotRow.x, shotRow.y, shotRow.z), q: new Quaternion(shotRow.qx, shotRow.qy, shotRow.qz, shotRow.qw).normalize() };
-    if (!solved || !origin) return null;
-    const p = llhToEnu(origin, solved.pose.lat, solved.pose.lon, 0);
-    return { pos: new Vector3(p.x, p.y, gz(p.x, p.y) + solved.pose.alt), q: cameraQuat(solved.pose.heading, solved.pose.pitch, solved.pose.roll) };
-  }, [shotRow?.x, shotRow?.y, shotRow?.z, shotRow?.qx, shotRow?.qy, shotRow?.qz, shotRow?.qw, solved?.photoId, origin?.lat, gz]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!pose || !origin) return null;
+    const p = llhToEnu(origin, pose.lat, pose.lon, 0);
+    return { pos: new Vector3(p.x, p.y, gz(p.x, p.y) + pose.alt), q: cameraQuat(pose.heading, pose.pitch, pose.roll) };
+  }, [shotRow?.x, shotRow?.y, shotRow?.z, shotRow?.qx, shotRow?.qy, shotRow?.qz, shotRow?.qw, solved?.photoId, pinShoot, origin, gz]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Like Studio, the first person in makes Cam A at the solved pose, so "add a friend" frames through the same camera.
+  // Like Studio, the first person in makes Cam A at the solved pose (or the pin, marked approx), so "add a friend" frames through it.
   const camCount = useRef(cams.length);
   camCount.current = cams.length;
   useEffect(() => {
-    if (!scene.ready || cams.length || MADE_CAM.has(sid) || !solved || !origin) return;
+    if (!scene.ready || cams.length || MADE_CAM.has(sid) || !pose || !origin || !photo) return;
     const t = window.setTimeout(() => {
       if (camCount.current || MADE_CAM.has(sid)) return;
       MADE_CAM.add(sid);
-      const p = llhToEnu(origin, solved.pose.lat, solved.pose.lon, 0);
-      const q = cameraQuat(solved.pose.heading, solved.pose.pitch, solved.pose.roll);
+      const p = llhToEnu(origin, pose.lat, pose.lon, 0);
+      const q = cameraQuat(pose.heading, pose.pitch, pose.roll);
       scene.addObject({
-        kind: 'camera', assetId: '', name: 'Cam A', x: p.x, y: p.y, z: gz(p.x, p.y) + solved.pose.alt, qx: q.x, qy: q.y, qz: q.z, qw: q.w, scale: 1,
-        color: '', intensity: 0, lightType: '', params: `uid=${newUid()};shot=1;photo=${solved.photoId};alt=${solved.pose.alt}`, visible: true,
+        kind: 'camera', assetId: '', name: 'Cam A', x: p.x, y: p.y, z: gz(p.x, p.y) + pose.alt, qx: q.x, qy: q.y, qz: q.z, qw: q.w, scale: 1,
+        color: '', intensity: 0, lightType: '', params: `uid=${newUid()};shot=1;photo=${photo.id};alt=${pose.alt}${solved ? '' : ';approx=1'}`, visible: true,
       });
     }, 4000);
     return () => clearTimeout(t);
-  }, [scene.ready, cams.length, solved, origin]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [scene.ready, cams.length, solved, pinShoot, origin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [step, setStep] = useState<Step>('found');
   const [blend, setBlend] = useState(1); // open on the photo; the slider reveals the 3D on demand
@@ -188,20 +197,21 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
   const selRow = scene.rows.find(r => r.id === selected && r.kind !== 'camera');
   useEffect(() => { if (selected !== null && !scene.rows.some(r => r.id === selected)) setSelected(null); }, [scene.rows, selected]);
 
-  const solvedF35 = solved?.pose.f35 ?? o.f35;
+  const solvedF35 = pose?.f35 ?? o.f35;
   const online = parts.filter(p => p.online);
-  const stageReady = !!(photo && solved && cam && origin);
-  const sunWords = solved ? sunWords3(sun, solved.pose.heading) : '';
+  const stageReady = !!(photo && pose && cam && origin);
+  const sunWords = pose ? sunWords3(sun, pose.heading) : '';
 
   let panel: React.ReactNode;
   if (!photo) panel = <AddPhoto session={session} spotId={spotId} />;
-  else if (!result || result.confidence === 'none') panel = <Solving photo={photo} job={job} result={result} spots={spots} />;
-  else if (step === 'found') panel = <Found result={result} photo={photo} spot={spot} zone={zone} credit={owner} onGo={() => setStep('there')} />;
+  else if (!pose) panel = <Solving photo={photo} job={job} result={result} spots={spots} sessionId={sid} />;
+  else if (step === 'found') panel = solved ? <Found result={solved} photo={photo} spot={spot} zone={zone} credit={owner} onGo={() => setStep('there')} />
+    : <PinFound photo={photo} geo={geoSpot!} title={session.title} zone={zone} sessionId={sid} credit={owner} onGo={() => setStep('there')} />;
   else if (step === 'yours') panel = (
-    <Yours sessionId={sid} photo={photo} spotId={spotId} solved={result} shot={shot} setShot={setShot} o={o} planTime={planTime} zone={zone}
+    <Yours sessionId={sid} photo={photo} spotId={spotId} pose={pose} shot={shot} setShot={setShot} o={o} planTime={planTime} zone={zone}
       changeTime={changeTime} people={scene.rows.filter(r => r.kind === 'person').length} capture={capture} sun={sun} credit={owner} />
   );
-  else panel = <There session={session} result={result} photo={photo} zone={zone} spot={spot} />;
+  else panel = <There session={session} pose={pose} photo={photo} zone={zone} spot={spot} />;
 
   return (
     <div className="simple s-app" data-step={stageReady ? step : 'solving'}>
@@ -219,7 +229,7 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
       <main className="s-main">
         <section className="s-stage" aria-label={step === 'there' ? 'Camera' : 'Your photo over the 3D spot'}>
           <StageBoundary key={step} fallback={photo ? <StagePhoto photo={photo} solving={false} note="The 3D view is off on this device. Everything else still works." /> : null}>
-          {step === 'there' && stageReady ? <There.Stage session={session} result={result!} photo={photo!} live={active} />
+          {step === 'there' && stageReady ? <There.Stage session={session} live={active} />
             : stageReady ? (
               <ShotView mapsKey={cfg.mapsKey} origin={origin!} spotId={spotId} geo={geo} gz={gz} cam={cam!} optics={o} rows={step === 'found' ? NO_ROWS : scene.rows} shotId={shotRow?.id ?? null}
                 sun={sun} expo={expo} photo={{ url: photo!.url || photo!.thumb, width: photo!.width, height: photo!.height }}
@@ -291,7 +301,7 @@ class StageBoundary extends Component<{ children: ReactNode; fallback: ReactNode
 
 const SOLVE_STEPS = ['Uploading your photo', 'Finding the place', 'Matching it with photos of the spot', 'Working out where they stood and the lens'];
 
-function Solving({ photo, job, result, spots }: { photo: Photo; job?: SolveJob; result?: SolveResult; spots: readonly Spot[] }) {
+function Solving({ photo, job, result, spots, sessionId }: { photo: Photo; job?: SolveJob; result?: SolveResult; spots: readonly Spot[]; sessionId: bigint }) {
   const enqueue = useReducer(reducers.enqueueSolve);
   const [spotPick, setSpotPick] = useState('');
   const now = useNow(1000, !!job && job.state !== 'done' && job.state !== 'failed');
@@ -317,7 +327,9 @@ function Solving({ photo, job, result, spots }: { photo: Photo; job?: SolveJob; 
           {[24, 35, 50, 85].map(f => <button key={f} className="s-chip" onClick={() => retry(f)}>{f} mm</button>)}
           <button className="s-chip" onClick={() => retry()}>Try again</button>
         </div>
-        <p className="s-muted small">Or drop a different photo of a mapped spot from the start page.</p>
+        <hr />
+        <p className="s-label">Not taken at {spots.find(s => s.id === job?.spotId)?.name ?? 'a mapped spot'}? Pick the place and plan it there.</p>
+        <ChangePlace sessionId={sessionId} />
       </div>
     );
   }

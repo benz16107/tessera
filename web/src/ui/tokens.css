@@ -1,4 +1,4 @@
-/* Tessera shape, size and layering tokens, shared by Simple (light) and Studio (Darkroom, dark).
+/* Tessera shape, size and layering tokens, shared by Simple and Studio (both on the dark Darkroom theme).
    Themes own colour; these own everything else. Rows in docs/UI-AUDIT.md point here.
 
    Radius: two steps and a circle.
@@ -39,6 +39,11 @@
      bottom edge   credits strip (hidden in Map view, which draws its own attribution)
    Inside the Through Cam A frame: readout top-left, histogram and warnings bottom-right, photo credit bottom-left,
    focus label at the subject, horizon label inside the right edge. */
+/* Martian Mono for numbers in both views (Studio also imports it); Archivo comes from main.tsx. */
+@import '@fontsource/martian-mono/400.css';
+@import '@fontsource/martian-mono/500.css';
+@import '@fontsource/martian-mono/600.css';
+
 :root {
   --radius-control: 6px;
   --radius-panel: 10px;
