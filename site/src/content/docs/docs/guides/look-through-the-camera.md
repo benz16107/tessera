@@ -11,7 +11,7 @@ The shot camera, Cam A, starts where the original photographer stood, with the s
 
 1. Open the set in Studio (`/studio/<code>`).
 2. Press **Through Cam A** in the view switch at the top left, or press **0**. **World** goes back to the free view; **Top** (or **7**) looks straight down with the camera's frustum.
-3. Pick the **Backplate**: **Your photo** puts your objects over the real photo, which is what the render uses. **Splat** or **3D Tiles** shows the 3D world behind them instead.
+3. Pick the **Backplate**: **Your photo** puts your objects over the real photo, which is what the render uses. **Clay + photo** shows the clay model with your photo projected onto it instead.
 
 The readout on the frame shows the camera, focal length, aperture, shutter, ISO and exposure offset, and a focus label sits on the subject in focus.
 

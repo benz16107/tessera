@@ -42,7 +42,7 @@ No. Every render is labelled "AI interpretation". Your people and props are comp
 
 ### Do my friends need the app?
 
-No. Anyone with the link joins in a browser. The set can also reach people by text and by phone call through Photon; the crew is connected to Photon, and the numbers to text and call are being set up.
+No. Anyone with the link joins in a browser. The set can also reach people by text and by phone call through Photon; the Telegram bot @ShotMatchSetBot is live, and the numbers for iMessage, SMS and calls are being set up.
 
 ### What happens to my photo?
 

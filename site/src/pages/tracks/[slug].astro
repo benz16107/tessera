@@ -23,7 +23,7 @@ const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['
       <nav class="crumbs" aria-label="Breadcrumb"><a href="/tracks/">Tracks</a><span aria-hidden="true">/</span>{t.sponsor}</nav>
       <p class="eyebrow">{t.prize}</p>
       <h1>{t.oneLine}</h1>
-      {t.note && <p class="tk-note">{/^Stand-in proof: /.test(t.note) ? <><span class="tag stand-in">Stand-in proof</span>{t.note.replace(/^Stand-in proof: /, '')}</> : t.note}</p>}
+      {t.note && <p class="tk-note">{t.noteTag && <span class="tag live">{t.noteTag}</span>}{t.note}</p>}
     </header>
 
     <figure class="tk-hero">
@@ -56,9 +56,11 @@ const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['
     {t.threads && (
       <section id="threads" class="tk-sec">
         <h2>The five mechanisms, as they arrive</h2>
-        <p class="sub">Each card is one thread in the app it happens in. The words are from our end-to-end run; grey lines say what happened where the run recorded no exact words.</p>
-        <p class="src-line"><span class="tag stand-in">Stand-in proof</span>{t.threads[0].source}.</p>
-        <div class="threads">{t.threads.map((th) => <ThreadMock thread={th} showSource={th.source !== t.threads![0].source} />)}</div>
+        <p class="sub">Each card is one thread in the app it happens in. Cards tagged Live are screenshots of the real bot. Cards tagged Stand-in quote our end-to-end run; grey lines say what happened where the run recorded no exact words. Each stand-in card is replaced as its live round trip is recorded.</p>
+        {(() => { const common = t.threads!.find((th) => !th.live)?.source; return <>
+          {common && <p class="src-line">Stand-in cards: {common}.</p>}
+          <div class="threads">{t.threads!.map((th) => <ThreadMock thread={th} showSource={!!th.live || th.source !== common} />)}</div>
+        </>; })()}
       </section>
     )}
 
@@ -158,7 +160,7 @@ const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['
   .tk-hero { margin: 48px 0 0; }
   .tk-hero figcaption { margin-top: 12px; font-size: 0.875rem; color: var(--text-3); max-width: 72ch; }
   .hero-phone { width: min(300px, 70vw); }
-  .hero-plain { display: block; width: 100%; max-width: 640px; height: auto; border-radius: 12px; box-shadow: 0 0 0 1px var(--line-2), 0 24px 64px rgba(0, 0, 0, 0.5); }
+  .hero-plain { display: block; width: auto; max-width: min(100%, 640px); max-height: min(78vh, 760px); height: auto; border-radius: 12px; box-shadow: 0 0 0 1px var(--line-2), 0 24px 64px rgba(0, 0, 0, 0.5); }
   .tk-nums { margin: 48px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px 32px; }
   .tk-nums > div { border-top: 1px solid var(--line-2); padding-top: 16px; }
   .tk-nums dt { font-size: 2.25rem; line-height: 1; }

@@ -33,10 +33,10 @@ to stand.
    the real sun position (suncalc). A render puts your objects into your own photo with shadows cast from that sun;
    the AI generator is blended only around the objects, so the rest of the photo stays pixel for pixel.
 4. **The place is rebuilt from our own photos. Map tiles are for display only.** The solver matches against an open
-   structure-from-motion model built from 155 Creative Commons photos (127 registered), and the photoreal set is a
-   Gaussian splat trained from 55 of them. Google Photorealistic 3D Tiles draw the planning view with Google's credits
-   on screen and never enter a render, an export or an AI step. That keeps us inside the Map Tiles policy, and it means
-   the set is ours to render and share.
+   structure-from-motion model built from 155 Creative Commons photos (127 registered). The 3D world is Earth (Google
+   Photorealistic 3D Tiles, with Google's credits on screen) plus Clay + photo: clay massing from NYC building footprints
+   with the user's photo projected from where it was taken. Tiles never enter a render, an export or an AI step, which
+   keeps us inside the Map Tiles policy. No splat imagery anywhere (Ben, Nov 8): it was not clear enough at street level.
 5. **Live together.** A photographer in Studio, a friend in Simple, a scout on the street and Nemotron edit one set at
    the same moment, with cursors, laser pings and presence. Nothing between them but SpacetimeDB.
 6. **Reachable by text and call.** Most people on a shoot will never open a 3D editor. The set reaches them on
@@ -84,9 +84,7 @@ to stand.
 | Solve time | 11.0 to 18.5 s a photo, median 15.8 s (linuxbox CPU) | `spots/nyc_dumbo/eval.md` |
 | The honest miss | T3: 75 matches, "Couldn't place" | `spots/nyc_dumbo/eval.md` |
 | Demo shot (session A9TVAN) | Solid, 1,690 matches, 52.9 mm, facing 4 degrees N, camera 1.0 m up | Simple screenshot, `lens/RESULTS.md` |
-| Georegistration | median residual 7.3 m (first build), 7.5 m (splat rebuild) | `BUILD.md`, `SPLAT.md` |
-| Photoreal set | 55 photos from 26 authors, 2.75 M Gaussians (1.69 M lite), 15.6 min on an A100 | `spots/nyc_dumbo/SPLAT.md` |
-| Splat held-out PSNR | 12.8 dB raw, 15.4 dB colour-corrected (low by benchmark standards) | `spots/nyc_dumbo/SPLAT.md` |
+| Georegistration | median residual 7.3 m | `BUILD.md` |
 | Lens dataset | 4,500 Commons photos, 37 landmarks, 3 landmarks held out whole (480 test photos) | `lens/RESULTS.md` |
 
 ## Videos
@@ -133,7 +131,7 @@ that call them.
 **Known limits.** FLUX.1-dev returned HTTP 500 on every base call and accepts only example images in depth and canny
 modes, so the render pass blends Qwen-Image 2.1 on Vultr and names it. TRELLIS text mode failed on about half of the
 calls (HTTP 500); a failed prop becomes a flat cut-out. Cosmos Reason2 and NVIDIA's Content Safety id return 404 for
-our key (Nano Omni and Vultr's copy stand in). The lens model's limits are above.
+our key (Nano Omni and Vultr's copy stand in). The lens model's limits are above. Also tried, one line only: We trained a Gaussian splat of the spot on an NVIDIA A100 and cleaned it with NVIDIA Difix3D; at street level it wasn't clear enough to ship, so the 3D world uses Google's tiles and our clay model with the user's photo projected onto it.
 
 ### SpacetimeDB: the set is the database
 
@@ -180,7 +178,8 @@ them. Five mechanisms:
 Plus a photo of one object becomes a 3D prop in the set.
 
 **Evidence.** The production crew went live on Photon's API and event stream at 12:30 AM CT Sunday and connected a managed Telegram bot
-over the API, but no public number or bot handle is published yet (`GET /api/photon/status` lists none).
+over the API. Telegram is live: @ShotMatchSetBot answered a real message at 12:43 AM CT and located a texted photo at
+12:51 AM CT (`web/screenshots/photon-live-telegram-*.png`).
 The other lines need numbers, DNS and testers set up by hand in Photon's dashboard, so all five mechanisms were proven
 end to end against a stand-in for Photon's Beta API (real crew, real SpacetimeDB module, real NVIDIA models): 29 of 29
 checks. Say this plainly on every Photon surface.
@@ -203,7 +202,7 @@ credit on every frame. Text contrast passes AA in the Figma frames. Figma file Q
 the crew, the solver and Ollama with Nemotron 3.5 Bolt for the offline path; Vultr Object Storage keeps photos, previews
 and generated props; Vultr Serverless Inference runs Nemotron Content Safety (our primary safety path), Nemotron 3 Nano
 Omni, Qwen-Image 2.1 (the render generator while FLUX is down) and Whisper. This site is served from the same VM.
-Limit: Vultr refused the GPU instance (no credit, then the monthly fee limit), so the fine-tune and splat ran on a Brev
+Limit: Vultr refused the GPU instance (no credit, then the monthly fee limit), so the lens fine-tune ran on a Brev
 A100 from the HackUTD NVIDIA credit.
 
 ### MLH Best Domain Name from GoDaddy Registry

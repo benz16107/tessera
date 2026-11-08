@@ -5,7 +5,7 @@ import { parseParams, num } from '../scene/objects.ts';
 import { Ico, type IconName } from './ui.tsx';
 
 export type WorldMode = 'splat' | 'clayPhoto' | 'clay' | 'tiles' | 'off';
-export const WORLD_LABEL: Record<WorldMode, string> = { splat: 'Splat', clayPhoto: 'Clay + photo', clay: 'Clay', tiles: '3D Tiles', off: 'Hidden' };
+export const WORLD_LABEL: Record<WorldMode, string> = { tiles: 'Earth', clayPhoto: 'Clay + photo', clay: 'Clay', splat: 'Splat', off: 'Hidden' };
 
 interface Props {
   rows: SceneObject[];

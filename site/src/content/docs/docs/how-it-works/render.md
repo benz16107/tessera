@@ -5,7 +5,7 @@ description: How ShotMatch puts your people, props and lights into your own phot
 
 A render is your version of the shot: the objects you placed, lit by the right sun, inside your own photo. ShotMatch does not repaint the photo. It composites your objects in, lets an image model blend only around them, and then checks the result.
 
-![Studio's render view: on the left, Through Cam A with two mannequins over the photo; on the right, the AI render labelled "AI interpretation"; the render layers panel at the right edge](../../../../assets/shots/studio-render-layers.png)
+![Studio's render view: on the left, Through Cam A with two mannequins over the photo; on the right, the AI render of the same two people labelled "AI interpretation"; Nemotron's physics check at the right edge](../../../../assets/shots/studio-render-prod.png)
 
 The right-hand image above is an AI render, and the app labels it "AI interpretation". It is not a record of a real moment.
 
@@ -20,7 +20,7 @@ The browser renders only your objects and lights, from the shot camera, at the p
 | depth | 8-bit grey, white is near |
 | mask | one flat colour per object, with a legend mapping colours to `scene_object` ids |
 
-Google's tiles, the splat and every editor helper (gizmos, frustums, the grid, light icons) are switched off for the whole capture. Tile pixels and tile depth never reach a render. The browser posts the layers to `POST /api/render`.
+The 3D world (Google's tiles or the clay model) and every editor helper (gizmos, frustums, the grid, light icons) are switched off for the whole capture. Tile pixels and tile depth never reach a render. The browser posts the layers to `POST /api/render`.
 
 The 3D sun comes from the set's clock and the spot's position (suncalc). Nemotron 3.5 Super VL also reads the light in your photo (`GET /api/set/light`), so the crew can flag a sun that is on the wrong side.
 

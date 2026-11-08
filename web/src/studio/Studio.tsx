@@ -24,10 +24,11 @@ import { useShotSettings, defaultShot } from './state/useShotSettings.ts';
 import { makeObject, newUid, parseParams, stateOf, withParams, fmtParams, type AddItem, type ObjState } from './scene/objects.ts';
 import { optics as opticsOf, frameFromPhoto, fitFrame, type Fit } from './camera/shot.ts';
 import { bodyById, lensById } from './catalog/index.ts';
-import Tiles, { tilesRef } from './world/Tiles.tsx';
+import Tiles, { tilesRef, tileGroundAt } from './world/Tiles.tsx';
+import PlaceSearch, { type Place } from './editor/PlaceSearch.tsx';
 import Splat, { useSplatUrl, sparkRef } from './world/Splat.tsx';
 import Catchers from './world/Catchers.tsx';
-import { geometryFor, groundZ, SPLATS } from './world/geometry.ts';
+import { geometryFor, groundZ, onStreet, SPLATS } from './world/geometry.ts';
 import { ObjectNode, SelectionBox, objectSizes } from './world/SceneObjects.tsx';
 import LookThrough from './post/LookThrough.tsx';
 import Overlays from './editor/Overlays.tsx';
@@ -99,6 +100,7 @@ export default function Studio({ code }: { code: string }) {
 
 const gizmoBusy = { current: false };
 const MADE_CAM = new Set<bigint>();
+const NO_WALLS = { polys: [], segs: [] };
 const FIXED_CAM = new Set<bigint>();
 const camLetter = (i: number) => `Cam ${String.fromCharCode(65 + i)}`;
 const compass = (az: number) => ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][Math.round((((az % 360) + 360) % 360) / 45) % 8];
@@ -123,19 +125,32 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const gz = useCallback((x: number, y: number) => groundZ(geo, x, y), [geo]);
   const solved = [...results].filter(r => r.confidence !== 'none').sort((a, b) => Number(b.photoId - a.photoId))[0];
   const photo = photos.find(p => p.id === solved?.photoId) ?? [...photos].sort((a, b) => Number(b.id - a.id))[0];
-  const origin: Origin | null = spot ? { lat: spot.lat, lon: spot.lon, height: 0 } : solved ? { lat: solved.pose.lat, lon: solved.pose.lon, height: 0 } : null;
-  const zone = spotZone(session.spotId, origin?.lon ?? 0);
+  // A free location (Earth: "Plan here" or "New shoot here"): spot id 'geo:<lat>,<lon>,<ground height above the ellipsoid>'.
+  const geoSpot = useMemo(() => {
+    const m = session.spotId.match(/^geo:(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)$/);
+    return m ? { lat: +m[1], lon: +m[2], height: +m[3] } : null;
+  }, [session.spotId]);
+  const origin: Origin | null = spot ? { lat: spot.lat, lon: spot.lon, height: 0 } : geoSpot ?? (solved ? { lat: solved.pose.lat, lon: solved.pose.lon, height: 0 } : null);
+  // Exploring: the World view is flown to a searched place. The frame moves there (tiles only); the set stays home, hidden.
+  const [explore, setExplore] = useState<Place | null>(null);
+  const here: Origin | null = explore ? { lat: explore.lat, lon: explore.lon, height: 0 } : origin;
+  // shortcut: a free location's zone is its longitude's whole-hour offset (no daylight saving); use a time zone lookup when one ships.
+  const lonZone = (lon: number) => { const h = Math.round(lon / 15); return h === 0 ? 'UTC' : `Etc/GMT${h > 0 ? '-' : '+'}${Math.abs(h)}`; };
+  const zone = explore ? lonZone(explore.lon) : geoSpot ? lonZone(geoSpot.lon) : spotZone(session.spotId, origin?.lon ?? 0);
   const [splatFull, setSplatFull] = useState(false);
   const [splatSkip, setSplatSkip] = useState<string[]>([]);
-  const splatUrl = useSplatUrl(session.spotId, splatFull, splatSkip);
-  // Clay + photo by default (crisp from every angle); a person's own pick is remembered in this browser.
+  // The splat is hidden (Ben: "very unclear"): only ?splat=1 (or ?splat=<file>) probes for it and offers it in the menu.
+  const splatTest = useMemo(() => new URLSearchParams(location.search).has('splat'), []);
+  const splatUrl = useSplatUrl(splatTest ? session.spotId : '', splatFull, splatSkip);
+  // Earth (Google Photorealistic 3D Tiles) by default; a person's own pick is remembered in this browser. The key moved to
+  // v2 when Earth replaced Clay + photo as the default, so the old remembered default doesn't stick.
   const [world, setWorldState] = useState<WorldMode>(() => {
-    try { const w = localStorage.getItem('studio/world') as WorldMode | null; if (w && w in WORLD_LABEL) return w; } catch { /* private mode */ }
-    return 'clayPhoto';
+    try { const w = localStorage.getItem('studio/world-v2') as WorldMode | null; if (w && w in WORLD_LABEL && w !== 'splat') return w; } catch { /* private mode */ }
+    return 'tiles';
   });
-  const setWorld = (w: WorldMode) => { setWorldState(w); try { localStorage.setItem('studio/world', w); } catch { /* private mode */ } };
+  const setWorld = (w: WorldMode) => { setWorldState(w); try { localStorage.setItem('studio/world-v2', w); } catch { /* private mode */ } };
   const [splatState, setSplatState] = useState<{ loaded: boolean; progress: number }>({ loaded: false, progress: 0 });
-  const worlds: WorldMode[] = splatUrl ? ['splat', 'clayPhoto', 'clay', 'tiles', 'off'] : ['clayPhoto', 'clay', 'tiles', 'off'];
+  const worlds: WorldMode[] = ['tiles', 'clayPhoto', 'clay', ...(splatUrl ? ['splat' as const] : []), 'off'];
   const [worldMenu, setWorldMenu] = useState(false);
 
   // Time of day: shared through session.planTime (and the spacetime sun clock), local while dragging.
@@ -149,7 +164,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   }, [setPlanTime, sid]);
   const layers = useGeoLayers(sid, session.spotId, planTime); // weather, tides, permits, building shadows (web/src/layers)
   const [geoOpen, setGeoOpen] = useState(false);
-  const sun = origin ? sunAt(planTime, origin.lat, origin.lon) : { azimuth: 180, altitude: 45 };
+  const sun = here ? sunAt(planTime, here.lat, here.lon) : { azimuth: 180, altitude: 45 };
   const sceneEv = sceneEv100(sun.altitude, 'clear', 'street');
   const expo = 3 / (2.5 * Math.pow(2, sceneEv)); // the viewport meters the ambient: incident light E = 2.5 * 2^EV100 lux maps to 3
 
@@ -246,7 +261,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const [renderOpen, setRenderOpen] = useState(false);
   const [liveOpen, setLiveOpen] = useState(false);
   const [attribution, setAttribution] = useState('');
-  const [, setGroundOffset] = useState<number | null>(null); // the tiles' display alignment; kept out of the UI
+  const [groundOffset, setGroundOffset] = useState<number | null>(null); // the tiles' display alignment (street height above the ellipsoid)
   const [cmd, setCmd] = useState<ViewCmd | null>(null);
   const [pendingUid, setPendingUid] = useState<string | null>(null);
   const [vrOrigin, setVrOrigin] = useState<Vector3 | null>(null);
@@ -496,16 +511,24 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const capture = useRef<(() => Promise<Layers>) | null>(null);
   const getLayers = useCallback(() => (capture.current ? capture.current() : Promise.reject(new Error('the 3D view is not ready'))), []);
 
-  const probes = useMemo(() => [{ x: 0, y: 0 }, ...(shotPose ? [{ x: shotPose.pos.x, y: shotPose.pos.y }] : [])], [shotPose?.pos.x, shotPose?.pos.y]); // eslint-disable-line react-hooks/exhaustive-deps
+  const probes = useMemo(() => (explore ? [{ x: 0, y: 0 }] : [{ x: 0, y: 0 }, ...(shotPose ? [{ x: shotPose.pos.x, y: shotPose.pos.y }] : [])]), [shotPose?.pos.x, shotPose?.pos.y, explore]); // eslint-disable-line react-hooks/exhaustive-deps
+  const earth = world === 'tiles' || !!explore;
   const startCam = useMemo(() => {
-    if (!shotPose) return { pos: new Vector3(0, -20, 10), target: new Vector3(0, 0, 0) };
+    // Earth opens like Google Earth: 300 m out and 35 degrees down, looking along `bearing` at `t`.
+    const aerial = (t: Vector3, bearing: number) => {
+      const el = (35 * Math.PI) / 180, back = new Vector3(Math.sin(bearing), Math.cos(bearing), 0).multiplyScalar(-300 * Math.cos(el));
+      return { pos: t.clone().add(back).add(new Vector3(0, 0, 300 * Math.sin(el))), target: t };
+    };
+    if (explore) return aerial(new Vector3(), 0);
+    if (!shotPose) return earth ? aerial(new Vector3(), 0) : { pos: new Vector3(0, -20, 10), target: new Vector3(0, 0, 0) };
     const flat = new Vector3(shotPose.fwd.x, shotPose.fwd.y, 0).normalize();
+    if (earth) { const t = shotPose.pos.clone().add(flat.clone().multiplyScalar(20)); t.z = gz(t.x, t.y); return aerial(t, Math.atan2(flat.x, flat.y)); }
     const target = shotPose.pos.clone().add(flat.clone().multiplyScalar(12));
     target.z = gz(target.x, target.y) + 1;
     // Just behind Cam A at nearly its height: the splat's walls smear when seen far from the photos' viewpoints.
     const pos = shotPose.pos.clone().add(flat.clone().multiplyScalar(-3)).add(new Vector3(0, 0, 0.3));
     return { pos, target };
-  }, [!!shotPose, geo]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [!!shotPose, geo, earth, explore?.lat, explore?.lon]); // eslint-disable-line react-hooks/exhaustive-deps
   // The splat's street smear near Cam A fades in the World view: a box 26 m wide, 62 m along the street (from 17 m behind Cam A), 3.6 m tall, on the slope.
   const streetFade = useMemo(() => {
     if (!shotPose) return null;
@@ -517,7 +540,40 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     const quat = new Quaternion().setFromUnitVectors(new Vector3(0, 0, 1), n).multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), (-heading * Math.PI) / 180));
     return { center: c, quat, half: [26, 62, 3.6] as [number, number, number] }; // Spark's box scale is the full size
   }, [shotPose, geo, gz]);
+  // Walk's ground: our street plane on the measured street, else the tile surface under the eye (navigation only, never
+  // stored or used for placement, export, render or AI; Map Tiles API terms), cached per half metre for a second.
+  const tileGround = useRef(new Map<string, { z: number; t: number }>());
+  const walkGround = useCallback((x: number, y: number, fromZ = 400) => {
+    if (!explore && onStreet(geo, x, y)) return gz(x, y);
+    const key = `${Math.round(x * 2)},${Math.round(y * 2)}`, now = performance.now(), c = tileGround.current.get(key);
+    if (c && now - c.t < 1000) return c.z;
+    const z = tileGroundAt(x, y, fromZ + 2);
+    if (z === null) return explore ? 0 : gz(x, y);
+    if (tileGround.current.size > 400) tileGround.current.clear();
+    tileGround.current.set(key, { z, t: now });
+    return z;
+  }, [explore, geo, gz]);
   const walkObstacles = useMemo(() => obstaclesFor(layers.data?.layers.buildings, origin, geo), [layers.data?.layers.buildings, origin?.lat, origin?.lon, geo]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Earth: make the explored place the set's location (unsolved sets), or start a new shoot there. The ground height is the
+  // tiles' display alignment at the place, stored once as the flat ground plane objects stand on (never tile geometry).
+  const setSessionSpot = useReducer(reducers.setSessionSpot);
+  const createSession = useReducer(reducers.createSession);
+  const [pendingSpot, setPendingSpot] = useState('');
+  const geoId = () => explore && groundOffset !== null ? `geo:${explore.lat.toFixed(6)},${explore.lon.toFixed(6)},${groundOffset.toFixed(1)}` : '';
+  const planHere = async () => {
+    const id = geoId();
+    if (!id) return;
+    await setSessionSpot({ sessionId: sid, spotId: id });
+    setExplore(null);
+    setToast('This set is here now. Add a camera and people from the + menu; the sun is this place\'s sun.');
+  };
+  const newShootHere = async () => {
+    const id = geoId();
+    if (!id || !explore) return;
+    setPendingSpot(id);
+    await createSession({ spotId: id, title: explore.name.split(',')[0].slice(0, 120), name: myName });
+  };
+  const camNear = !!shotPose && orbitTarget.current.distanceTo(shotPose.pos) < 250 && camHeight < 120;
   /** Walk: move Cam A to the eye, looking where you look, so walking around finds the shot. */
   const standHere = () => {
     const p = walkInput.current.pose?.();
@@ -564,9 +620,9 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const objectsForLayers = () => scene.rows.filter(r => r.visible && r.kind !== 'camera' && r.kind !== 'light' && groups.current.get(r.id))
     .map(r => ({ id: r.id, name: r.name, kind: r.kind, root: groups.current.get(r.id)! }));
   const photoBack = view === 'shot' && backplate === 'photo' && !!photo;
-  const showSplat = world === 'splat' && !!splatUrl && !photoBack;
-  const showTiles = (world === 'tiles' || (world === 'splat' && !splatState.loaded)) && !photoBack;
-  const showClay = (world === 'clay' || world === 'clayPhoto') && !photoBack;
+  const showSplat = !explore && world === 'splat' && !!splatUrl && !photoBack;
+  const showTiles = (!!explore || world === 'tiles' || (world === 'splat' && !splatState.loaded)) && !photoBack;
+  const showClay = !explore && (world === 'clay' || world === 'clayPhoto') && !photoBack;
   // Clay + photo projects the user's photo from its solved pose (not Cam A's current one: the photo was taken there).
   const projector = useMemo((): Projector | null => {
     if (!solved || !origin || !photo || !frame) return null;
@@ -600,6 +656,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   let credits: ReactNode[] = [];
   if (showTiles && attribution) credits.push(<img key="g" src="/studio/attribution/google-maps-logo.svg" alt="Google Maps" />, <span key="gc" className="gcred">{attribution}</span>);
   if (showSplat && splatState.loaded) credits.push(<span key="s" className="gcred">{SPLATS[session.spotId]?.credit}</span>);
+  if (explore) credits.push(<span key="o" className="gcred">Place search © OpenStreetMap contributors</span>);
   if (showClay) credits.push(<span key="c" className="gcred">Clay massing from NYC building footprints (NYC Open Data){world === 'clayPhoto' ? ", with your photo projected from where it was taken" : ''}</span>);
   if (!credits.length) credits = [<span key="n" className="gcred">{photoBack ? 'Your photo as the backplate; no map content in this view' : 'World hidden'}</span>];
 
@@ -661,10 +718,11 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               {photo && <PhotoEnv url={photo.url || photo.thumb} />}
               <SunLight dir={sunDir} color={sunColor} strength={sunStrength(sun.altitude) * 3} center={startCam.target} />
               <group rotation={ENU_TO_THREE} name="enu">
-                {origin && (
-                  <Tiles apiKey={cfg.mapsKey} origin={origin} probes={probes} visible={showTiles} extraCamera={view === 'shot' ? shotCam : null}
-                    contextOnly={showSplat && splatState.loaded} groundAt={gz} onAttribution={setAttribution} onGround={setGroundOffset} />
+                {here && (
+                  <Tiles apiKey={cfg.mapsKey} origin={here} probes={probes} visible={showTiles} extraCamera={view === 'shot' ? shotCam : null}
+                    contextOnly={showSplat && splatState.loaded} groundAt={explore ? undefined : gz} onAttribution={setAttribution} onGround={setGroundOffset} />
                 )}
+                <group visible={!explore} name="set">
                 {splatUrl && world === 'splat' && (
                   <Splat spotId={session.spotId} url={splatUrl} visible={showSplat} fade={view !== 'shot' ? streetFade : null}
                     onProgress={f => setSplatState(s => ({ ...s, progress: f }))} onLoaded={() => setSplatState({ loaded: true, progress: 1 })}
@@ -680,12 +738,13 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                   return (
                     <ObjectNode key={String(r.id)} row={r} selected={r.id === selected} lockedBy={lk?.name ?? null} lockColor={lk?.color} dragging={scene.draggingId() === r.id}
                       expo={expo} optics={o} isShot={r.id === shotRow?.id} lookingThrough={view === 'shot'} focusM={shot.focusM} camName={camName(r)}
-                      showLabels={view !== 'shot'} onSelect={(id, pt, alt) => pick(id, pt, alt)} register={register} />
+                      showLabels={view !== 'shot' && !explore} onSelect={(id, pt, alt) => pick(id, pt, alt)} register={register} />
                   );
                 })}
                 <SetEventMarks ev={ev} />
                 <CheckinMarksSlot rows={checkins} />
                 {measure.length > 0 && <Measure pts={measure} />}
+                </group>
               </group>
               {gridOn && <group userData={{ helper: true }} position={[0, 0.03, 0]}>
                 <Grid args={[400, 400]} cellSize={1} sectionSize={10} cellColor="#3a3833" sectionColor="#8a867e" infiniteGrid fadeDistance={160} fadeStrength={1.5} cellThickness={0.6} sectionThickness={1} />
@@ -699,10 +758,10 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               <ShotCameraSync camera={shotCam} group={shotRow ? groups.current.get(shotRow.id) ?? null : null} />
               {view === 'persp' && <EditorControls start={startCam} cmd={cmd} target={orbitTarget} onHeight={setCamHeight} gz={gz} />}
               {view === 'top' && <TopView center={shotPose?.pos ?? new Vector3()} target={orbitTarget} />}
-              {view === 'walk' && <WalkControls gz={gz} eye={walkEye} fly={walkFly} input={walkInput.current} obstacles={walkObstacles} editing={selected !== null}
-                pickables={() => [...groups.current.entries()]} onPick={id => setSelected(id)} />}
+              {view === 'walk' && <WalkControls gz={walkGround} eye={walkEye} fly={walkFly} input={walkInput.current} obstacles={explore ? NO_WALLS : walkObstacles} editing={selected !== null}
+                pickables={() => [...groups.current.entries()]} onPick={id => setSelected(id)} onFly={() => setWalkFly(true)} />}
               {view === 'shot' && shotRow && <LookThrough camera={shotCam} o={o} shot={shot} gain={gain} wb={wb} dofOn={dofOn} vignette={vignette} fit={fitFn} photoOnly={photoBack} />}
-              {view !== 'shot' && shotRow && <PipRenderer shotCam={shotCam} o={o} rect={pip} inset={vp.w >= 720} />}
+              {view !== 'shot' && shotRow && <PipRenderer shotCam={shotCam} o={o} rect={pip} inset={vp.w >= 720 && !explore} overPhoto={!!photo} />}
               {view !== 'shot' && (
                 <GizmoHelper alignment="top-right" margin={[52, 52]} renderPriority={2}>
                   <GizmoViewport axisColors={['#e8675e', '#7fc96f', '#5f9cf0']} labelColor="#0c0c0b" />
@@ -782,7 +841,20 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                     </div>
                   )}
                 </span>
+                <PlaceSearch onPick={p => { setExplore(p); setGroundOffset(null); setSelected(null); if (view !== 'walk') setView('persp'); }} />
               </div>
+            )}
+            {pendingSpot && <NewShootWatcher spotId={pendingSpot} />}
+            {explore && !focus && (
+              <div className="st-explore st-float" role="status">
+                <span title={explore.name}>{explore.name.split(',')[0]}</span>
+                {!solved && <button className="st-btn small primary" disabled={groundOffset === null} onClick={() => void planHere()} title="Move this set here: plan with the real sun at this place">Plan here</button>}
+                <button className="st-btn small" disabled={groundOffset === null || !!pendingSpot} onClick={() => void newShootHere()}>{pendingSpot ? 'Creating' : 'New shoot here'}</button>
+                <button className="st-btn small ghost" onClick={() => setExplore(null)}>Back to the set</button>
+              </div>
+            )}
+            {!explore && earth && shotRow && solved && (view === 'persp' || view === 'walk') && camNear && (
+              <button className="st-btn small st-float st-sharper" onClick={() => setWorld('clayPhoto')} title="Switch to Clay + photo, sharp at street level near the shot">Sharper here</button>
             )}
             {!focus && (
               <div className="st-rail st-float" role="toolbar" aria-label="Tools">
@@ -833,7 +905,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                 <button className="st-btn small" onClick={() => setFocus(false)}>Exit focus <span className="st-meta">Tab</span></button>
               </div>
             )}
-            {shotRow && (
+            {shotRow && !explore && (
               <>
                 <button className="st-pip" style={{ left: pip.x, top: pip.y, width: pip.w, height: pip.h }} onClick={() => setView('shot')} aria-label={`Look through ${shotName}`} title={`Look through ${shotName} (0)`} />
                 <span className="st-pip-label" style={{ left: pip.x + 6, top: pip.y + pip.h - 22 }}>{shotName} · {Math.round(o.f35)} mm</span>
@@ -979,6 +1051,13 @@ function BuildCard({ spotName, solved, hasCam, worldReady, worldNote, splat, pro
   );
 }
 
+/** After "New shoot here": open the new session once its row arrives (createSession returns nothing). */
+function NewShootWatcher({ spotId }: { spotId: string }) {
+  const [rows] = useTable(tables.session.where(r => r.spotId.eq(spotId)));
+  useEffect(() => { const r = rows[rows.length - 1]; if (r) location.assign(`/studio/${r.code}`); }, [rows.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  return null;
+}
+
 /** Image-based light from the user's photo: an equirect env so objects pick up the scene's colours (not a reflection). */
 function PhotoEnv({ url }: { url: string }) {
   const tex = useTexture(url);
@@ -1012,7 +1091,7 @@ function ShotCameraSync({ camera, group }: { camera: PerspectiveCamera; group: G
 
 /** Editor view render: the main scene, then the shot camera's view into the picture-in-picture box with the world hidden
  *  (the photo sits under the transparent canvas there). Priority 1 takes over R3F's render; the axis gizmo draws at 2. */
-function PipRenderer({ shotCam, o, rect, inset = true }: { shotCam: PerspectiveCamera; o: { frame: { w: number; h: number }; vfovDeg: number }; rect: { x: number; y: number; w: number; h: number }; inset?: boolean }) {
+function PipRenderer({ shotCam, o, rect, inset = true, overPhoto = true }: { shotCam: PerspectiveCamera; o: { frame: { w: number; h: number }; vfovDeg: number }; rect: { x: number; y: number; w: number; h: number }; inset?: boolean; overPhoto?: boolean }) {
   const { gl, scene, camera, size } = useThree();
   const pipCam = useMemo(() => new PerspectiveCamera(), []);
   useFrame(() => {
@@ -1024,7 +1103,8 @@ function PipRenderer({ shotCam, o, rect, inset = true }: { shotCam: PerspectiveC
     pipCam.updateProjectionMatrix(); pipCam.updateMatrixWorld();
     const hide: Object3D[] = [];
     scene.traverse(x => { if ((x.userData.helper || (x as { isTransformControlsRoot?: boolean; isTransformControls?: boolean }).isTransformControlsRoot || (x as { isTransformControls?: boolean }).isTransformControls) && x.visible) hide.push(x); });
-    if (tilesRef.current?.group.visible) hide.push(tilesRef.current.group);
+    // Over the photo the inset shows only our objects; a shoot without a photo shows the world it is planned in (display only).
+    if (overPhoto && tilesRef.current?.group.visible) hide.push(tilesRef.current.group);
     if (sparkRef.current?.visible) hide.push(sparkRef.current);
     hide.forEach(x => (x.visible = false));
     const bg = scene.background;

@@ -77,7 +77,7 @@ export default function Map2D({ geo, center, camera, height = 320, zoom = 16.2, 
       add({ id: 'geo-buildings', type: 'fill-extrusion', source: 'geo-buildings', paint: { 'fill-extrusion-color': '#3a3833', 'fill-extrusion-height': ['coalesce', ['get', 'height_m'], 9], 'fill-extrusion-opacity': 0.8 } });
       add({ id: 'geo-alerts', type: 'fill', source: 'geo-alerts', paint: { 'fill-color': '#e8675e', 'fill-opacity': 0.12 } });
       add({ id: 'geo-alerts-line', type: 'line', source: 'geo-alerts', paint: { 'line-color': '#e8675e', 'line-width': 1.5 } });
-      add({ id: 'geo-film', type: 'fill', source: 'geo-film', paint: { 'fill-color': '#f2a33a', 'fill-opacity': ['case', ['==', ['get', 'active'], true], 0.55, 0.16] } });
+      add({ id: 'geo-film', type: 'fill', source: 'geo-film', paint: { 'fill-color': '#f2a33a', 'fill-opacity': ['case', ['==', ['get', 'active'], true], 0.55, 0.09] } });
       add({ id: 'geo-closures', type: 'fill', source: 'geo-closures', paint: { 'fill-color': '#e8675e', 'fill-opacity': 0.55 } });
       add({ id: 'geo-construction', type: 'fill', source: 'geo-construction', paint: { 'fill-color': '#d9b44a', 'fill-opacity': 0.5 } });
       add({ id: 'geo-construction-line', type: 'line', source: 'geo-construction', paint: { 'line-color': '#d9b44a', 'line-width': 1.2 } });

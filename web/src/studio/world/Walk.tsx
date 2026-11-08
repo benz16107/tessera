@@ -60,24 +60,29 @@ export const newWalkInput = (): WalkInput => ({ joy: new Vector2(), look: new Ve
 const MOVE_KEYS = new Set(['w', 'a', 's', 'd', 'q', 'e']);
 const WALK_MPS = 1.4, RUN = 3;
 
-export default function WalkControls({ gz, eye, fly, input, obstacles, editing, pickables, onPick }: {
-  gz: (x: number, y: number) => number; eye: number; fly: boolean; input: WalkInput; obstacles: Obstacles;
+export default function WalkControls({ gz, eye, fly, input, obstacles, editing, pickables, onPick, onFly }: {
+  gz: (x: number, y: number, fromZ?: number) => number; eye: number; fly: boolean; input: WalkInput; obstacles: Obstacles;
   /** True while an object is selected and the mouse is free: WASD then belong to the gizmo shortcuts (arrows still walk). */
   editing: boolean;
   pickables: () => [bigint, Object3D][]; onPick: (id: bigint | null) => void;
+  onFly?: () => void; // E, Space or Q while walking switch to flying
 }) {
   const { camera, gl } = useThree();
   const s = useRef({ yaw: 0, pitch: 0, vel: new Vector3(), keys: new Set<string>(), locked: false, gyro0: null as null | { yaw: number; pitch: number; at: { yaw: number; pitch: number } } });
-  const live = useRef({ editing, fly, eye, onPick, pickables });
-  live.current = { editing, fly, eye, onPick, pickables };
+  const live = useRef({ editing, fly, eye, onPick, pickables, onFly });
+  live.current = { editing, fly, eye, onPick, pickables, onFly };
 
   // Start where the orbit camera was, looking the same way, at eye height.
   useEffect(() => {
     const d = threeToEnu(camera.getWorldDirection(new Vector3()));
     s.current.yaw = Math.atan2(d.x, d.y);
     s.current.pitch = Math.max(-0.6, Math.min(0.6, Math.asin(Math.max(-1, Math.min(1, d.z)))));
+    // From high up (Earth's aerial view), land where the camera looks, at street level (z = 0 is the street), so the
+    // walk starts on the ground and not on the roof below.
     const p = threeToEnu(camera.position);
-    camera.position.copy(enuToThree({ x: p.x, y: p.y, z: gz(p.x, p.y) + live.current.eye }));
+    let from = p.z;
+    if (p.z > 40 && d.z < -0.05) { p.addScaledVector(d, -p.z / d.z); from = 3; s.current.pitch = 0; }
+    camera.position.copy(enuToThree({ x: p.x, y: p.y, z: gz(p.x, p.y, from) + live.current.eye }));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -131,6 +136,7 @@ export default function WalkControls({ gz, eye, fly, input, obstacles, editing, 
     const f = (k.has('w') || k.has('arrowup') ? 1 : 0) - (k.has('s') || k.has('arrowdown') ? 1 : 0) + input.joy.y;
     const r = (k.has('d') || k.has('arrowright') ? 1 : 0) - (k.has('a') || k.has('arrowleft') ? 1 : 0) + input.joy.x;
     const u = (k.has('e') || k.has(' ') ? 1 : 0) - (k.has('q') ? 1 : 0) + input.up;
+    if (u !== 0 && !flying) live.current.onFly?.();
     const speed = WALK_MPS * input.speed * (k.has('shift') ? RUN : 1);
     const fw = new Vector3(Math.sin(st.yaw), Math.cos(st.yaw), 0), rt = new Vector3(Math.cos(st.yaw), -Math.sin(st.yaw), 0);
     const want = fw.multiplyScalar(f).add(rt.multiplyScalar(r));
@@ -146,7 +152,7 @@ export default function WalkControls({ gz, eye, fly, input, obstacles, editing, 
       else if (!blocked(obstacles, a, [p.x, ny])) nx = p.x;
       else { nx = p.x; ny = p.y; st.vel.x = st.vel.y = 0; }
     }
-    const ground = gz(nx, ny);
+    const ground = gz(nx, ny, p.z);
     let nz = flying ? Math.max(ground + 0.3, p.z + st.vel.z * dt) : p.z + (ground + eyeM - p.z) * (1 - Math.exp(-dt * 12));
     if (!Number.isFinite(nz)) nz = ground + eyeM;
     camera.position.copy(enuToThree({ x: nx, y: ny, z: nz }));

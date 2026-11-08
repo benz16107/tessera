@@ -66,7 +66,7 @@ Everyone in a shoot edits the same set live. Friends on Simple and a photographe
 
 The set also lives in message threads through Photon: renders arrive in your thread, a reply to a version forks it, a photo from the street checks you in. Status on November 8, 2026:
 
-- The production crew is connected to Photon's live API and event stream (`GET /api/photon/status` answers `"enabled": true`). No public number or bot handle is published yet, so there is nothing to text or call today.
+- The production crew is connected to Photon's live API and event stream (`GET /api/photon/status` answers `"enabled": true`). Telegram is live: message @ShotMatchSetBot, or send it a photo of the Manhattan Bridge view and it answers with where to stand. iMessage, SMS, email, WhatsApp and the phone line have no public handle yet.
 - The iMessage line, SMS, the voice number, email and WhatsApp Business each need a number, DNS records or testers set up by hand in Photon's dashboard. Until they are, ShotMatch publishes no number to text, and invites on those channels are saved and go out once the line exists.
 - All five messaging mechanisms were proven end to end against a stand-in for Photon's Beta API, with the real crew, the real SpacetimeDB module and real NVIDIA models: 29 of 29 checks.
 

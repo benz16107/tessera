@@ -16,8 +16,8 @@ export const sparkRef: { current: SparkRenderer | null } = { current: null };
 export function useSplatUrl(spotId: string, full = false, skip: string[] = []) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
-    const override = new URLSearchParams(location.search).get('splat'); // test a splat file before its route exists
-    if (override) { setUrl(override); return; }
+    const override = new URLSearchParams(location.search).get('splat'); // ?splat=<file> tests a file before its route exists
+    if (override && /[/.]/.test(override)) { setUrl(override); return; }
     const cfg = SPLATS[spotId];
     if (!cfg) return;
     let live = true;

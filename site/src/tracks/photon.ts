@@ -5,6 +5,8 @@ import type { Track } from './types.ts';
 import panel from '../assets/cards/photon-panel.png';
 import render from '../assets/cards/photon-render.png';
 import photo from '../assets/shots/user-photo-d0481.jpg';
+import liveHello from '../assets/shots/photon-live-telegram-hello.png';
+import liveLocate from '../assets/shots/photon-live-telegram-locate.png';
 
 const SRC = 'Text from crew/scripts/photon-e2e.ts against the Photon stand-in (29 of 29 checks), formats from crew/src/channels/format.ts';
 
@@ -14,12 +16,13 @@ export default {
   prize: 'Photon 2.0 API, plus the voice-call prize',
   order: 3,
   oneLine: 'The shared set reaches every person on the app they already use, and a phone call can guide you to the mark and edit the set by voice.',
-  note: 'Stand-in proof: the production crew is connected to Photon\'s live API and event stream, but no public number or bot handle is published yet. Every thread below ran end to end against a stand-in for the Photon Beta API with the real crew, the real SpacetimeDB module and real NVIDIA models. We will replace this note with the live round trip once the lines are connected.',
-  hero: { img: panel, alt: 'The People panel in ShotMatch Studio: On their phones, Photon live, an invite form with name, channel and phone number, Send call sheet to everyone, and Versions from the threads.', caption: 'Studio\'s People panel on the demo set: invite by channel, send the call sheet, and see the versions that came from the threads.', frame: 'none' },
+  noteTag: 'Live on Telegram',
+  note: '@ShotMatchSetBot answered a real message at 12:43 AM CT and located a texted photo at 12:51 AM CT; both screenshots are below. iMessage, SMS, email, WhatsApp and the phone line need numbers set up in Photon\'s dashboard, so those mechanisms are shown from our end-to-end run against a stand-in for the Photon Beta API (real crew, real SpacetimeDB module, real NVIDIA models) and labelled Stand-in until their live round trip is recorded.',
+  hero: { img: liveLocate, alt: 'The live Telegram chat with the ShotMatch bot: a photo of the Manhattan Bridge from Washington St goes in; the reply says Solid, 1600 matches, where to stand, facing north 4 degrees, 54 mm equivalent or about 2.2x on an iPhone, and the next golden hour.', caption: 'Live on Telegram, Nov 8, 12:51 AM CT: a texted photo comes back located, with where to stand, the heading, the lens and the next good light.', frame: 'none' },
   headline: [
+    { value: 'Live', label: 'on Telegram: @ShotMatchSetBot answers and locates texted photos', check: 'Message @ShotMatchSetBot on Telegram' },
     { value: '29 of 29', label: 'end-to-end checks across all five mechanisms', check: 'cd crew && npx tsx scripts/photon-e2e.ts', standIn: true },
     { value: '6', label: 'channels, each in its own form: iMessage, Telegram, SMS, WhatsApp Business, email, phone', check: 'crew/src/channels/format.ts' },
-    { value: '20 min', label: 'before golden hour, each person gets their own walking time', check: 'module reminder schedule; crew/src/channels/alerts.ts' },
   ],
   why: [
     { title: 'Most of the crew will never open a 3D editor', body: 'A shoot has a photographer, friends in the frame, someone holding a reflector, a parent driving. They already have iMessage, Telegram, WhatsApp, SMS or email. Photon lets the set come to each of them there.' },
@@ -28,6 +31,22 @@ export default {
     { title: 'A thread is a natural version history', body: 'People already reply to the picture they mean. Photon\'s threaded replies let a reply to v1 fork the set from v1, so the conversation and the set history stay one thing.' },
   ],
   threads: [
+    {
+      mechanism: 'Live: the bot answers',
+      channel: 'Telegram',
+      why: 'A real "hi" to @ShotMatchSetBot starts a session and returns the live plan and scout links, with nothing to install.',
+      source: 'Screenshot of the live Telegram bot on Photon, Nov 8, 12:43 AM CT (web/screenshots/photon-live-telegram-hello.png)',
+      live: { img: liveHello, when: '12:43 AM CT', alt: 'Telegram chat with the ShotMatch bot: the person sends /start and hi; the bot replies: Hi. I\'m ShotMatch. Share a photo of a place and I\'ll find where the photographer stood, which way they faced, and what lens they used, with links to the live plan and the scout page.' },
+      messages: [],
+    },
+    {
+      mechanism: 'Live: text a photo, get the spot',
+      channel: 'Telegram',
+      why: 'The core of ShotMatch runs in the chat: a photo goes in, and where to stand, which way to face, the lens and the next good light come back.',
+      source: 'Screenshot of the live Telegram bot on Photon, Nov 8, 12:51 AM CT (web/screenshots/photon-live-telegram-locate.png)',
+      live: { img: liveLocate, when: '12:51 AM CT', alt: 'Telegram chat: the person sends the Manhattan Bridge photo asking where it was taken; the bot replies Locating your shot: done, then: Solid: Manhattan Bridge from Washington St, DUMBO. 1600 matches, 1 m from a mapped camera. Stand at 40.70317, -73.98960. Face north (4 degrees), tilted up 3 degrees. Lens: 54 mm equivalent, about 2.2x on an iPhone. Next good light: golden hour Sun 6:35 AM to 7:15 AM.' },
+      messages: [],
+    },
     {
       mechanism: '1. One live set, everyone on their own channel',
       channel: 'iMessage',
@@ -113,6 +132,7 @@ export default {
     },
   ],
   uses: [
+    { name: 'Text a photo, get the spot', line: 'A photo sent to the bot is solved against the spot model; the reply names the spot, where to stand, the heading, the lens and the next good light.', where: 'crew/src/photon.ts (locate agent), solver POST /solve', status: 'live', img: liveLocate, alt: 'The live Telegram reply locating the Manhattan Bridge photo' },
     { name: 'Event stream with a replay cursor', line: 'Every inbound message, voice note and call event arrives over Photon\'s Socket.IO stream; a restarted crew resumes from its saved cursor.', where: 'crew/src/photon.ts (startPhoton), cursor in data/photon.json', status: 'live' },
     { name: 'Per-channel delivery', line: 'One set event becomes an image and a line on iMessage, an album on Telegram, a Markdown email, an SMS link or a WhatsApp image.', where: 'crew/src/channels/format.ts, deliver.ts, fanout.ts', status: 'stand-in' },
     { name: 'Invites by channel', line: 'Invite from the studio or from a text; where Photon cannot message first, the inviter gets the exact text or t.me link to forward.', where: 'crew/src/channels/invite.ts; Studio People panel', status: 'stand-in', img: panel, alt: 'The invite form in Studio\'s People panel' },
@@ -129,7 +149,7 @@ export default {
   proof: [
     { value: '29 of 29', label: 'checks in the end-to-end run of all five mechanisms and photo-to-prop', check: 'cd crew && npx tsx scripts/photon-e2e.ts (uses database shotmatch-photon, never production)', standIn: true },
     { value: '66 of 66', label: 'crew unit tests, including per-channel formats, guidance geometry, the version tree and channel order', check: 'cd crew && npm test' },
-    { value: 'enabled', label: 'production crew connected to Photon\'s API; no public channel handle yet', check: 'curl https://104-238-146-229.sslip.io/api/photon/status' },
+    { value: 'Live', label: 'Telegram round trips: a real message answered at 12:43 AM CT, a texted photo located at 12:51 AM CT (Solid, 1600 matches, 54 mm)', check: 'Message @ShotMatchSetBot on Telegram; curl https://104-238-146-229.sslip.io/api/photon/status lists the handle' },
     { value: 'live', label: 'ElevenLabs post-call webhook into SpacetimeDB: bad signature 401, valid one writes the transcript, retry is a no-op', check: 'docs/SPACETIME.md, section HTTP handlers' },
   ],
   ours: [
@@ -145,8 +165,8 @@ export default {
     'The event stream with replay cursor, problem codes, idempotency keys, typing indicators',
   ],
   limits: [
-    'No public number or bot handle yet: the iMessage, SMS, voice, email and WhatsApp lines need dashboard setup (crew/PHOTON.md), and SMS also needs a 10DLC campaign.',
-    'Until then the proof is the stand-in run, not a live round trip.',
+    'Telegram is live. The iMessage, SMS, voice, email and WhatsApp lines still need dashboard setup (crew/PHOTON.md), and SMS also needs a 10DLC campaign.',
+    'Until those lines are connected, their proof is the stand-in run, not a live round trip.',
     'The shared iMessage line cannot message first, so iMessage invites ask the person to text JOIN <code>.',
     'MMS, reactions, polls and delivery-status events are not used.',
   ],

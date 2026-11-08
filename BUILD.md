@@ -333,3 +333,4 @@ Cap: $50 total for the hackathon. One instance at most, deleted after judging Su
 | Sat ~8:20 PM | Added $25 credit on a card; MLH $100 code registered, email pending | n/a | n/a | $0 spent, $25 credit |
 | Sat 9:27 PM | Brev: created `shotmatch-gpu`, A100 80 GB (hyperstack), from the $60 HackUTD NVIDIA credit. Cap $55 | hyperstack_A100_80G | 1.62 | $0 |
 | Sat 10:56 PM | Brev: fine-tune and splat done, vLLM serving the lens model. Kept up until Sunday noon CT (projected $23.60 total), then `brev delete shotmatch-gpu` | hyperstack_A100_80G | 1.62 | $2.41 |
+| Sun 12:55 AM | Brev: Difix3D splat pass stopped (splat off the demo); only vLLM serving the lens model remains. Projected $23.57 at noon CT | hyperstack_A100_80G | 1.62 | $5.62 |

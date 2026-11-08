@@ -83,7 +83,7 @@ export async function onRender(jobId: bigint) {
   const ctx = setContext(j.sessionId), f35 = j.f35 ?? ctx?.cam.f35 ?? 35;
   const lenses = linksFor(j.sessionId).some(l => l.channel === 'telegram') ? await lensCrops(path, f35).catch(() => []) : [];
   const caption = j.instruction ? j.instruction.split('. In the shot:')[0] : `${Math.round(f35)} mm, facing ${compassWord(ctx?.cam.heading ?? 0)}`;
-  const res = await broadcast(j.sessionId, { kind: 'render', label: row.label, caption, image: path, imageUrl: `${PUBLIC_URL}${j.imageUrl}`, lenses, planUrl: planUrl(j.sessionId), title: conn.db.session.id.find(j.sessionId)?.title ?? 'your shot' },
+  const res = await broadcast(j.sessionId, { kind: 'render', label: row.label, caption, image: path, imageUrl: `${PUBLIC_URL}${j.imageUrl}`, lenses, planUrl: planUrl(j.sessionId), title: conn.db.session.id.find(j.sessionId)?.title ?? 'your shot', progressKey: j.kind === 'render' ? `job:${jobId}` : undefined },
     { idem: `render:${jobId}`, skip: v?.skip ? new Set([v.skip]) : undefined });
   owned.delete(jobId);
   noteVersionMessages(row.id, res.flatMap(r => r.ids));

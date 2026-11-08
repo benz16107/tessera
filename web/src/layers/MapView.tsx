@@ -91,7 +91,9 @@ export default function MapView({ geo, sessionId, origin, at, zone, theme, compa
       const ll = enuToLlh(origin, new Vector3(k.x, k.y, 0));
       feats.push(point([ll.lon, ll.lat], { kind: 'checkin', label: `${k.name || 'Check-in'}`, heading: Math.round(k.heading), image: k.imageUrl, verdict: k.verdict, distance: Math.round(k.distanceM), at: k.createdAt.toDate().toISOString() }));
     }
-    if (solved) feats.push(point([solved.pose.lon, solved.pose.lat], { kind: 'photo', label: 'Your photo', heading: Math.round(solved.pose.heading), f35: Math.round(solved.pose.f35), image: photo?.thumb || photo?.url || '', pitch: Math.round(solved.pose.pitch) }));
+    // The solved photo's spot, unless a camera already stands there (the studio makes Cam A at the solved pose; its card shows the photo).
+    const camAt = (lat: number, lon: number) => feats.some(f => f.properties.kind === 'camera' && f.geometry?.type === 'Point' && Math.hypot((f.geometry.coordinates[0] - lon) * 84_000, (f.geometry.coordinates[1] - lat) * 111_000) < 3);
+    if (solved && !camAt(solved.pose.lat, solved.pose.lon)) feats.push(point([solved.pose.lon, solved.pose.lat], { kind: 'photo', label: 'Your photo', heading: Math.round(solved.pose.heading), f35: Math.round(solved.pose.f35), image: photo?.thumb || photo?.url || '', pitch: Math.round(solved.pose.pitch) }));
     return { shots: { type: 'FeatureCollection', features: feats } as FC, cones: { type: 'FeatureCollection', features: coneFeats } as FC, byId };
   }, [objects, poses, checkins, parts, solved, photo, shotSettings, origin.lat, origin.lon]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -114,6 +116,8 @@ export default function MapView({ geo, sessionId, origin, at, zone, theme, compa
     point(offset(origin.lat, origin.lon, sun.azimuth, 240), { kind: 'sun', label: `Sun ${sun.altitude.toFixed(0)}° up, ${fmtTime(at, zone)}` }),
   ] }, [minute, origin.lat, origin.lon]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Simple mode keeps the map to the shot, the sun and places; permits, shadows and photo dots stay in the studio.
+  const simpleGeo = useMemo<GeoLayers>(() => ({ ...geo, on: id => id === 'pois' }), [geo]);
   const map = useRef<MlMap | null>(null);
   const [ready, setReady] = useState(false);
   const [card, setCard] = useState<{ p: Record<string, any>; lngLat: [number, number] } | null>(null);
@@ -125,6 +129,7 @@ export default function MapView({ geo, sessionId, origin, at, zone, theme, compa
 
   const onMap = (m: MlMap) => {
     map.current = m;
+    if (import.meta.env.DEV) (window as unknown as { __geoMap?: MlMap }).__geoMap = m; // test hook
     const dark = (theme ?? (compact ? 'light' : 'dark')) === 'dark', ink = dark ? '#f2efe8' : '#1a1917', halo = dark ? '#0b0b0a' : '#ffffff';
     for (const id of ['map-cones', 'map-shots', 'map-sun']) m.addSource(id, { type: 'geojson', data: EMPTY });
     m.addSource('map-world', { type: 'geojson', data: EMPTY, cluster: true, clusterRadius: 44, clusterMaxZoom: 11 });
@@ -157,7 +162,9 @@ export default function MapView({ geo, sessionId, origin, at, zone, theme, compa
     };
     m.on('click', e => {
       if (drag.current?.moved) return;
-      const f = m.queryRenderedFeatures(e.point, { layers: pickable })[0];
+      const order = ['camera', 'photo', 'checkin', 'scout']; // stacked pins: the camera wins
+      const rank = (f: MapGeoJSONFeature) => { const i = order.indexOf(String(f.properties.kind)); return i < 0 ? order.length : i; };
+      const f = m.queryRenderedFeatures(e.point, { layers: pickable }).sort((a, b) => rank(a) - rank(b))[0];
       if (f) open(f); else setCard(null);
     });
     for (const l of pickable) {
@@ -166,8 +173,8 @@ export default function MapView({ geo, sessionId, origin, at, zone, theme, compa
     }
     // Drag a camera pin to move that camera in the shared set.
     m.on('mousedown', 'map-pins', (e: MapMouseEvent & { features?: MapGeoJSONFeature[] }) => {
-      const f = e.features?.[0];
-      if (latest.current.compact || f?.properties.kind !== 'camera' || f.properties.locked) return;
+      const f = e.features?.find(x => x.properties.kind === 'camera'); // a scout pin may sit on top of it
+      if (latest.current.compact || !f || f.properties.locked) return;
       e.preventDefault();
       drag.current = { id: String(f.properties.id), moved: false };
       m.dragPan.disable();
@@ -225,14 +232,16 @@ export default function MapView({ geo, sessionId, origin, at, zone, theme, compa
     map.current.jumpTo({ center: [camera.lon, camera.lat], zoom: camera.zoom, bearing: camera.bearing, pitch: camera.pitch });
   }, [camera, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const pos = card && map.current ? map.current.project(card.lngLat) : null;
+  useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setCard(null); }; addEventListener('keydown', k); return () => removeEventListener('keydown', k); }, []);
+  const m0 = map.current, pos = card && m0 ? m0.project(card.lngLat) : null;
+  const onScreen = !!pos && !!m0 && pos.x >= 0 && pos.y >= 0 && pos.x <= m0.getContainer().clientWidth && pos.y <= m0.getContainer().clientHeight;
   return (
     <div className="geo-mapview" data-theme={theme ?? (compact ? 'light' : 'dark')}>
-      <Map2D geo={geo} center={origin} height="100%" zoom={17} theme={theme ?? (compact ? 'light' : 'dark')} shadow={shadow} onMap={onMap} />
+      <Map2D geo={compact ? simpleGeo : geo} center={origin} height="100%" zoom={17} theme={theme ?? (compact ? 'light' : 'dark')} shadow={compact ? null : shadow} onMap={onMap} />
       {!compact && <LayerList geo={geo} />}
-      {card && pos && <ShotCard p={card.p} x={pos.x} y={pos.y} at={at} zone={zone} sun={sun} geo={geo} versions={card.p.isShot ? versions.filter(v => v.imageUrl) : []} photoUrl={card.p.isShot ? photo?.thumb || photo?.url : undefined}
+      {card && pos && onScreen && <ShotCard p={card.p} x={pos.x} y={pos.y} at={at} zone={zone} sun={sun} geo={geo} versions={card.p.isShot ? versions.filter(v => v.imageUrl) : []} photoUrl={card.p.isShot ? photo?.thumb || photo?.url : undefined}
         onClose={() => setCard(null)} onOpen={onOpenShot && (mode => onOpenShot({ objectId: card.p.id ? BigInt(card.p.id) : null, lat: card.lngLat[1], lon: card.lngLat[0], heading: Number(card.p.heading) || 0, pitch: Number(card.p.pitch) || 0 }, mode))} />}
-      <p className="geo-mapview-hint">{compact ? 'Your shot and where to stand' : 'Drag a camera to move it · zoom in past street level for the 3D set'}</p>
+      {!compact && <p className="geo-mapview-hint">Drag a camera to move it · zoom in past street level for the 3D set</p>}
     </div>
   );
 }

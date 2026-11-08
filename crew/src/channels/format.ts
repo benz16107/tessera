@@ -15,7 +15,7 @@ export type Shot = { n: number; name: string; time: string; lens_mm: number; ape
 export type Sheet = { title?: string; date?: string; call_time?: string; wrap_time?: string; location?: string; shots: Shot[]; crew_notes?: string[]; windows?: Record<string, string> };
 
 export type SetEvent =
-  | { kind: 'render'; label: string; caption: string; image: string; imageUrl: string; lenses?: { f35: number; path: string }[]; planUrl: string; title: string }
+  | { kind: 'render'; label: string; caption: string; image: string; imageUrl: string; lenses?: { f35: number; path: string }[]; planUrl: string; title: string; progressKey?: string }
   | { kind: 'note'; text: string; planUrl?: string }
   | { kind: 'callsheet'; sheet: Sheet; sheetUrl: string; planUrl: string }
   | { kind: 'progress'; key: string; text: string };
@@ -62,7 +62,8 @@ export function plan(ev: SetEvent, channel: Channel): Op[] {
         const caption = `${line}${lenses.length > 1 ? ` Lens options: ${lenses.map(l => `${Math.round(l.f35)} mm`).join(', ')}, exact crops of the render.` : ''} Reply to change it.`;
         return [
           lenses.length > 1 ? { op: 'album', paths: lenses.map(l => l.path), caption } : { op: 'image', path: ev.image, caption },
-          { op: 'progress', key: `render:${ev.label}`, text: `${ev.label} is ready.` },
+          // only a studio render has a progress message to finish; a new 'is ready' line would be noise
+          ...(ev.progressKey ? [{ op: 'progress' as const, key: ev.progressKey, text: `${ev.label} is ready.` }] : []),
         ];
       }
       return [{ op: 'text', format: 'markdown', subject: `ShotMatch ${ev.label}: ${oneLine(ev.title, 60)}`,

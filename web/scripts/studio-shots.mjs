@@ -32,6 +32,37 @@ for (const step of stepsArg.split(',')) {
     await page.keyboard.down('ArrowRight'); await page.waitForTimeout(700); await page.keyboard.up('ArrowRight');
     await page.waitForTimeout(800); await S('-walk-moved');
   }
+  if (step === 'earth') { await page.keyboard.press('5'); await page.waitForTimeout(15000); await S('-earth'); }
+  if (step === 'earthwalk') { // Walk from the aerial: land on the street ahead, walk forward
+    await page.keyboard.press('Backquote'); await page.waitForTimeout(6000);
+    await page.locator('.st-walk-help button').click().catch(() => {});
+    // Rise to about 10 m (a drone's eye): Google's tiles melt at 1.6 m
+    await page.keyboard.down('Shift'); await page.keyboard.down('e'); await page.waitForTimeout(2600); await page.keyboard.up('e'); await page.keyboard.up('Shift');
+    await page.waitForTimeout(6000); await S('-earth-walk'); await page.keyboard.press('Escape');
+  }
+  if (step.startsWith('fly:')) { // fly:<place>: search and fly there, no new shoot
+    await page.keyboard.press('5'); await page.waitForTimeout(800);
+    await page.locator('button[aria-label="Go to a place"]').click();
+    await page.locator('input[aria-label="Place"]').fill(step.slice(4)); await page.keyboard.press('Enter');
+    await page.locator('.st-search > button').first().click({ timeout: 15000 });
+    await page.waitForTimeout(18000); await S('-fly');
+  }
+  if (step.startsWith('goto:')) { // goto:<place>, then New shoot here and a camera dropped there
+    await page.keyboard.press('5'); await page.waitForTimeout(800);
+    await page.locator('button[aria-label="Go to a place"]').click();
+    await page.locator('input[aria-label="Place"]').fill(step.slice(5)); await page.keyboard.press('Enter');
+    await page.locator('.st-search > button').first().click({ timeout: 15000 });
+    await page.waitForTimeout(18000); await S('-goto');
+    await page.locator('.st-explore button', { hasText: 'New shoot here' }).click({ timeout: 30000 });
+    await page.waitForURL(u => !u.toString().includes(new URL(url).pathname), { timeout: 30000 });
+    console.log('new shoot', page.url());
+    await page.waitForTimeout(25000); await page.keyboard.press('Escape');
+    await page.keyboard.press('Shift+A'); await page.waitForTimeout(800);
+    await page.locator('.st-drawer-add').getByRole('tab', { name: 'Cameras' }).click();
+    await page.locator('.st-drawer-add .st-asset').first().click();
+    await page.waitForTimeout(5000); await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
+    await page.waitForTimeout(3000); await S('-goto-cam');
+  }
   if (step === 'world') { await page.keyboard.press('5'); await page.waitForTimeout(3000); await S('-world'); }
   if (step.startsWith('style:')) { // style:<World style label>, from the World view's default camera
     const label = step.slice(6);

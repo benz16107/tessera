@@ -23,11 +23,11 @@ under "Video": https://site.104-238-146-229.sslip.io/tracks/
 
 ## Image gallery (upload in this order)
 
-All in `site/public/devpost/` and served at https://site.104-238-146-229.sslip.io/devpost/. The first is the thumbnail. Images 1, 3, 5 and 6 were retaken from production on Nov 8 at about 1:45 AM ET, after the horizon-label and geo-dots fixes; regenerate with `node site/scripts/devpost-images.mjs`.
+All in `site/public/devpost/` and served at https://site.104-238-146-229.sslip.io/devpost/. The first is the thumbnail. Images 1, 5 and 6 were retaken from production on Nov 8 at about 1:45 AM ET, after the horizon-label and geo-dots fixes, and 3 at about 2:02 AM ET from a fresh render of the current set; regenerate with `node site/scripts/devpost-images.mjs`.
 
 1. `1-studio-camera.jpg`. Caption: "Studio, looking through Cam A: your photo as the backplate, two placed people, focus on a person, the horizon marked in the margin".
 2. `2-simple-found.jpg`. Caption: "Simple: where to stand, which way to face, and the lens as 2.2x on your iPhone".
-3. `3-render.jpg`. Caption: "Through Cam A beside the AI render: your people placed in your own photo, labelled AI interpretation".
+3. `3-render.jpg`. Caption: "Through Cam A beside a fresh AI render of the same two people, labelled AI interpretation, with Nemotron's physics check on the right".
 4. `4-phones.jpg`. Caption: "The four steps on a phone: drop, found it, make it yours, take me there".
 5. `5-live-data.jpg`. Caption: "Two people on one set: the People panel and the live SpacetimeDB feed of every edit".
 6. `6-conditions.jpg`. Caption: "Conditions: sunset colour, tide, street shadow, scaffolding and where photographers stood, on one map".
@@ -42,7 +42,7 @@ All in `site/public/devpost/` and served at https://site.104-238-146-229.sslip.i
 
 ## Built with
 
-nvidia-nemotron, nvidia-nim, vllm, cuopt, riva, spacetimedb, photon, elevenlabs, vultr, typescript, react, three.js, react-three-fiber, node.js, python, fastapi, colmap, pycolmap, lightglue, gaussian-splatting, google-3d-tiles, maplibre, astro, caddy, figma
+nvidia-nemotron, nvidia-nim, vllm, cuopt, riva, spacetimedb, photon, elevenlabs, vultr, typescript, react, three.js, react-three-fiber, node.js, python, fastapi, colmap, pycolmap, lightglue, google-3d-tiles, maplibre, astro, caddy, figma
 
 ## Prizes to select on the submission form
 
@@ -108,9 +108,9 @@ call it: a voice agent guides you to the mark and edits the set as you talk.
   position, heading, focal length and lens distortion. On 11 held-out photos from other photographers, 10 were placed,
   9 within 25 m of their phone GPS, with a median focal error of 3% and a median solve of 15.8 s on a CPU. The 11th had
   75 matches, and ShotMatch said "Couldn't place" instead of guessing.
-- **The virtual set (core).** three.js with React Three Fiber. The photoreal world is a Gaussian splat we trained from
-  55 of the spot's Commons photos (gsplat, 2.75 M Gaussians, 15.6 minutes on an A100). Google Photorealistic 3D Tiles
-  draw the planning view with Google's credits on screen and never enter a render, an export or an AI step. The camera
+- **The virtual set (core).** three.js with React Three Fiber. The 3D world is Google Photorealistic 3D Tiles (the
+  Earth view, with Google's credits on screen) and our clay model of the block from NYC building footprints with the
+  user's photo projected onto it from where it was taken. Tiles never enter a render, an export or an AI step. The camera
   has 19 real bodies and 67 lenses, 59 with measured distortion and vignetting from lensfun, and thin-lens depth of
   field.
 - **The render (core).** The studio renders beauty, shadow, depth and mask layers of your objects only. The crew
@@ -147,7 +147,7 @@ live.
   reads normal lenses as wide, so only its long-lens reads narrow the solver.
 
 What failed: FLUX.1-dev returned HTTP 500 on every base call, so the render generator is Qwen-Image on Vultr, and every
-result names the model that ran. Details: https://site.104-238-146-229.sslip.io/tracks/nvidia/
+result names the model that ran. Also tried: We trained a Gaussian splat of the spot on an NVIDIA A100 and cleaned it with NVIDIA Difix3D; at street level it wasn't clear enough to ship, so the 3D world uses Google's tiles and our clay model with the user's photo projected onto it. Details: https://site.104-238-146-229.sslip.io/tracks/nvidia/
 
 ## SpacetimeDB: the set is the database
 
@@ -188,9 +188,9 @@ Most people on a shoot won't install anything, and the scout's hands are full. P
 4. **The thread is the version tree.** Reply to v1 in any chat app and the set forks to v1.1.
 5. **Golden-hour alerts** with your walking time, sent on the next channel when the shared iMessage line refuses.
 
-A photo of one object becomes a 3D prop in the set. Status, plainly: the production crew is connected to Photon's live API
-and event stream, but no public number or bot handle is published yet. The iMessage, SMS, voice, email, WhatsApp and
-Telegram lines need numbers, DNS and testers set up in Photon's dashboard, so all five mechanisms were also proven end to end against a stand-in for Photon's Beta API with
+A photo of one object becomes a 3D prop in the set. Status, plainly: Telegram is live. @ShotMatchSetBot answered a real message at 12:43 AM CT and located a texted
+photo at 12:51 AM CT ("Solid: Manhattan Bridge from Washington St, DUMBO. 1600 matches"). The iMessage, SMS, voice,
+email and WhatsApp lines need numbers, DNS and testers set up in Photon's dashboard, so all five mechanisms were also proven end to end against a stand-in for Photon's Beta API with
 the real crew, the real SpacetimeDB module and real NVIDIA models: 29 of 29 checks.
 
 Details: https://site.104-238-146-229.sslip.io/tracks/photon/
@@ -212,7 +212,7 @@ Production runs on Vultr: a VM in Dallas (12 vCPU, 24 GB) runs Caddy with automa
 Ollama with Nemotron 3.5 Bolt for the offline path. Vultr Object Storage keeps photos, renders and generated props.
 Vultr Serverless Inference runs Nemotron Content Safety (our primary safety path), Nemotron 3 Nano Omni, Qwen-Image and
 Whisper. The site is served from the same VM. Vultr refused our GPU instance (no credit, then the monthly fee limit),
-so the fine-tune and the splat ran on a Brev A100 from the HackUTD NVIDIA credit.
+so the lens fine-tune ran on a Brev A100 from the HackUTD NVIDIA credit.
 
 Details: https://site.104-238-146-229.sslip.io/tracks/vultr/
 
@@ -224,8 +224,6 @@ Details: https://site.104-238-146-229.sslip.io/tracks/vultr/
   heading disagrees with their compass by more than 90 degrees.
 - Far, flat scenes let the camera slide along its line of sight while the focal length compensates. A lens read
   narrows the search, but only where our lens model is good (long lenses).
-- Our first two splat runs failed: one collapsed into a single colour, one diverged. Cropping the cameras to the street
-  corridor and cutting floaters out of the street's empty air fixed it.
 - Several hosted models failed on the night (FLUX 500s, TRELLIS failing about half its calls, Cosmos Reason2 404).
   Every step has a named fallback, and the result says which model ran.
 
@@ -241,8 +239,7 @@ Details: https://site.104-238-146-229.sslip.io/tracks/vultr/
 ## What we learned
 
 The honest answer is often "Couldn't place". We measured everything on held-out data, and we report the misses: the
-lens model's weakness on normal lenses, the splat's low PSNR (15.4 dB colour-corrected), and which hosted models did not
-answer.
+lens model's weakness on normal lenses, and which hosted models did not answer.
 
 ## What's next
 
@@ -253,10 +250,10 @@ VR: the set already enters WebXR on a headset that supports it, untested so far.
 
 NVIDIA Nemotron (Super VL, Lightning, Bolt, Nano Omni, Content Safety, Embed, Rerank VL, Nano 12B v2 VL with our LoRA),
 NVIDIA Parakeet and Magpie (Riva), cuOpt, TRELLIS, vLLM, SpacetimeDB, Photon, ElevenLabs, Vultr (VM, Object Storage,
-Serverless Inference), Brev, COLMAP, hloc, MegaLoc, SuperPoint, LightGlue, gsplat, three.js, React Three Fiber, Spark,
+Serverless Inference), Brev, COLMAP, hloc, MegaLoc, SuperPoint, LightGlue, three.js, React Three Fiber,
 Google Photorealistic 3D Tiles (display only), MapLibre, React, Vite, Astro, Caddy, Figma.
 
-Photo credits: every Creative Commons photo in the spot model, the splat and the lens dataset is listed with its author
+Photo credits: every Creative Commons photo in the spot model and the lens dataset is listed with its author
 and license at https://site.104-238-146-229.sslip.io/credits/
 
 <!-- DEVPOST END -->

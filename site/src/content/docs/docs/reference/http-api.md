@@ -41,7 +41,6 @@ The crew converts HEIC to JPEG, applies the EXIF rotation, caps the long side at
 | `GET /photo/<file>`, `GET /preview/<file>` | Uploaded photos and renders, from disk or Vultr Object Storage |
 | `GET /spot-photo/<spot>/<file>` | A spot's training photo, for similar-photo results (credited on [the credits page](/credits/)) |
 | `GET /asset/<id>.glb` | A generated prop (`<id>` is 16 hex characters) |
-| `GET /splat/<spot>.<ext>` | A spot's Gaussian splat: `ply`, `compressed.ply`, `splat` or `spz` |
 | `GET /sheet/<code>` | The designed call sheet page for a set, once one has been written |
 
 ## Set commands (NVIDIA)

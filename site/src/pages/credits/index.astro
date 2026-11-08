@@ -21,7 +21,7 @@ const counts = (rows: ReturnType<typeof lensCredits>) => licenseCounts(rows).map
   {spots.map((s) => (
     <>
       <AnchorHeading level="2" id={`spot-${s.spot}`}>Spot photos: {s.name}</AnchorHeading>
-      <p>{s.rows.length} photos from Wikimedia Commons by {authorCount(s.rows)} authors, used to build the spot's 3D model (role <code>train</code>) and to test it (role <code>test</code>). Licenses: {counts(s.rows)}. The model files and the Gaussian splat trained from these photos stay out of the public repo; the splat is released under CC BY-SA 4.0 because some photos are share-alike.</p>
+      <p>{s.rows.length} photos from Wikimedia Commons by {authorCount(s.rows)} authors, used to build the spot's 3D model (role <code>train</code>) and to test it (role <code>test</code>). Licenses: {counts(s.rows)}. The model files stay out of the public repo.</p>
       <table>
         <thead><tr><th>Photo</th><th>Author</th><th>License</th><th>Role</th></tr></thead>
         <tbody>
@@ -83,5 +83,5 @@ const counts = (rows: ReturnType<typeof lensCredits>) => licenseCounts(rows).map
   </table>
 
   <AnchorHeading level="2" id="software">Software</AnchorHeading>
-  <p>COLMAP and pycolmap, hloc, MegaLoc, SuperPoint and LightGlue (the solver; SuperPoint's weights carry a non-commercial license), gsplat (the photoreal set), vLLM, SpacetimeDB, three.js and React Three Fiber, 3d-tiles-renderer, Spark (MIT) for Gaussian splats, Google's Draco decoder (Apache 2.0), MapLibre GL, suncalc (BSD 2-Clause), React, Vite, Astro and Starlight (this site), Caddy.</p>
+  <p>COLMAP and pycolmap, hloc, MegaLoc, SuperPoint and LightGlue (the solver; SuperPoint's weights carry a non-commercial license), vLLM, SpacetimeDB, three.js and React Three Fiber, 3d-tiles-renderer, Google's Draco decoder (Apache 2.0), MapLibre GL, suncalc (BSD 2-Clause), React, Vite, Astro and Starlight (this site), Caddy.</p>
 </StarlightPage>

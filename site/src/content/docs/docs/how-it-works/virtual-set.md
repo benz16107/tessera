@@ -5,7 +5,7 @@ description: How a solved photo becomes a shared 3D set of the place, with peopl
 
 Once a photo is placed, ShotMatch builds the spot as a 3D set around the mark. You work in it like a small film set: place people and props, light them, and frame the shot through a camera with a real lens. Studio (`/studio/<code>`) shows the whole set. Simple shows the same set through the shot camera.
 
-![Studio's World view at DUMBO: the outliner on the left, Cam A's frustum and two walking people on the street, a placed image selected with the gizmo, and the inspector on the right](../../../../assets/shots/studio-drop-image.png)
+![Studio's World view in Clay + photo: clay buildings from NYC footprints with the photo projected onto them, Cam A's frustum, two walking people and a bicycle on the street](../../../../assets/shots/studio-world-clay.png)
 
 ## Every object is a row
 
@@ -29,11 +29,13 @@ The set uses a local east-north-up frame in metres, centred on the spot row's la
 
 ## The world around the set
 
-Three backdrops, switched in the outliner's Scene row:
+The backdrops, switched in the outliner's Scene row:
 
-- **Splat:** a Gaussian splat of the street trained from 55 of the spot's own Commons photos (26 authors) on an A100: 2.75 M Gaussians, or 1.69 M in the lite file the studio loads first (27.6 MB). It is our own data under CC BY-SA 4.0, so it may be rendered and shared. It looks good north up Washington St at the tower, the deck and the brick facades. Cars and cobblestones near the camera are smeared, and looking south or from above there is little data. Held-out views score 12.8 dB PSNR raw, 15.4 dB colour-corrected, which is low by benchmark standards. Rendered with Spark.
-- **3D Tiles:** Google Photorealistic 3D Tiles through `3d-tiles-renderer`, with Google's logo and credits on screen whenever they draw. Display and editing only: they never enter a render layer, an export, an AI step or a placement raycast.
-- **Hidden:** no backdrop, just your objects on the street geometry.
+- **Earth** (the default): Google Photorealistic 3D Tiles through `3d-tiles-renderer`, opening like Google Earth from 300 m out, with Google's logo and credits on screen whenever they draw. Display and editing only: they never enter a render layer, an export, an AI step or a placement raycast.
+- **Clay + photo:** clay massing of the block from NYC building footprints (NYC Open Data), with your photo projected onto it from the pose the solver found. It is the sharpest view at street level near the shot; Earth offers a **Sharper here** button that switches to it.
+- **Clay** (the massing alone) and **Hidden** (just your objects on the street geometry).
+
+We trained a Gaussian splat of the spot on an NVIDIA A100 and cleaned it with NVIDIA Difix3D; at street level it wasn't clear enough to ship, so the 3D world uses Google's tiles and our clay model with the user's photo projected onto it.
 
 ## Street geometry
 

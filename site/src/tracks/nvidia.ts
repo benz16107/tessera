@@ -14,7 +14,7 @@ export default {
   oneLine: 'Nemotron turns words and photos into a staged 3D set, checks its own renders, plans the shoot day, and reads the lens of any photo with a model we fine-tuned.',
   hero: {
     img: hero,
-    alt: "Studio's Through Cam A view of the DUMBO photo with two mannequins composited in, beside an AI render of four people walking up Washington St at golden hour, labelled AI interpretation",
+    alt: "Studio's Through Cam A view of the DUMBO photo with two mannequins composited in, beside the AI render of the same two people walking up Washington St, labelled AI interpretation, and Nemotron's physics check listing what to fix",
     caption: 'Through Cam A on the left (your photo with your objects and lights), the render on the right, labelled "AI interpretation". The render panel names its steps: composite, harmonize, Nemotron check.',
     frame: 'browser',
     url: '104-238-146-229.sslip.io/studio/A9TVAN',
@@ -187,6 +187,7 @@ export default {
     'Cosmos Reason2 and NVIDIA\'s copy of Content Safety return 404 for our key. Nano Omni and Vultr\'s copy stand in; both are retried every 10 minutes.',
     'The lens reader learned long lenses, not normal ones: 7 of 82 photos at 35 to 70 mm land in the right bin, and it does not beat "always wide" on plain bin accuracy (55.6% against 57.5%).',
     'Vultr refused a GPU instance, so the fine-tune and the lens server run on a Brev A100.',
+    'Also tried: we trained a Gaussian splat of the spot on an NVIDIA A100 and cleaned it with NVIDIA Difix3D; at street level it wasn\'t clear enough to ship, so the 3D world uses Google\'s tiles and our clay model with the user\'s photo projected onto it.',
   ],
   video: {
     title: 'Nemotron runs the set',

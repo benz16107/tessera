@@ -10,7 +10,7 @@ import { tryOrder, people } from '../src/channels/order.ts';
 import { parseCallEnded, parseInbound, stripQuoted } from '../src/photon-event.ts';
 
 const render: SetEvent = { kind: 'render', label: 'v3', caption: 'Red bike on the left, golden hour', image: '/r/v3.jpg', imageUrl: 'https://x/preview/v3.jpg',
-  lenses: [{ f35: 35, path: '/r/v3.jpg' }, { f35: 50, path: '/r/v3_50.jpg' }, { f35: 85, path: '/r/v3_85.jpg' }], planUrl: 'https://x/p/ABC', title: 'Bridge at dusk' };
+  lenses: [{ f35: 35, path: '/r/v3.jpg' }, { f35: 50, path: '/r/v3_50.jpg' }, { f35: 85, path: '/r/v3_85.jpg' }], planUrl: 'https://x/p/ABC', title: 'Bridge at dusk', progressKey: 'job:7' };
 
 test('fan-out: each channel gets the render in its own form', () => {
   assert.deepEqual(plan(render, 'imessage').map(o => o.op), ['image', 'text']);
@@ -20,6 +20,7 @@ test('fan-out: each channel gets the render in its own form', () => {
   assert.deepEqual((tg[0] as any).paths, ['/r/v3.jpg', '/r/v3_50.jpg', '/r/v3_85.jpg']);
   assert.match((tg[0] as any).caption, /Lens options: 35 mm, 50 mm, 85 mm/);
   assert.equal(tg[1].op, 'progress');
+  assert.equal(plan({ ...render, progressKey: undefined } as SetEvent, 'telegram').length, 1, 'no progress line without a progress message');
   const sms = plan(render, 'sms');
   assert.equal(sms.length, 1);
   assert.match((sms[0] as any).text, /^ShotMatch v3: .* See it: https:\/\/x\/preview\/v3\.jpg$/);

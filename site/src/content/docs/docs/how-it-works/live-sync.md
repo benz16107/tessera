@@ -7,7 +7,7 @@ Everything a shoot is lives in SpacetimeDB: the session, its people, the photo a
 
 Every client opens one websocket to Maincloud and subscribes to its session's rows. Every write is a reducer call: validated, atomic, and pushed to every subscriber as soon as it commits. The full table and reducer list is in [SpacetimeDB reference](/docs/reference/spacetimedb/).
 
-![Studio with the Live data panel open: presence chips for You and Jun, "connected to Maincloud", changes per second, the round trip, and a feed of reducer calls and row changes](../../../../assets/shots/spacetime-studio-inspector.png)
+![Studio with the Live data panel open: presence chips for You and Jun, "connected to Maincloud", changes per second, the round trip, and a feed of reducer calls and row changes](../../../../assets/shots/studio-live-prod.png)
 
 ## Who sees what
 

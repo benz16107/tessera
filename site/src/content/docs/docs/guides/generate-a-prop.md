@@ -20,7 +20,7 @@ The inspector then shows the concept image, the prompt, the size, **Regenerate**
 
 ## From a photo or an image
 
-![Studio with a dropped image placed on the street as a flat print, selected, with its size and transform in the inspector](../../../../assets/shots/studio-drop-image.png)
+![The Generate panel in Studio: Words to 3D, Image then 3D and Flat image, a prompt field, Generate and Hold to talk, beside a clay car in the set](../../../../assets/cards/nvidia-generate.png)
 
 1. Drag an image file onto the 3D view. ShotMatch asks **Drop the image where it should go**.
 2. Choose:

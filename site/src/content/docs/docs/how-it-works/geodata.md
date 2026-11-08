@@ -7,7 +7,7 @@ A good shot depends on more than the place: cloud for sunset colour, haze for th
 
 Everything works for any latitude and longitude in the US. NYC spots also get permits, closures, scaffolding and the city's own building heights. Code: `crew/src/layers/` (server), `web/src/layers/` (screens), tests in `crew/test/layers.test.ts`.
 
-![Studio from above at DUMBO with the layers on: building shadows across the street, permit and closure zones, the photographer heatmap with heading arrows](../../../../assets/shots/layers-3d-high.png)
+![Studio from above at DUMBO with the layers on: building shadows across the street, permit and closure zones, the photographer heatmap with heading arrows](../../../../assets/shots/studio-conditions-prod.png)
 
 ## Layers
 

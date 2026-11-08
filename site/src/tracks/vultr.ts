@@ -124,7 +124,7 @@ export default {
     'Serverless Inference: hosting for Nemotron 3.5 Content Safety, Nemotron 3 Nano Omni, Qwen-Image 2.1 and Whisper large v3 turbo',
   ],
   limits: [
-    'No Vultr GPU. An A40 create failed with "Your account does not have any additional credit", then, after credit was added, with "You have reached the maximum monthly fee limit for this account". The account cap is $250 a month per instance, so an A16 was refused too; a limit-increase request went to Vultr\'s team, which works weekdays. The fine-tune and the splat ran on a Brev A100 from the HackUTD NVIDIA credit instead.',
+    'No Vultr GPU. An A40 create failed with "Your account does not have any additional credit", then, after credit was added, with "You have reached the maximum monthly fee limit for this account". The account cap is $250 a month per instance, so an A16 was refused too; a limit-increase request went to Vultr\'s team, which works weekdays. The lens fine-tune ran on a Brev A100 from the HackUTD NVIDIA credit instead.',
     'The solver\'s time on the VM was not measured separately from linuxbox.',
     'Object Storage throughput and latency were not measured. Whisper\'s latency was not measured.',
     'The lens tunnel depends on the Brev GPU box, which is deleted after judging.',

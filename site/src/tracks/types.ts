@@ -31,6 +31,7 @@ export interface Thread {
   why: string; // one sentence: why this needs messaging
   messages: Message[];
   source: string; // where the text comes from, e.g. "crew/scripts/photon-e2e.ts against the Photon stand-in"
+  live?: { img: ImageMetadata; alt: string; when: string }; // a screenshot of the real round trip replaces the mock
 }
 
 export interface Track {
@@ -51,6 +52,7 @@ export interface Track {
   video: { title: string; length: string; summary: string; shots: Shot[]; notes: string; url?: string };
   docs: { label: string; href: string }[];
   note?: string; // one honest status line shown near the top, e.g. stand-in proof
+  noteTag?: string; // optional tag before the note, e.g. "Live on Telegram"
   whyTitle?: string; // heading overrides for tracks without a product sponsor (Best Design)
   theirsTitle?: string;
   splitTitle?: string;

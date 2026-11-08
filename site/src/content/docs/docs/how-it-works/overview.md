@@ -56,7 +56,6 @@ ShotMatch has one shared state: a SpacetimeDB database on Maincloud. Every scree
 | Nemotron 3.5 Super VL, Lightning and Embed, the VL reranker, TRELLIS, FLUX.1-dev, Parakeet, Magpie, cuOpt | NVIDIA hosted APIs |
 | The fine-tuned lens model (Nemotron Nano 12B v2 VL plus our LoRA) | vLLM on a Brev A100 80 GB, reached through an ssh tunnel from the VM |
 | Spot builds and the lens dataset pull | linuxbox (CPU) |
-| The Gaussian splat training | The same Brev A100 |
 | Messaging | Photon's hosted API; the phone call's voice agent on ElevenLabs |
 
 Vultr refused a GPU instance twice (no account credit, then the monthly fee limit), so the GPU work moved to Brev, paid from the HackUTD NVIDIA credit.

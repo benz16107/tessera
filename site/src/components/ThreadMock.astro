@@ -12,8 +12,13 @@ const tone = t.channel.toLowerCase().replace(/\s+/g, '');
 <figure class:list={['thread', `t-${tone}`, `k-${kind}`]}>
   <figcaption class="thread-top">
     <span class="thread-mech">{t.mechanism}</span>
-    <span class="thread-ch">{t.channel}</span>
+    <span class="thread-ch">{t.live ? <span class="tag live">Live · {t.live.when}</span> : <span class="tag stand-in">Stand-in</span>} {t.channel}</span>
   </figcaption>
+  {t.live ? (
+    <div class="thread-live">
+      <Image src={t.live.img} alt={t.live.alt} widths={[400, 700]} sizes="(max-width: 700px) 90vw, 340px" class="live-img" />
+    </div>
+  ) : <>
   <div class="thread-head" aria-hidden="true">
     {kind === 'call' ? <><span class="call-dot"></span>ShotMatch · call in progress</> : <>ShotMatch</>}
   </div>
@@ -31,6 +36,7 @@ const tone = t.channel.toLowerCase().replace(/\s+/g, '');
       </li>
     ))}
   </ol>
+  </>}
   <p class="thread-why">{t.why}</p>
   {showSource && <p class="thread-src">{t.source}</p>}
   {!showSource && <div class="thread-pad"></div>}
@@ -38,7 +44,7 @@ const tone = t.channel.toLowerCase().replace(/\s+/g, '');
 
 <style>
   .thread { margin: 0; display: flex; flex-direction: column; background: var(--panel); border-radius: 16px; box-shadow: 0 0 0 1px var(--line); overflow: hidden; }
-  .thread-top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; padding: 16px 16px 12px; }
+  .thread-top { display: flex; flex-direction: column; gap: 8px; padding: 16px 16px 12px; }
   .thread-mech { font-weight: 600; font-size: 0.9375rem; line-height: 1.35; text-wrap: balance; }
   .thread-ch { flex: none; font: 400 0.6875rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
   .thread-head { margin: 0 12px; padding: 8px 12px; border-radius: 10px 10px 0 0; background: #1c1c1e; color: #d1d1d6; font-size: 0.75rem; font-weight: 600; text-align: center; display: flex; gap: 6px; justify-content: center; align-items: center; }
@@ -77,5 +83,8 @@ const tone = t.channel.toLowerCase().replace(/\s+/g, '');
   .k-call .meta { align-self: flex-end; }
   .thread-why { margin: 0; padding: 14px 16px 4px; color: var(--text-2); font-size: 0.875rem; line-height: 1.5; text-wrap: pretty; }
   .thread-pad { height: 12px; }
+  .thread-live { margin: 0 12px; border-radius: 12px; overflow: hidden; background: #000; }
+  .live-img { display: block; width: 100%; height: auto; }
+  .thread-ch { display: flex; gap: 6px; align-items: center; }
   .thread-src { margin: 0; padding: 4px 16px 16px; color: var(--text-3); font: 400 0.6875rem/1.45 var(--mono); }
 </style>
