@@ -9,14 +9,14 @@ const { thread: t, showSource = true } = Astro.props;
 const kind = t.channel === 'Phone call' ? 'call' : t.channel === 'Email' ? 'email' : 'chat';
 const tone = t.channel.toLowerCase().replace(/\s+/g, '');
 ---
-<figure class:list={['thread', `t-${tone}`, `k-${kind}`]}>
+<figure class:list={['thread', `t-${tone}`, `k-${kind}`, { multi: (t.live?.shots.length ?? 0) > 1 }]}>
   <figcaption class="thread-top">
     <span class="thread-mech">{t.mechanism}</span>
     <span class="thread-ch">{t.live ? <span class="tag live">Live · {t.live.when}</span> : <span class="tag stand-in">Stand-in</span>} {t.channel}</span>
   </figcaption>
   {t.live ? (
     <div class="thread-live">
-      <Image src={t.live.img} alt={t.live.alt} widths={[400, 700]} sizes="(max-width: 700px) 90vw, 340px" class="live-img" />
+      {t.live.shots.map((sh) => <Image src={sh.img} alt={sh.alt} widths={[400, 800]} sizes="(max-width: 700px) 80vw, 380px" class="live-img" />)}
     </div>
   ) : <>
   <div class="thread-head" aria-hidden="true">
@@ -85,6 +85,10 @@ const tone = t.channel.toLowerCase().replace(/\s+/g, '');
   .thread-pad { height: 12px; }
   .thread-live { margin: 0 12px; border-radius: 12px; overflow: hidden; background: #000; }
   .live-img { display: block; width: 100%; height: auto; }
+  /* A round trip told in several screenshots spans the row; the shots sit side by side and scroll sideways on a phone. */
+  .thread.multi { grid-column: 1 / -1; }
+  .multi .thread-live { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; background: transparent; border-radius: 0; padding-bottom: 4px; }
+  .multi .live-img { flex: none; width: auto; height: min(560px, 70vh); border-radius: 10px; scroll-snap-align: start; box-shadow: 0 0 0 1px var(--line); }
   .thread-ch { display: flex; gap: 6px; align-items: center; }
   .thread-src { margin: 0; padding: 4px 16px 16px; color: var(--text-3); font: 400 0.6875rem/1.45 var(--mono); }
 </style>

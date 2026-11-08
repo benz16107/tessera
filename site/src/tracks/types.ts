@@ -31,7 +31,7 @@ export interface Thread {
   why: string; // one sentence: why this needs messaging
   messages: Message[];
   source: string; // where the text comes from, e.g. "crew/scripts/photon-e2e.ts against the Photon stand-in"
-  live?: { img: ImageMetadata; alt: string; when: string }; // a screenshot of the real round trip replaces the mock
+  live?: { shots: { img: ImageMetadata; alt: string }[]; when: string }; // screenshots of the real round trip replace the mock
 }
 
 export interface Track {

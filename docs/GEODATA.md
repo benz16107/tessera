@@ -91,6 +91,25 @@ drapes every vertex on the street plane.
   alerts), the map, the layer switches and the sources.
 - **AI.** The `conditions` summary for the NVIDIA agents (shot list, art director) and Photon's golden-hour texts.
 
+## Map view
+
+`GeoMapView` (web/src/layers/MapView.tsx, lazy) is the full-screen map. It uses the same dark OpenFreeMap style, or the
+light Positron style for Simple mode, and keeps the attribution on screen.
+
+- **Shots.** Every camera object gets a pin, its view cone (from the lens's horizontal field of view) and a label with
+  the lens. The shot camera's cone is amber. Also shown: the scout's live `device_pose`, check-ins, placed people and
+  props as dots, and the solved photo's spot when no camera stands on it. Drag a camera pin to move it: one
+  `updateSceneObject` on release, refused while someone else holds the object's lock.
+- **Shots around the world.** The public `shot_library` view plus the lens dataset's 4,500 geotagged Commons photos
+  from 37 landmarks (`GET /api/layers/world`, about 114 KB gzipped), as clustered pins up to zoom 14.
+- **Layers.** The same switches as the Conditions drawer, shared through `layer_toggle`. Building shadows and the sun's
+  direction follow the timeline to the minute: the shadows are computed in the browser from the footprints.
+- **Cards.** A pin opens a card with the thumbnail, lens, heading, the light at the set time (sun side and height, and
+  the colour chance), and saved shot versions. "Open in 3D" and "Look through" call `onOpenShot(target, mode)`.
+- **3D handoff.** `onCamera` reports center, zoom, bearing and pitch on every move. Past `enter3DZoom` (18.6, a view
+  about 400 m across) the map calls `onEnter3D(center, heading, pitch)` once, and re-arms below 18.0. The studio sets
+  `camera` when the user zooms its 3D view out past about 2 km.
+
 ## SpacetimeDB
 
 The geo thread asked the spacetime thread for a `layer_snapshot` table (spotId, layer, fetchedAt, summary JSON,

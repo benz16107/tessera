@@ -16,7 +16,7 @@ import { useConfig, NAME_KEY } from '../config.ts';
 import { navigate } from '../App.tsx';
 import { sunAt, spotZone, fmtTime } from '../geo.ts';
 import { ENU_TO_THREE, enuToThree, threeToEnu, llhToEnu, enuToLlh, cameraQuat, cameraHpr, yawQuat, type Origin } from './frame.ts';
-import { useGeoLayers, GeoScene, GeoButton, GeoPanel, GeoBands, GeoOverview } from '../layers/index.ts';
+import { useGeoLayers, GeoScene, GeoButton, GeoPanel, GeoBands, GeoOverview, GeoMapView, zoomForHeight, type MapCamera, type ShotTarget } from '../layers/index.ts';
 import { sceneEv100, meterStops, whiteBalanceGains, fmtShutter, kelvinToRgb } from './optics.ts';
 import { lightColorK, sunPath, sunStrength, sunVector } from './light/sun.ts';
 import { useScene } from './state/useScene.ts';
@@ -51,10 +51,11 @@ import '@fontsource/martian-mono/500.css';
 import '@fontsource/martian-mono/600.css';
 import './studio.css';
 
-type View = 'persp' | 'shot' | 'top' | 'walk';
+type View = 'persp' | 'shot' | 'top' | 'walk' | 'map';
 type Tool = 'select' | 'translate' | 'rotate' | 'scale' | 'measure';
 type Page = 'set' | 'shots' | 'renders';
-type ViewCmd = { n: number; kind: 'focus'; point: Vector3; radius: number } | { n: number; kind: 'front' | 'right' | 'home' };
+type ViewCmd = { n: number; kind: 'focus'; point: Vector3; radius: number } | { n: number; kind: 'front' | 'right' | 'home' }
+  | { n: number; kind: 'place'; point: Vector3; pos: Vector3 }; // ENU orbit target and eye (the map's hand-off into 3D)
 interface Pick { enu: Vector3; normal: Vector3; wall: boolean }
 
 export default function Studio({ code }: { code: string }) {
@@ -582,6 +583,40 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     editRow(shotRow, withParams({ ...stateOf(shotRow), x: p.pos.x, y: p.pos.y, z: p.pos.z, qx: q.x, qy: q.y, qz: q.z, qw: q.w }, { alt: +(p.pos.z - gz(p.pos.x, p.pos.y)).toFixed(2) }), `${shotName} moved to where you stood`);
     setToast(`${shotName} is where you are standing. Press 0 to look through it.`);
   };
+  // Map <-> 3D hand-off (the geo thread's Map view): past zoom 18.6 the map hands the 3D set a centre and heading (about
+  // 400 m up, the map's scale there); past 2,000 m of orbit height the World view hands back to the map.
+  const [mapCam, setMapCam] = useState<MapCamera | null>(null);
+  const mapCamRef = useRef<MapCamera | null>(null);
+  const enter3D = (c: { lat: number; lon: number }, heading: number) => {
+    if (!here) return;
+    const t = llhToEnu(here, c.lat, c.lon, 0);
+    t.z = gz(t.x, t.y);
+    const b = (heading * Math.PI) / 180, el = (55 * Math.PI) / 180, d = 400 / Math.sin(el);
+    const pos = t.clone().add(new Vector3(-Math.sin(b), -Math.cos(b), 0).multiplyScalar(d * Math.cos(el))).add(new Vector3(0, 0, 400));
+    setView('persp');
+    setCmd({ n: Date.now(), kind: 'place', point: t, pos });
+  };
+  const toMap = useRef(false);
+  useEffect(() => {
+    if (view !== 'persp' || !here || camHeight < 2000) { toMap.current = false; return; }
+    if (toMap.current) return;
+    toMap.current = true;
+    const t = orbitTarget.current, eye = threeToEnu(orbitCamPos.current);
+    const ll = enuToLlh(here, t);
+    setMapCam({ lat: ll.lat, lon: ll.lon, zoom: zoomForHeight(camHeight, here.lat, vp.w), bearing: (Math.atan2(t.x - eye.x, t.y - eye.y) * 180) / Math.PI, pitch: 0 });
+    setView('map');
+  }, [camHeight, view]); // eslint-disable-line react-hooks/exhaustive-deps
+  const openShot = (t: ShotTarget, mode: 'world' | 'shot') => {
+    const row = t.objectId !== null ? scene.rows.find(r => r.id === t.objectId) : undefined;
+    if (row) {
+      setSelected(row.id);
+      if (mode === 'shot') { if (parseParams(row.params).shot !== '1') makeShot(row); setView('shot'); return; }
+      setView('persp');
+      setCmd({ n: Date.now(), kind: 'focus', point: enuToThree({ x: row.x, y: row.y, z: row.z }), radius: 6 });
+      return;
+    }
+    enter3D({ lat: t.lat, lon: t.lon }, t.heading); // a check-in or a scout: just the place
+  };
   const cone = origin && shotPose ? { ...enuToLlh(origin, shotPose.pos), heading: shotPose.hpr.heading, hfovDeg: o.hfovDeg } : null;
   const sunDir = sunVector(sun.azimuth, sun.altitude);
   // Nemotron's read of the photo's light (docs/NVIDIA.md, GET /api/set/light): its sun drives the render layers' shadows,
@@ -651,7 +686,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   });
 
   const viewSwitch = (
-    <Seg label="View" value={view} onChange={setView} options={[{ value: 'persp', label: 'World' }, { value: 'walk', label: 'Walk' }, { value: 'shot', label: `Through ${shotName}` }, { value: 'top', label: 'Top' }]} />
+    <Seg label="View" value={view} onChange={setView} options={[{ value: 'map', label: 'Map' }, { value: 'persp', label: 'World' }, { value: 'walk', label: 'Walk' }, { value: 'shot', label: `Through ${shotName}` }, { value: 'top', label: 'Top' }].filter(x => x.value !== 'map' || !!origin) as { value: View; label: string }[]} />
   );
   let credits: ReactNode[] = [];
   if (showTiles && attribution) credits.push(<img key="g" src="/studio/attribution/google-maps-logo.svg" alt="Google Maps" />, <span key="gc" className="gcred">{attribution}</span>);
@@ -919,7 +954,13 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
             )}
           </div>
         )}
-        {view === 'persp' && origin && <GeoOverview geo={layers} center={origin} camera={cone} heightM={camHeight} widthPx={vp.w} />}
+        {view === 'persp' && origin && <GeoOverview geo={layers} center={origin} camera={cone} heightM={camHeight} widthPx={vp.w} from={1400} to={2000} />}
+        {view === 'map' && origin && (
+          <Suspense fallback={null}>
+            <GeoMapView geo={layers} sessionId={sid} origin={origin} at={planTime} zone={zone} camera={mapCam ?? mapCamRef.current}
+              onCamera={c => { mapCamRef.current = c; }} onEnter3D={(c, heading) => enter3D(c, heading)} onOpenShot={openShot} />
+          </Suspense>
+        )}
         <div className="st-corner" aria-live="polite">
           {focusHint && !focus && <span className="st-chip">Press Tab for focus mode: just the view and a small toolbar</span>}
           {!shotRow && <span className="st-chip">{solved ? `Placing ${shotName} where the photo was taken` : 'No solved photo yet: place objects freely'}</span>}

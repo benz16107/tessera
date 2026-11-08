@@ -9,7 +9,7 @@ export { useGeoLayers, LAYERS, type GeoLayers, type LayerId, type LayersData } f
 export { default as GeoScene } from './Scene3D.tsx';
 export { default as GeoPanel, GeoButton } from './Panel.tsx';
 export { default as GeoBands } from './Bands.tsx';
-export { default as GeoOverview } from './Overview.tsx';
+export { default as GeoOverview, zoomForHeight } from './Overview.tsx';
 export type { CameraCone } from './Map2D.tsx';
 // The full-screen Map view, lazy so MapLibre loads only when the map opens:
 //   <Suspense><GeoMapView geo={geo} sessionId={sid} origin={origin} at={planTime} zone={zone} camera={mapCam}

@@ -32,7 +32,7 @@ for (const step of stepsArg.split(',')) {
     await page.keyboard.down('ArrowRight'); await page.waitForTimeout(700); await page.keyboard.up('ArrowRight');
     await page.waitForTimeout(800); await S('-walk-moved');
   }
-  if (step === 'earth') { await page.keyboard.press('5'); await page.waitForTimeout(15000); await S('-earth'); }
+  if (step === 'earth') { await page.keyboard.press('5'); await page.waitForTimeout(35000); await S('-earth'); }
   if (step === 'earthwalk') { // Walk from the aerial: land on the street ahead, walk forward
     await page.keyboard.press('Backquote'); await page.waitForTimeout(6000);
     await page.locator('.st-walk-help button').click().catch(() => {});

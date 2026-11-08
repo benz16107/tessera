@@ -103,7 +103,7 @@ export default function Map2D({ geo, center, camera, height = 320, zoom = 16.2, 
     const popup = new Popup({ closeButton: false, closeOnClick: true, maxWidth: '260px', className: 'geo-popup' });
     const show = (e: MapLayerMouseEvent) => {
       const f = e.features?.[0];
-      if (!f) return;
+      if (!f || (m.getLayer('map-pins') && m.queryRenderedFeatures(e.point, { layers: ['map-pins'] }).length)) return; // the Map view's pin card wins
       const p = f.properties as Record<string, string>;
       const box = document.createElement('div');
       const b = document.createElement('b'); b.textContent = p.label ?? ''; box.append(b);
