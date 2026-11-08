@@ -40,7 +40,7 @@ In this order, so the app is first:
 - https://app.tesseraphoto.com/p/A9TVAN (the app, opened on the Manhattan Bridge demo shoot)
 - https://tesseraphoto.com (the product, every track and the docs)
 - https://tesseraphoto.com/tracks/ (every track in detail)
-- **TODO:** the GitHub repo once Ben makes it public (the Spacetime Track requires a public repo)
+- https://github.com/benz16107/tessera (the code, public; one clean commit of the build repo)
 - https://www.figma.com/design/QrpLuCwKGGFFBSDRMd7VqS (the design file; private: **TODO** Ben, share it as "anyone with the link can view" before pasting, or leave it out)
 
 ## Built with
@@ -68,7 +68,7 @@ General Track is automatic.
 - Try it live: the Manhattan Bridge demo shoot in [Simple](https://app.tesseraphoto.com/p/A9TVAN) or [Studio](https://app.tesseraphoto.com/studio/A9TVAN); drop your own photo of that view, or text one to @ShotMatchSetBot on Telegram
 - Product and docs: https://tesseraphoto.com
 - Every track in detail: https://tesseraphoto.com/tracks/
-- Code: **TODO** (the GitHub link, once the repo is public)
+- Code: https://github.com/benz16107/tessera
 - Video: **TODO**
 
 ## A film set for the photo you want to take

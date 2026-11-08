@@ -6,5 +6,5 @@ export const DESCRIPTION =
 export const APP_URL = process.env.APP_URL ?? 'https://app.tesseraphoto.com';
 export const SITE_URL = process.env.SITE_URL ?? 'https://tesseraphoto.com';
 // TODO(Ben): set to the public GitHub URL once the repo is public; every GitHub link on the site appears only when this is set.
-export const REPO = '';
+export const REPO = 'https://github.com/benz16107/tessera';
 export const DEMO_CODE = 'A9TVAN';
