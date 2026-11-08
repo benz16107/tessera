@@ -19,7 +19,7 @@ import { ensureLocal, saveImage } from './images.ts';
 import { chat, editImage, parseJson, physicalCheck, thinking } from './models.ts';
 import { genai } from './props3d.ts';
 import { sunAt } from './sun.ts';
-import { sessionLight, type LightRead } from './vision.ts';
+import { normBox, sessionLight, type LightRead } from './vision.ts';
 import { fluxSize, placeholderPrompt, renderPrompt, whenWords, type Placeholder } from './prompts.ts';
 export { fluxSize, lensWords, renderPrompt } from './prompts.ts';
 import { describeObjects, parseParams, setContext, sessionObjects } from './set.ts';
@@ -187,7 +187,7 @@ export async function render(inp: RenderIn): Promise<RenderOut> {
     const patchPath = placeholders.length > 0, used = new Set<string>();
     let gen: Awaited<ReturnType<typeof generate>> | null = patchPath ? null : await generate(composite, w, h, prompt, mode);
     let patched = compRgb;
-    if (patchPath) for (const p of placeholders) { const r = await realify(sid, patched, composite, p, w, h, 1); patched = r.rgb; if (r.model) used.add(r.model); }
+    if (patchPath) for (const p of placeholders) { const r = await realify(sid, patched, composite, base, p, w, h, 1); patched = r.rgb; if (r.model) used.add(r.model); }
     const checks: Check[] = [];
     const finalize = async (round: number) => {
       const map = gen && 'rgb' in gen ? await strengthMap(contact, strength, [], w, h) : null;
@@ -206,7 +206,7 @@ export async function render(inp: RenderIn): Promise<RenderOut> {
     if (c1 && !c1.pass) {
       // A placeholder that still looks like a mannequin, a model or a ghost gets one more focused edit with a firmer prompt.
       const stuck = patchPath ? placeholders.filter(p => c1.placeholders.includes(p.id)).slice(0, 3) : [];
-      for (const p of stuck) { const r = await realify(sid, patched, composite, p, w, h, 2); patched = r.rgb; if (r.model) used.add(r.model); }
+      for (const p of stuck) { const r = await realify(sid, patched, composite, base, p, w, h, 2); patched = r.rgb; if (r.model) used.add(r.model); }
       if (gen && 'rgb' in gen) {
         if (c1.strength === 'up') strength = Math.min(0.85, strength + 0.25);
         if (c1.strength === 'down') strength = Math.max(0.15, strength - 0.2);
@@ -234,6 +234,36 @@ export async function render(inp: RenderIn): Promise<RenderOut> {
   } finally { if (renew) clearInterval(renew); }
 }
 
+/** The subject's silhouette in an edited crop: the edit model repaints everything but the subject flat green (#00FF00) and
+ *  the green is keyed out. Null when the key looks wrong (too small, too big, or mostly outside the subject's box). */
+async function keyedSubject(rgb: Buffer, bw: number, bh: number, what: string, inside: number[]): Promise<Buffer | null> {
+  const img = await sharp(rgb, { raw: { width: bw, height: bh, channels: 3 } }).jpeg({ quality: 92 }).toBuffer();
+  const r = await editImage(img, `Keep the ${what} exactly as it is, same pose, size and position, pixel for pixel. Replace everything else (background, ground, buildings, cars, shadows) with flat pure green #00FF00. No other change.`, editSize(bw, bh));
+  const g = await rawRgb(r.image, bw, bh), m = Buffer.alloc(bw * bh);
+  for (let i = 0, p = 0; i < m.length; i++, p += 3) m[i] = g[p + 1] > 140 && g[p + 1] - Math.max(g[p], g[p + 2]) > 70 ? 0 : 255;
+  const soft = await blur1(m, bw, bh, 2);
+  let n = 0, out = 0;
+  for (let i = 0; i < m.length; i++) {
+    m[i] = soft[i] > 128 ? 255 : 0;
+    if (!m[i]) continue;
+    n++;
+    const x = i % bw, y = (i / bw) | 0;
+    if (x < inside[0] || x > inside[2] || y < inside[1] || y > inside[3]) out++;
+  }
+  return n > 0.02 * m.length && n < 0.6 * m.length && out < 0.15 * n ? m : null;
+}
+
+/** Super VL's box (fractions 0..1) around the one person or object in an edited crop, or null. */
+async function subjectBox(rgb: Buffer, bw: number, bh: number, what: string): Promise<[number, number, number, number] | null> {
+  const key = secret('nvidia_key');
+  if (!key) return null;
+  const img = await sharp(rgb, { raw: { width: bw, height: bh, channels: 3 } }).jpeg({ quality: 88 }).toBuffer();
+  const m = await chat(NVIDIA_BASE, key, { model: MODELS.agent, ...thinking(false), temperature: 0, max_tokens: 120, messages: [{ role: 'user', content: [
+    { type: 'text', text: `Give the tight bounding box of the ${what} in this image, head to feet (or top to bottom), as strict JSON only: {"box": [x0, y0, x1, y1]} with integers 0 to 1000, x right, y down.` },
+    { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${img.toString('base64')}` } }] }] }, 30_000, 'subject box for the paste');
+  return normBox(parseJson(String(m.content ?? ''))?.box);
+}
+
 /** Share of the placeholder's pixels the edit left as they were in the composite (the mannequin is still standing). */
 export function residue(comp: Buffer, w: number, crop: Buffer, box: { left: number; top: number; width: number; height: number }, objLocal: Buffer): number {
   let n = 0, same = 0;
@@ -249,7 +279,7 @@ export function residue(comp: Buffer, w: number, crop: Buffer, box: { left: numb
 
 /** One placeholder's padded crop of the composite, edited on its own into the real thing, pasted into the frame fully opaque
  *  (only the outer few px feathered, tone matched at the border). Attempt 2 uses a firmer prompt. */
-async function realify(sid: bigint, frame: Buffer, composite: Buffer, p: { id: string; name: string; kind: string; mask: Buffer; prompt: string }, w: number, h: number, attempt: number): Promise<{ rgb: Buffer; model?: string }> {
+async function realify(sid: bigint, frame: Buffer, composite: Buffer, backplate: Buffer, p: { id: string; name: string; kind: string; mask: Buffer; prompt: string }, w: number, h: number, attempt: number): Promise<{ rgb: Buffer; model?: string }> {
   const box = maskBox(p.mask, w, h, 0.4);
   if (!box || box.width < 16 || box.height < 16) return { rgb: frame };
   const t0 = Date.now(), what = p.kind === 'person' ? 'person' : 'object';
@@ -270,9 +300,35 @@ async function realify(sid: bigint, frame: Buffer, composite: Buffer, p: { id: s
       if (left2 < left) { r = r2; toned = toned2; left = left2; }
     }
     await logStep(sid, 'realify', `object ${p.id} ${p.name}, crop ${box.width}x${box.height}${attempt > 1 ? ', second try' : ''}`, `${r.model}, ${Math.round(left * 100)}% of the mannequin left: ${p.prompt}`.slice(0, 600), Date.now() - t0);
-    // Paste only the placeholder and what the edit changed near it, so the background it redrew elsewhere in the crop never shows.
-    const region = await changedRegion(frame, w, toned, box, local, Math.max(4, box.height * 0.03));
-    return { rgb: pasteCrop(frame, w, toned, box, 3, region), model: r.model };
+    // The photo is a clean backplate (the mannequin was never in it): put it back wherever the mannequin stood, then paste only
+    // what the edit made that the photo does not have, the new person and their shadow. No redrawn background remains.
+    const cleared = Buffer.from(frame), grown = await blur1(local, box.width, box.height, 1.5);
+    for (let y = 0; y < box.height; y++) for (let x = 0; x < box.width; x++) {
+      if (!grown[y * box.width + x]) continue;
+      const o = ((box.top + y) * w + box.left + x) * 3;
+      backplate.copy(cleared, o, o, o + 3);
+    }
+    const region = await changedRegion(backplate, w, toned, box, local, Math.max(4, box.height * 0.03), 2, false, 44);
+    // Inside the old silhouette the model's redrawn background differs from the photo as much as the person does, so Super VL
+    // boxes the new person and only changes inside that box (a little extra below the feet for the contact shadow) are kept.
+    const pb = await subjectBox(toned, box.width, box.height, what).catch(() => null);
+    let how = 'no box; pasted what changed';
+    if (pb) {
+      const bw = box.width, bh = box.height;
+      const [x0, y0, x1, y1] = [pb[0] - 0.04, pb[1] - 0.02, pb[2] + 0.04, pb[3] + 0.03].map((v, i) => Math.max(0, Math.min(1, v)) * (i % 2 ? bh : bw));
+      // The person's own silhouette: the edit model turns everything but the person flat green, and the green is keyed out.
+      const keyed = await keyedSubject(patch, bw, bh, what, [x0, y0, x1, y1]).catch(() => null);
+      const footY = pb[3] * bh - 0.03 * bh;
+      for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+        const i = y * bw + x, inBox = x >= x0 && x <= x1 && y >= y0 && y <= y1;
+        // With a key: the person, plus what changed under their feet (contact shadow). Without: what changed inside the box.
+        region[i] = !inBox ? 0 : keyed ? (keyed[i] ? 255 : y >= footY ? region[i] : 0) : region[i];
+      }
+      region.set(await blur1(region, bw, bh, 1.5));
+      how = `new ${what} boxed by Nemotron at ${pb.map(v => v.toFixed(2)).join(', ')}${keyed ? ', silhouette keyed from a green-screen edit' : ''}; the rest of the old silhouette restored from the photo`;
+    }
+    await logStep(sid, 'realify', `object ${p.id} paste`, how, 0);
+    return { rgb: pasteCrop(cleared, w, toned, box, 3, region), model: r.model };
   } catch (e) {
     await logStep(sid, 'realify', `object ${p.id} ${p.name}`, `error: ${(e as Error).message.slice(0, 200)}`, Date.now() - t0);
     return { rgb: frame };

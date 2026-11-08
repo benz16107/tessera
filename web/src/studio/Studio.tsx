@@ -6,8 +6,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Environment, GizmoHelper, GizmoViewport, Grid, Html, Line, OrbitControls, OrthographicCamera, Sky, TransformControls, useTexture } from '@react-three/drei';
-import { XR, XROrigin } from '@react-three/xr';
-import { EquirectangularReflectionMapping, Group, Mesh, Object3D, PerspectiveCamera, Quaternion, Raycaster, SRGBColorSpace, Vector2, Vector3, type Camera } from 'three';
+import { XR } from '@react-three/xr';
+import { EquirectangularReflectionMapping, Euler, Group, Mesh, Object3D, PerspectiveCamera, Quaternion, Raycaster, SRGBColorSpace, Vector2, Vector3, type Camera } from 'three';
 import { useSpacetimeDB, useTable, useReducer } from 'spacetimedb/react';
 import { Timestamp } from 'spacetimedb';
 import { tables, reducers } from '../module_bindings/index.ts';
@@ -41,7 +41,8 @@ import { Ico, Seg, Disclosure } from './editor/ui.tsx';
 import RenderSection from './render/RenderSection.tsx';
 import { NvidiaSlot, SpacetimeSlot, PhotonSlot } from './slots.tsx';
 import { ViewSwitch } from '../simple/ViewSwitch.tsx';
-import { xrStore, VrButton } from './xr/VR.tsx';
+import { xrStore, VrButton, VrOrigin } from './xr/VR.tsx';
+import WalkControls, { WalkHud, newWalkInput, obstaclesFor } from './world/Walk.tsx';
 import { SetEventsBridge, SetEventMarks, ViewBroadcaster, CheckinBridge, CheckinMarksSlot, type SetEv } from './world/SetEvents.tsx';
 import type { Layers } from './render/layers.ts';
 import '@fontsource/martian-mono/400.css';
@@ -49,7 +50,7 @@ import '@fontsource/martian-mono/500.css';
 import '@fontsource/martian-mono/600.css';
 import './studio.css';
 
-type View = 'persp' | 'shot' | 'top';
+type View = 'persp' | 'shot' | 'top' | 'walk';
 type Tool = 'select' | 'translate' | 'rotate' | 'scale' | 'measure';
 type Page = 'set' | 'shots' | 'renders';
 type ViewCmd = { n: number; kind: 'focus'; point: Vector3; radius: number } | { n: number; kind: 'front' | 'right' | 'home' };
@@ -249,6 +250,10 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const [cmd, setCmd] = useState<ViewCmd | null>(null);
   const [pendingUid, setPendingUid] = useState<string | null>(null);
   const [vrOrigin, setVrOrigin] = useState<Vector3 | null>(null);
+  // Walk view: eye height and flying are per person; the input object is shared by the 3D controls and the touch overlay.
+  const [walkEye, setWalkEye] = useState(1.6);
+  const [walkFly, setWalkFly] = useState(false);
+  const walkInput = useRef(newWalkInput());
   const [laser, setLaser] = useState(false);
   const [ev, setEv] = useState<SetEv | null>(null);
   const [checkins, setCheckins] = useState<unknown[]>([]);
@@ -414,6 +419,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     if (followDist !== undefined && Math.abs(+followDist - shot.focusM) > 0.05) setShot({ focusM: Math.max(0.1, +followDist) });
   }, [followDist]); // eslint-disable-line react-hooks/exhaustive-deps
   const pick = (id: bigint | null, point: Vector3, alt: boolean) => {
+    if (document.pointerLockElement) return; // walking with the mouse captured: Walk picks at the crosshair
+    if (view === 'walk' && id === null && tool !== 'measure' && !laser) { walkInput.current.lock?.(); return; }
     const p = threeToEnu(point);
     if ((laser || alt) && ev) { ev.ping({ x: p.x, y: p.y, z: p.z }, id ?? 0n).catch(() => {}); return; }
     if (tool === 'measure') { setMeasure(m => (m.length >= 2 ? [p] : [...m, p])); return; }
@@ -433,6 +440,9 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
       if ((e.ctrlKey || e.metaKey) && k === 'k') { e.preventDefault(); setCmdOpen(true); return; }
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (e.shiftKey && k === 'a') { e.preventDefault(); setAddOpen(true); return; }
+      if (k === '`' || (e.shiftKey && k === 'f')) { e.preventDefault(); setView(v => (v === 'walk' ? 'persp' : 'walk')); return; }
+      // In Walk, WASD QE move (Walk.tsx) unless an object is selected and the mouse is free; then they are tool keys.
+      if (view === 'walk' && 'wasdqe '.includes(k) && (document.pointerLockElement || selected === null)) return;
       if (k === 'tab') { e.preventDefault(); setFocus(f => !f); setFocusHint(false); try { localStorage.setItem('studio/hint-focus', '1'); } catch { /* private mode */ } return; }
       if (k === 'g') setTool('translate');
       else if (k === 'r') setTool('rotate');
@@ -450,6 +460,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
       else if (k === '5' || k === 'home') { setView('persp'); setCmd({ n: Date.now(), kind: 'home' }); }
       else if (k === 'escape') {
         if (addOpen) setAddOpen(false); else if (worldMenu) setWorldMenu(false); else if (viewMenu) setViewMenu(false); else if (cmdOpen) setCmdOpen(false); else if (focus) setFocus(false);
+        else if (view === 'walk' && selected === null) setView('persp');
         else { setSelected(null); setDropAsk(null); setMeasure([]); }
       }
       else if (k === 'k' && (e.metaKey || e.ctrlKey)) setCmdOpen(true);
@@ -506,6 +517,15 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     const quat = new Quaternion().setFromUnitVectors(new Vector3(0, 0, 1), n).multiply(new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), (-heading * Math.PI) / 180));
     return { center: c, quat, half: [26, 62, 3.6] as [number, number, number] }; // Spark's box scale is the full size
   }, [shotPose, geo, gz]);
+  const walkObstacles = useMemo(() => obstaclesFor(layers.data?.layers.buildings, origin, geo), [layers.data?.layers.buildings, origin?.lat, origin?.lon, geo]); // eslint-disable-line react-hooks/exhaustive-deps
+  /** Walk: move Cam A to the eye, looking where you look, so walking around finds the shot. */
+  const standHere = () => {
+    const p = walkInput.current.pose?.();
+    if (!p || !shotRow) return;
+    const q = new Quaternion().setFromEuler(new Euler(...ENU_TO_THREE)).invert().multiply(p.quat);
+    editRow(shotRow, withParams({ ...stateOf(shotRow), x: p.pos.x, y: p.pos.y, z: p.pos.z, qx: q.x, qy: q.y, qz: q.z, qw: q.w }, { alt: +(p.pos.z - gz(p.pos.x, p.pos.y)).toFixed(2) }), `${shotName} moved to where you stood`);
+    setToast(`${shotName} is where you are standing. Press 0 to look through it.`);
+  };
   const cone = origin && shotPose ? { ...enuToLlh(origin, shotPose.pos), heading: shotPose.hpr.heading, hfovDeg: o.hfovDeg } : null;
   const sunDir = sunVector(sun.azimuth, sun.altitude);
   // Nemotron's read of the photo's light (docs/NVIDIA.md, GET /api/set/light): its sun drives the render layers' shadows,
@@ -575,7 +595,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   });
 
   const viewSwitch = (
-    <Seg label="View" value={view} onChange={setView} options={[{ value: 'persp', label: 'World' }, { value: 'shot', label: `Through ${shotName}` }, { value: 'top', label: 'Top' }]} />
+    <Seg label="View" value={view} onChange={setView} options={[{ value: 'persp', label: 'World' }, { value: 'walk', label: 'Walk' }, { value: 'shot', label: `Through ${shotName}` }, { value: 'top', label: 'Top' }]} />
   );
   let credits: ReactNode[] = [];
   if (showTiles && attribution) credits.push(<img key="g" src="/studio/attribution/google-maps-logo.svg" alt="Google Maps" />, <span key="gc" className="gcred">{attribution}</span>);
@@ -584,7 +604,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   if (!credits.length) credits = [<span key="n" className="gcred">{photoBack ? 'Your photo as the backplate; no map content in this view' : 'World hidden'}</span>];
 
   return (
-    <div className="studio" data-time={timeHover || timePinned ? 'open' : 'slim'} data-focus={focus}>
+    <div className="studio" data-time={timeHover || timePinned ? 'open' : 'slim'} data-focus={focus} data-view={view}>
       <header className="st-top">
         <a className="st-logo" href={`/p/${session.code}`} onClick={e => { e.preventDefault(); navigate(`/p/${session.code}`); }} title="Back to the planner">SHOTMATCH</a>
         <ViewSwitch code={session.code} current="studio" selected={selected} onArrive={h => { if (h.selected !== null) setSelected(h.selected); if (h.first) setView('shot'); }} />
@@ -631,7 +651,10 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
         {view !== 'shot' && photo && shotRow && <img className="st-backplate" src={photo.thumb} alt="" style={{ left: pip.x, top: pip.y, width: pip.w, height: pip.h, borderRadius: 4 }} />}
         <div className="st-canvas">
           <Canvas shadows="percentage" gl={{ antialias: true, alpha: true }} camera={{ fov: 50, near: 0.1, far: 20000, position: enuToThree(startCam.pos).toArray() }}
-            onPointerMissed={e => { if (e.type === 'click' && !gizmoBusy.current && tool !== 'measure') setSelected(null); }}>
+            onPointerMissed={e => {
+              if (e.type !== 'click' || gizmoBusy.current || tool === 'measure' || document.pointerLockElement) return;
+              if (view === 'walk') walkInput.current.lock?.(); else setSelected(null);
+            }}>
             <XR store={xrStore}>
               {!photoBack && <group userData={{ helper: true }}><Sky sunPosition={enuToThree({ x: sunDir[0], y: sunDir[1], z: sunDir[2] }).multiplyScalar(1000).toArray()} distance={4500} /></group>}
               <hemisphereLight args={['#bcd3ff', '#3b342b', photo ? 0.45 : 0.9]} />
@@ -676,14 +699,16 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               <ShotCameraSync camera={shotCam} group={shotRow ? groups.current.get(shotRow.id) ?? null : null} />
               {view === 'persp' && <EditorControls start={startCam} cmd={cmd} target={orbitTarget} onHeight={setCamHeight} gz={gz} />}
               {view === 'top' && <TopView center={shotPose?.pos ?? new Vector3()} target={orbitTarget} />}
+              {view === 'walk' && <WalkControls gz={gz} eye={walkEye} fly={walkFly} input={walkInput.current} obstacles={walkObstacles} editing={selected !== null}
+                pickables={() => [...groups.current.entries()]} onPick={id => setSelected(id)} />}
               {view === 'shot' && shotRow && <LookThrough camera={shotCam} o={o} shot={shot} gain={gain} wb={wb} dofOn={dofOn} vignette={vignette} fit={fitFn} photoOnly={photoBack} />}
-              {view !== 'shot' && shotRow && <PipRenderer shotCam={shotCam} o={o} rect={pip} />}
+              {view !== 'shot' && shotRow && <PipRenderer shotCam={shotCam} o={o} rect={pip} inset={vp.w >= 720} />}
               {view !== 'shot' && (
                 <GizmoHelper alignment="top-right" margin={[52, 52]} renderPriority={2}>
                   <GizmoViewport axisColors={['#e8675e', '#7fc96f', '#5f9cf0']} labelColor="#0c0c0b" />
                 </GizmoHelper>
               )}
-              <XROrigin position={vrOrigin ?? enuToThree({ x: shotPose?.pos.x ?? 0, y: shotPose?.pos.y ?? 0, z: shotPose ? gz(shotPose.pos.x, shotPose.pos.y) : 0 })} />
+              <VrOrigin position={vrOrigin ?? enuToThree({ x: shotPose?.pos.x ?? 0, y: shotPose?.pos.y ?? 0, z: shotPose ? gz(shotPose.pos.x, shotPose.pos.y) : 0 })} />
               <ViewBroadcaster ev={ev} />
               <Picker pickRef={pickRef} />
               <Capture capture={capture} camera={shotCam} vfovDeg={o.vfovDeg} frame={frame} objects={objectsForLayers} renderSun={renderSun} />
@@ -741,6 +766,11 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
 
         {view !== 'shot' && (
           <div className="st-chrome">
+            {/* First, so the touch look pad sits under every other control. */}
+            {view === 'walk' && !focus && (
+              <WalkHud input={walkInput.current} eye={walkEye} setEye={setWalkEye} fly={walkFly} setFly={setWalkFly}
+                canStand={!!shotRow} onStandHere={standHere} onExit={() => setView('persp')} />
+            )}
             {!focus && (
               <div className="st-viewswitch">
                 {viewSwitch}
@@ -809,7 +839,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                 <span className="st-pip-label" style={{ left: pip.x + 6, top: pip.y + pip.h - 22 }}>{shotName} · {Math.round(o.f35)} mm</span>
               </>
             )}
-            {scene.rows.filter(r => r.kind !== 'camera').length === 0 && scene.ready && !addOpen && (
+            {view !== 'walk' && scene.rows.filter(r => r.kind !== 'camera').length === 0 && scene.ready && !addOpen && (
               <div className="st-hint st-float" role="note">
                 <span>Press <kbd>+</kbd> to add people, props and lights, or describe a change.</span>
                 <button className="st-btn small" onClick={() => setAddOpen(true)}>Add</button>
@@ -982,13 +1012,13 @@ function ShotCameraSync({ camera, group }: { camera: PerspectiveCamera; group: G
 
 /** Editor view render: the main scene, then the shot camera's view into the picture-in-picture box with the world hidden
  *  (the photo sits under the transparent canvas there). Priority 1 takes over R3F's render; the axis gizmo draws at 2. */
-function PipRenderer({ shotCam, o, rect }: { shotCam: PerspectiveCamera; o: { frame: { w: number; h: number }; vfovDeg: number }; rect: { x: number; y: number; w: number; h: number } }) {
+function PipRenderer({ shotCam, o, rect, inset = true }: { shotCam: PerspectiveCamera; o: { frame: { w: number; h: number }; vfovDeg: number }; rect: { x: number; y: number; w: number; h: number }; inset?: boolean }) {
   const { gl, scene, camera, size } = useThree();
   const pipCam = useMemo(() => new PerspectiveCamera(), []);
   useFrame(() => {
     gl.autoClear = true;
     gl.render(scene, camera);
-    if (gl.xr.isPresenting) return;
+    if (gl.xr.isPresenting || !inset) return; // phones: no room for the inset, the main view still renders here
     pipCam.position.copy(shotCam.position); pipCam.quaternion.copy(shotCam.quaternion);
     pipCam.fov = o.vfovDeg; pipCam.aspect = o.frame.w / o.frame.h; pipCam.near = 0.1; pipCam.far = 5000;
     pipCam.updateProjectionMatrix(); pipCam.updateMatrixWorld();

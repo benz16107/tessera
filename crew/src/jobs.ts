@@ -68,10 +68,13 @@ export async function callSolver(body: object, onProgress: (p: string) => void):
 /** Cosmos Reason warnings per preview job, read by the agent when it sends the preview into a text thread. */
 export const previewWarnings = new Map<bigint, string>();
 
-let solving = false, previewing = false, solverDownLogged = false;
+let solving = false, previewing = false, solverDownLogged = false, draining = false;
+/** On shutdown: claim no new jobs; the ones running finish (crew/src/main.ts waits for them). */
+export const stopClaiming = () => { draining = true; };
+export const runningJobs = () => (solving ? 1 : 0) + (previewing ? 1 : 0);
 
 async function pumpSolve() {
-  if (solving) return;
+  if (solving || draining) return;
   const queued = [...conn.db.solveJob.iter()].filter(j => j.state === 'queued').sort((a, b) => Number(a.id - b.id));
   if (!queued.length) return;
   solving = true;
@@ -178,7 +181,7 @@ const editSize = (w: number, h: number) => {
 };
 
 async function pumpPreview() {
-  if (previewing) return;
+  if (previewing || draining) return;
   const j = [...conn.db.previewJob.iter()].filter(p => p.state === 'queued').sort((a, b) => Number(a.id - b.id))[0];
   if (!j) return;
   previewing = true;

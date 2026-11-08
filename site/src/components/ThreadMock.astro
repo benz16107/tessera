@@ -1,0 +1,81 @@
+---
+// One message thread, drawn in the channel's own visual language (bubbles for iMessage, Telegram and WhatsApp, a
+// message card for email, a transcript for a phone call). The words come from the track data, which quotes the
+// end-to-end run; notes (system lines) say what happened where no exact words were recorded.
+import { Image } from 'astro:assets';
+import type { Thread } from '../tracks/types.ts';
+interface Props { thread: Thread; showSource?: boolean }
+const { thread: t, showSource = true } = Astro.props;
+const kind = t.channel === 'Phone call' ? 'call' : t.channel === 'Email' ? 'email' : 'chat';
+const tone = t.channel.toLowerCase().replace(/\s+/g, '');
+---
+<figure class:list={['thread', `t-${tone}`, `k-${kind}`]}>
+  <figcaption class="thread-top">
+    <span class="thread-mech">{t.mechanism}</span>
+    <span class="thread-ch">{t.channel}</span>
+  </figcaption>
+  <div class="thread-head" aria-hidden="true">
+    {kind === 'call' ? <><span class="call-dot"></span>ShotMatch · call in progress</> : <>ShotMatch</>}
+  </div>
+  <ol class="thread-body">
+    {t.messages.map((m) => (
+      <li class:list={['msg', `m-${m.from}`]}>
+        {m.from === 'note' ? <p class="note-line">{m.text}</p> : (
+          <div class="bubble">
+            {kind === 'call' && <span class="who">{m.from === 'person' ? 'Caller' : 'ShotMatch'}</span>}
+            {m.img && <Image src={m.img} alt={m.from === 'person' ? 'The photo the person sent' : 'The render ShotMatch sent, labelled AI interpretation'} widths={[240, 480]} sizes="240px" class="bubble-img" />}
+            {m.text && <p>{m.text}</p>}
+          </div>
+        )}
+        {m.meta && m.from !== 'note' && <span class="meta">{m.meta}</span>}
+      </li>
+    ))}
+  </ol>
+  <p class="thread-why">{t.why}</p>
+  {showSource && <p class="thread-src">{t.source}</p>}
+  {!showSource && <div class="thread-pad"></div>}
+</figure>
+
+<style>
+  .thread { margin: 0; display: flex; flex-direction: column; background: var(--panel); border-radius: 16px; box-shadow: 0 0 0 1px var(--line); overflow: hidden; }
+  .thread-top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; padding: 16px 16px 12px; }
+  .thread-mech { font-weight: 600; font-size: 0.9375rem; line-height: 1.35; text-wrap: balance; }
+  .thread-ch { flex: none; font: 400 0.6875rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
+  .thread-head { margin: 0 12px; padding: 8px 12px; border-radius: 10px 10px 0 0; background: #1c1c1e; color: #d1d1d6; font-size: 0.75rem; font-weight: 600; text-align: center; display: flex; gap: 6px; justify-content: center; align-items: center; }
+  .call-dot { width: 7px; height: 7px; border-radius: 50%; background: #30d158; }
+  .thread-body { list-style: none; margin: 0 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; background: #000; flex: 1; }
+  .msg { display: flex; flex-direction: column; max-width: 84%; }
+  .m-person { align-self: flex-end; align-items: flex-end; }
+  .m-shotmatch { align-self: flex-start; align-items: flex-start; }
+  .m-note { align-self: stretch; max-width: none; }
+  .bubble { padding: 8px 12px; border-radius: 18px; font-size: 0.875rem; line-height: 1.35; }
+  .bubble p { margin: 0; overflow-wrap: anywhere; }
+  .bubble-img { display: block; width: 100%; max-width: 220px; height: auto; border-radius: 12px; margin-bottom: 6px; }
+  .bubble:has(.bubble-img):not(:has(p)) { padding: 4px; background: transparent !important; }
+  .bubble:has(.bubble-img):not(:has(p)) .bubble-img { margin: 0; }
+  .meta { margin-top: 3px; font: 400 0.625rem/1.3 var(--mono); color: #8e8e93; }
+  .note-line { margin: 4px 0; text-align: center; font: 400 0.6875rem/1.45 var(--mono); color: #8e8e93; text-wrap: pretty; }
+  /* iMessage: blue outgoing, grey incoming. */
+  .t-imessage .m-person .bubble { background: #0a84ff; color: #fff; }
+  .t-imessage .m-shotmatch .bubble { background: #262628; color: #f2f2f7; }
+  /* Telegram (dark theme colours). */
+  .t-telegram .thread-head { background: #17212b; color: #e7eef5; }
+  .t-telegram .thread-body { background: #0e1621; }
+  .t-telegram .m-person .bubble { background: #2b5278; color: #fff; border-radius: 14px 14px 4px 14px; }
+  .t-telegram .m-shotmatch .bubble { background: #182533; color: #fff; border-radius: 14px 14px 14px 4px; }
+  /* WhatsApp (dark theme colours). */
+  .t-whatsapp .thread-head { background: #202c33; color: #e9edef; }
+  .t-whatsapp .thread-body { background: #0b141a; }
+  .t-whatsapp .m-person .bubble { background: #005c4b; color: #e9edef; border-radius: 8px; }
+  .t-whatsapp .m-shotmatch .bubble { background: #202c33; color: #e9edef; border-radius: 8px; }
+  /* Phone call: a transcript. */
+  .k-call .thread-body { background: #0b0b0a; }
+  .k-call .msg { max-width: 100%; align-self: stretch; align-items: stretch; }
+  .k-call .bubble { border-radius: 10px; background: var(--raise); color: var(--text); }
+  .k-call .m-shotmatch .bubble { box-shadow: inset 2px 0 0 var(--amber); }
+  .k-call .who { display: block; margin-bottom: 2px; font: 400 0.625rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
+  .k-call .meta { align-self: flex-end; }
+  .thread-why { margin: 0; padding: 14px 16px 4px; color: var(--text-2); font-size: 0.875rem; line-height: 1.5; text-wrap: pretty; }
+  .thread-pad { height: 12px; }
+  .thread-src { margin: 0; padding: 4px 16px 16px; color: var(--text-3); font: 400 0.6875rem/1.45 var(--mono); }
+</style>

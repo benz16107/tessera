@@ -5,7 +5,7 @@ description: Frame the shot through a camera with a real body and lens, real dep
 
 The shot camera, Cam A, starts where the original photographer stood, with the solved lens. Through Cam A you see exactly what that camera sees, with your objects over your own photo. Then you change the body, the lens and the settings like on a real camera.
 
-![Through Cam A in Studio: the photo of the Manhattan Bridge with two walking mannequins, thirds lines, the readout "CAM A 51 mm f/2.8 1/640 s ISO 100 +0.0 EV" and the camera inspector on the right](../../../../assets/shots/studio-polish-prod-camera.png)
+![Through Cam A in Studio: the photo of the Manhattan Bridge with two walking mannequins, thirds lines, the readout "CAM A 51 mm f/2.8 1/640 s ISO 100 +0.0 EV" and the camera inspector on the right](../../../../assets/shots/studio-cam-prod.png)
 
 ## Open the view
 

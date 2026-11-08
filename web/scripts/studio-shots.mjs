@@ -8,7 +8,8 @@ const browser = await chromium.launch({
   executablePath: '/usr/bin/google-chrome',
   args: ['--use-angle=vulkan', '--enable-features=Vulkan', '--ignore-gpu-blocklist', '--enable-gpu-rasterization'],
 });
-const page = await browser.newPage({ viewport: { width: 1512, height: 982 } });
+// PHONE=1: a 390 x 844 touch phone (coarse pointer), for the phone layouts.
+const page = await browser.newPage(process.env.PHONE ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : { viewport: { width: 1512, height: 982 } });
 page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') console.log(`[${m.type()}]`, m.text().slice(0, 300)); });
 await page.goto(new URL('/credits', url).href);
 await page.evaluate(() => localStorage.setItem('shotmatch/name', 'Studio'));
@@ -24,6 +25,13 @@ await page.keyboard.press('Escape');
 const S = n => page.screenshot({ path: `${out}${n}.png` });
 for (const step of stepsArg.split(',')) {
   if (step === 'main') { await page.waitForTimeout(500); await S(''); }
+  if (step === 'walk') { // Walk: the help card, then a few steps forward and a turn to the right
+    await page.keyboard.press('5'); await page.waitForTimeout(800);
+    await page.keyboard.press('Backquote'); await page.waitForTimeout(1500); await S('-walk');
+    await page.keyboard.down('ArrowUp'); await page.waitForTimeout(2200); await page.keyboard.up('ArrowUp');
+    await page.keyboard.down('ArrowRight'); await page.waitForTimeout(700); await page.keyboard.up('ArrowRight');
+    await page.waitForTimeout(800); await S('-walk-moved');
+  }
   if (step === 'world') { await page.keyboard.press('5'); await page.waitForTimeout(3000); await S('-world'); }
   if (step.startsWith('style:')) { // style:<World style label>, from the World view's default camera
     const label = step.slice(6);

@@ -1,0 +1,151 @@
+// MLH Best Use of Vultr. Facts from the VM itself (nproc, /proc/meminfo, instance metadata region DFW, systemctl --user),
+// ops/*.service and ops/Caddyfile, crew/src/config.ts and crew/src/s3.ts, docs/NVIDIA.md (Vultr-hosted models and their
+// latency), docs/SPACETIME.md (load test from the VM) and lens/COST.md plus BUILD.md (the refused GPU).
+import type { Track } from './types.ts';
+import hero from '../assets/shots/studio-default-prod-world.png';
+import site from '../assets/cards/design-site.png';
+
+export default {
+  slug: 'vultr',
+  sponsor: 'Vultr',
+  prize: 'MLH Best Use of Vultr',
+  order: 5,
+  oneLine: 'ShotMatch runs in production on Vultr: one VM in Dallas serves the app and this site, Vultr Object Storage keeps the photos and props, and Vultr Serverless Inference runs four models in the pipeline.',
+  hero: {
+    img: hero,
+    alt: 'ShotMatch Studio on the production URL: the Clay + photo world of Washington St with the user\'s photo projected onto clay buildings, two placed figures, a bicycle, the Cam A frustum, and the camera inspector on the right.',
+    caption: 'Studio on the production URL, served by Caddy and the crew on the Vultr VM in Dallas.',
+    frame: 'browser',
+    url: '104-238-146-229.sslip.io/studio/A9TVAN',
+  },
+  headline: [
+    { value: '0.51 s', label: 'Nemotron Content Safety on Vultr Serverless Inference, per text (1.9 s with an image)', check: 'docs/NVIDIA.md; the live ledger at https://104-238-146-229.sslip.io/api/nvidia/models names Vultr per model' },
+    { value: '30.8 s', label: 'a full set command with no hosted model, on the VM\'s CPU', check: 'Studio command bar: tick Offline (Bolt), then send "add a park bench on the right and one person sitting on it"' },
+    { value: '900 of 900', label: 'live edits committed in the load test run from the VM', check: 'node module/scripts/loadtest.ts shotmatch 3 10 30 on the VM; table in docs/SPACETIME.md' },
+  ],
+  why: [
+    { title: 'One public box with HTTPS', body: 'Phones need HTTPS before the scout page can use the camera and motion sensors. Caddy on the Vultr VM gets certificates automatically for the app and for this site, from one machine with one IP.' },
+    { title: 'The hosted models that keep the pipeline running', body: 'Nemotron Content Safety answers for our key on Vultr while the same id returns 404 on NVIDIA\'s catalog, so Vultr is our primary safety path. Qwen-Image on Vultr keeps the render pass working while NVIDIA\'s FLUX endpoint fails.' },
+    { title: 'Enough CPU for the offline path', body: 'The VM\'s 12 vCPUs run the Python solver and Nemotron Bolt through Ollama beside the crew, so a set edit still works when the hosted APIs are down, with no GPU and no second machine.' },
+    { title: 'Photos every member can load', body: 'Vultr Object Storage holds photos, previews and generated props. A crew box that lacks a file pulls it from the bucket, so every member of a shoot sees the same images.' },
+  ],
+  uses: [
+    {
+      name: 'The VM shotmatch-app',
+      line: 'One VM in Vultr\'s Dallas region (DFW) with 12 vCPUs, 24 GB of memory and Ubuntu 24.04.5 runs the whole production app as four user services.',
+      where: 'ops/shotmatch-crew.service, ops/shotmatch-solver.service, ops/shotmatch-ollama.service, ops/shotmatch-lens-tunnel.service',
+      status: 'live',
+      detail: 'shotmatch-crew: the Node worker on port 8790 that serves the web app, claims jobs, calls the models and bridges messages. shotmatch-solver: Python FastAPI on 127.0.0.1:8791, never public. shotmatch-ollama: Nemotron 3.5 Bolt E4B on the CPU. shotmatch-lens-tunnel: an ssh tunnel to the GPU box that serves our fine-tuned lens model. Deploys go out with ops/deploy-vultr.sh (rsync of the checkout, then a crew restart; the solver restarts only when its code or a spot model changes).',
+    },
+    {
+      name: 'Caddy with automatic HTTPS',
+      line: 'Two site blocks on one Caddy: the app, proxied to the crew, and this site, served as static files, each with a certificate Caddy fetched and renews by itself.',
+      where: 'ops/Caddyfile, ops/deploy-site.sh',
+      status: 'live',
+      detail: 'The site block has no access log. Certificates come from Let\'s Encrypt. Moving to a real domain adds names to the same blocks (ops/DOMAIN.md).',
+    },
+    {
+      name: 'The crew and the solver, side by side',
+      line: 'The crew hands each photo to the solver over localhost on the same VM, and the solver localizes it on the CPU in 11 to 18.5 s, with no GPU.',
+      where: 'crew/src/jobs.ts, solver/, ports in CONTRACTS.md',
+      status: 'live',
+      detail: 'The 11.0 to 18.5 s range (median 15.8 s) was measured on linuxbox\'s CPU with the same code (spots/nyc_dumbo/eval.md). The VM\'s own solve time was not measured separately.',
+    },
+    {
+      name: 'Nemotron Bolt on the VM\'s CPU',
+      line: 'When the hosted router or planner fails, or Offline is ticked, Nemotron 3.5 Bolt E4B runs through Ollama on the VM and writes the same set edits as JSON.',
+      where: 'ops/ollama.sh, shotmatch-ollama, crew/src/setagent.ts',
+      status: 'live',
+      detail: 'Measured: routing a command in 1.67 s on the CPU, and a full offline set command ("add a park bench on the right and one person sitting on it") in 30.8 s, with prompt processing at about 44 tokens a second (docs/NVIDIA.md).',
+    },
+    {
+      name: 'Nemotron Content Safety, primary path',
+      line: 'Every upload, typed or spoken command, prop prompt and render instruction is screened by Nemotron 3.5 Content Safety on Vultr Serverless Inference.',
+      where: 'crew/src/models.ts, model id in crew/src/config.ts (vultrSafety)',
+      status: 'live',
+      detail: '0.51 s on text and 1.9 s with an image. The same id is listed on build.nvidia.com but returns 404 for our key, so the NVIDIA copy is only retried every 10 minutes.',
+    },
+    {
+      name: 'Nemotron 3 Nano Omni: second opinion and speech fallback',
+      line: 'Nano Omni checks each render\'s physics next to Nemotron Super VL, and transcribes voice notes when Parakeet fails; Whisper large v3 turbo on Vultr is the last speech fallback.',
+      where: 'crew/src/render.ts, crew/src/speech.ts (vultrOmni, transcribe)',
+      status: 'live',
+      detail: 'Nano Omni answered a render check in 1.2 s with reasoning off, and called our crude test object "disproportionately large compared to the surrounding buildings" (docs/NVIDIA.md). Whisper\'s latency was not measured.',
+    },
+    {
+      name: 'Qwen-Image 2.1: the render generator',
+      line: 'The AI render pass blends Qwen-Image 2.1 on Vultr Serverless Inference over only your objects while NVIDIA\'s FLUX endpoint fails, and every result names the model that ran.',
+      where: 'crew/src/models.ts (vultrEdit), crew/src/render.ts',
+      status: 'live',
+      detail: 'The physics-checked render run took 29 s end to end with Qwen-Image as the generator: composite 0.6 s, a failed check in 3.9 s, strength raised to 0.70, a re-render and a second check in 5.5 s (docs/NVIDIA.md).',
+    },
+    {
+      name: 'Vultr Object Storage',
+      line: 'Photos, previews and generated 3D props are written to the bucket as they are saved, and a crew box that lacks a file pulls it from the bucket.',
+      where: 'crew/src/s3.ts, crew/src/images.ts, crew/src/props3d.ts, crew/scripts/bucket-sync.ts',
+      status: 'live',
+      detail: 'The crew makes four S3 calls and signs them itself with SigV4 instead of pulling in the AWS SDK. A bucket failure is logged, not thrown: the disk copy still serves. bucket-sync.ts copies everything already on a box into the bucket and is safe to re-run. Throughput was not measured.',
+    },
+    {
+      name: 'The lens model, reached from the VM',
+      line: 'Our fine-tuned Nemotron Nano VL lens reader runs on a GPU box, and the VM reaches it through an ssh tunnel, so the crew calls it on localhost.',
+      where: 'ops/shotmatch-lens-tunnel.service, LENS_URL in ops/shotmatch-crew.service',
+      status: 'live',
+      detail: 'The GPU box is a Brev A100, because Vultr refused our GPU instance (see Known limits). It is deleted after judging; then the crew must drop LENS_URL so lens reads use Nemotron VL again (lens/RESULTS.md).',
+    },
+    {
+      name: 'This site',
+      line: 'The page you are reading is static files on the same VM, served by the same Caddy at its own hostname.',
+      where: 'Caddy site block in ops/Caddyfile, /var/www/shotmatch-site, ops/deploy-site.sh',
+      status: 'live',
+      img: site,
+      alt: 'This site\'s home page while scrolling: an iPhone frame showing Simple\'s Found it screen, with the step title 02 Found it.',
+    },
+  ],
+  proof: [
+    { value: 'AS20473', label: 'the VM\'s IP belongs to The Constant Company, the company behind Vultr', check: 'curl -s ipinfo.io/104.238.146.229/org' },
+    { value: 'Caddy', label: 'answers for both hostnames, with valid certificates', check: 'curl -sI https://site.104-238-146-229.sslip.io | grep -i server; open https://104-238-146-229.sslip.io' },
+    { value: '0.51 s', label: 'Content Safety per text on Vultr (1.9 s with an image)', check: 'docs/NVIDIA.md; live ledger GET https://104-238-146-229.sslip.io/api/nvidia/models' },
+    { value: '1.2 s', label: 'Nano Omni\'s render physics check on Vultr, reasoning off', check: 'docs/NVIDIA.md, workflow 3' },
+    { value: '29 s', label: 'a physics-checked render with Qwen-Image 2.1 on Vultr as the generator', check: 'docs/NVIDIA.md, workflow 3' },
+    { value: '30.8 s', label: 'a full offline set command with Nemotron Bolt on the VM\'s CPU (routing 1.67 s)', check: 'Studio command bar, Offline (Bolt); docs/NVIDIA.md, workflow 8' },
+    { value: '900 of 900', label: 'live edits committed from the VM, round trip p50 50 ms, p95 199 ms', check: 'node module/scripts/loadtest.ts shotmatch 3 10 30; docs/SPACETIME.md' },
+    { value: '$0', label: 'spent on Vultr GPUs: the instance was refused twice', check: 'lens/COST.md' },
+  ],
+  ours: [
+    'The crew, the solver and the web app that run on the VM',
+    'The four user services, the deploy scripts and the Caddy config',
+    'Our own S3 client (four calls, signed with SigV4) and the disk fallback',
+    'Which model runs where, and the fallback order when one fails',
+  ],
+  theirs: [
+    'The VM: compute, memory, disk and a public IPv4 in Dallas',
+    'Object Storage: the bucket behind the S3 API',
+    'Serverless Inference: hosting for Nemotron 3.5 Content Safety, Nemotron 3 Nano Omni, Qwen-Image 2.1 and Whisper large v3 turbo',
+  ],
+  limits: [
+    'No Vultr GPU. An A40 create failed with "Your account does not have any additional credit", then, after credit was added, with "You have reached the maximum monthly fee limit for this account". The account cap is $250 a month per instance, so an A16 was refused too; a limit-increase request went to Vultr\'s team, which works weekdays. The fine-tune and the splat ran on a Brev A100 from the HackUTD NVIDIA credit instead.',
+    'The solver\'s time on the VM was not measured separately from linuxbox.',
+    'Object Storage throughput and latency were not measured. Whisper\'s latency was not measured.',
+    'The lens tunnel depends on the Brev GPU box, which is deleted after judging.',
+  ],
+  video: {
+    title: 'ShotMatch on Vultr',
+    length: 'about 1:30',
+    summary: 'A screen recording of the live app, then a real terminal session on the VM showing its services, then the Vultr-hosted models at work.',
+    shots: [
+      { t: '0:00 to 0:15', screen: 'Simple /p/A9TVAN on the production URL: the answer for the DUMBO photo', say: 'ShotMatch tells you where to stand for a photo you saw. All of it runs on Vultr.', criterion: 'Problem first' },
+      { t: '0:15 to 0:35', screen: 'Terminal: ssh ben@104.238.146.229 \'systemctl --user status shotmatch-*\': crew, solver, Ollama and the lens tunnel active', say: 'One VM in Dallas: the crew, the solver and Nemotron Bolt on the CPU, behind Caddy with automatic HTTPS.', criterion: 'Vultr compute' },
+      { t: '0:35 to 0:50', screen: 'Browser: the app at 104-238-146-229.sslip.io and this site at site.104-238-146-229.sslip.io, the padlock on both', say: 'Two hostnames, one Caddy, certificates issued automatically.', criterion: 'Hosting' },
+      { t: '0:50 to 1:10', screen: 'Studio: drop a photo in a test set; the agent trace shows the safety check; then GET /api/nvidia/models with the Vultr rows highlighted', say: 'Every upload is screened by Nemotron Content Safety on Vultr Serverless Inference, in about half a second.', criterion: 'Vultr Serverless Inference' },
+      { t: '1:10 to 1:30', screen: 'Studio: tick Offline (Bolt), send "add a park bench on the right"; the bench appears', say: 'When the hosted API is down, Nemotron runs on the VM\'s own CPU.', criterion: 'Edge inference on Vultr' },
+    ],
+    notes: 'Use a test session, not A9TVAN, for uploads and edits. The offline command takes about 30 seconds; cut the wait. Record the terminal for real over ssh. Switch the hostnames to the real domain only if one is live by recording time (ops/DOMAIN.md).',
+  },
+  docs: [
+    { label: 'How it works: which machine runs what', href: '/docs/how-it-works/overview/' },
+    { label: 'The render pass', href: '/docs/how-it-works/render/' },
+    { label: 'HTTP API reference', href: '/docs/reference/http-api/' },
+    { label: 'Privacy: every service that touches a photo', href: '/privacy/' },
+  ],
+} satisfies Track;

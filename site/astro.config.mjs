@@ -50,10 +50,7 @@ export default defineConfig({
       sidebar: [
         { label: 'ShotMatch home', link: '/' },
         { label: 'Open the app', link: APP_URL, attrs: { rel: 'noopener' } },
-        {
-          label: 'Tracks',
-          items: ['tracks', 'tracks/nvidia', 'tracks/spacetime', 'tracks/photon', 'tracks/design', 'tracks/vultr'],
-        },
+        { label: 'Tracks', link: '/tracks/' },
         { label: 'Get started', items: ['docs/get-started', 'docs/why-shotmatch'] },
         {
           label: 'How it works',

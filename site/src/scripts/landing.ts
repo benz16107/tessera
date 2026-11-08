@@ -61,7 +61,7 @@ function hero() {
   // 0 to 0.4: the photo, held up in front of the dim set, moves into the solved camera's frame.
   // Start values match the CSS: on narrow screens the window is zoomed 1.6x around Cam A, so the photo starts smaller.
   const narrow = matchMedia('(max-width: 900px)').matches;
-  const start = narrow ? { xPercent: 9.7, yPercent: 5.5, scale: 2.6 } : { xPercent: 15.5, yPercent: 8.7, scale: 4.2 };
+  const start = narrow ? { xPercent: 8.3, yPercent: 15.3, scale: 2.19 } : { xPercent: 13.4, yPercent: 24.4, scale: 3.5 };
   tl.fromTo('.h-card', { ...start, rotation: -3 }, { xPercent: 0, yPercent: 0, scale: 1, rotation: 0, duration: 0.4, ease: 'power3.inOut' }, 0)
     .fromTo('.h-world', { opacity: 0.35 }, { opacity: 1, duration: 0.4 }, 0)
     .to('.card-chip', { opacity: 0, duration: 0.08 }, 0.3)
@@ -70,7 +70,7 @@ function hero() {
     .fromTo('.h-frustum .plane', { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.1 }, 0.42)
     .fromTo('.readout', { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.08, ease: 'power2.out' }, 0.52)
     // 0.7 to 0.9: look through that camera. The set gives way to the view from Cam A.
-    .fromTo('.h-cam', { opacity: 0, scale: 1.12, transformOrigin: '48.5% 48.3%' }, { opacity: 1, scale: 1, duration: 0.2, ease: 'power2.out' }, 0.7)
+    .fromTo('.h-cam', { opacity: 0, scale: 1.12, transformOrigin: '48.48% 44.35%' }, { opacity: 1, scale: 1, duration: 0.2, ease: 'power2.out' }, 0.7)
     .to(['.h-frustum', '.readout', '.h-card'], { opacity: 0, duration: 0.1 }, 0.7)
     .fromTo('.cam-chip', { opacity: 0 }, { opacity: 1, duration: 0.06 }, 0.86)
     .to({}, { duration: 0.1 }); // a short hold on the camera view before the page moves on

@@ -7,8 +7,8 @@ import Landing from '../layouts/Landing.astro';
 import Iphone from '../components/frames/Iphone.astro';
 import Browser from '../components/frames/Browser.astro';
 import { APP_URL, DEMO_CODE } from '../site.ts';
-import world from '../assets/shots/studio-polish-prod.png';
-import camera from '../assets/shots/studio-polish-prod-camera.png';
+import world from '../assets/shots/studio-world-clay.png';
+import camera from '../assets/shots/studio-cam-prod.png';
 import photo from '../assets/shots/user-photo-d0481.jpg';
 import drop from '../assets/shots/simple-drop-phone.png';
 import found from '../assets/shots/simple-found-phone.png';
@@ -34,8 +34,8 @@ const tracks = [
   { name: 'Best Design', href: '/tracks/design/' },
   { name: 'Vultr', href: '/tracks/vultr/' },
 ];
-// The solved camera's far plane in studio-polish-prod.png (1512 x 982): corners measured from the screenshot.
-const F = { x0: 661, y0: 380, x1: 806, y1: 569, cx: 732, cy: 551 };
+// The solved camera's far plane in studio-world-clay.png (1512 x 982): corners measured from the screenshot.
+const F = { x0: 647, y0: 322, x1: 819, y1: 549, cx: 732, cy: 491 };
 const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(3)}%`;
 ---
 <Landing title="ShotMatch: stand where the photo was taken">
@@ -51,7 +51,7 @@ const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(3)}%`;
     <figure class="hero-stage">
       <Browser url={`104-238-146-229.sslip.io/studio/${DEMO_CODE}`}>
         <div class="h-zoom">
-        <Image class="h-world" src={world} alt="Studio's 3D set of Washington St, rebuilt from Commons photos, with two placed figures and the solved camera, Cam A." widths={[800, 1200, 1600]} sizes="(max-width: 900px) 100vw, 900px" loading="eager" fetchpriority="high" />
+        <Image class="h-world" src={world} alt="Studio's 3D set of Washington St: clay buildings from NYC building footprints with the photo projected from where it was taken, two placed figures and the solved camera, Cam A." widths={[800, 1200, 1600]} sizes="(max-width: 900px) 100vw, 900px" loading="eager" fetchpriority="high" />
         <svg class="h-frustum" viewBox="0 0 1512 982" aria-hidden="true">
           {[[F.x0, F.y0], [F.x1, F.y0], [F.x1, F.y1], [F.x0, F.y1]].map(([x, y]) => <line class="ray" x1={F.cx} y1={F.cy} x2={x} y2={y} pathLength="1" />)}
           <rect class="plane" x={F.x0} y={F.y0} width={F.x1 - F.x0} height={F.y1 - F.y0} pathLength="1" />
@@ -60,7 +60,7 @@ const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(3)}%`;
           <Image src={photo} alt="The photo being located: the Manhattan Bridge framed by brick buildings on Washington St" widths={[400, 800]} sizes="(max-width: 900px) 60vw, 420px" loading="eager" />
         </div>
         <span class="chip readout" style={`left:${pct((F.x0 + F.x1) / 2, 1512)};top:${pct(F.y0, 982)}`}>4° N · 53 mm · Solid</span>
-        <Image class="h-cam" src={camera} alt="Looking through Cam A: the user's photo as the backplate with the two figures placed in it" widths={[800, 1200, 1600]} sizes="(max-width: 900px) 100vw, 900px" loading="eager" />
+        <Image class="h-cam" src={camera} alt="Looking through Cam A in Studio: the user's photo as the backplate, two placed figures, focus on a person and the horizon marked in the margin" widths={[800, 1200, 1600]} sizes="(max-width: 900px) 100vw, 900px" loading="eager" />
         </div>
         <span class="chip card-chip">Your photo</span>
         <span class="chip cam-chip">Through Cam A</span>
@@ -90,7 +90,7 @@ const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(3)}%`;
     <div class="views-stage">
       <Browser url={`104-238-146-229.sslip.io/p/${DEMO_CODE}`}>
         <Image class="v-simple" src={simple} alt="Simple on a laptop: the photo with placed figures beside the answer, facing 4 degrees N and 2.2x on your iPhone" widths={[800, 1200, 1600]} sizes="(max-width: 1100px) 100vw, 1040px" />
-        <Image class="v-studio" src={world} alt="Studio on a laptop: the same set in the Darkroom editor, with the scene outline, the 3D view and the camera inspector" widths={[800, 1200, 1600]} sizes="(max-width: 1100px) 100vw, 1040px" />
+        <Image class="v-studio" src={camera} alt="Studio on a laptop: the same set in the Darkroom editor, looking through Cam A with the scene outline and the camera inspector" widths={[800, 1200, 1600]} sizes="(max-width: 1100px) 100vw, 1040px" />
       </Browser>
     </div>
   </section>
@@ -138,7 +138,7 @@ const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(3)}%`;
   .lede { margin: 16px 0 0; font-size: 1.125rem; line-height: 1.6; color: var(--text-2); text-wrap: pretty; }
   .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
   .hero-stage { margin: 0; width: min(100%, calc((100svh - 176px) * 1.48)); justify-self: center; }
-  .h-zoom { position: absolute; inset: 0; transform-origin: 48.51% 48.32%; }
+  .h-zoom { position: absolute; inset: 0; transform-origin: 48.48% 44.35%; }
   .hero-stage figcaption { margin-top: 8px; font-size: 0.75rem; color: var(--text-3); }
   .hero-stage figcaption a { color: inherit; }
   .h-world, .h-cam { position: absolute; inset: 0; }
@@ -211,8 +211,8 @@ const pct = (v: number, of: number) => `${((v / of) * 100).toFixed(3)}%`;
   /* With motion: the hero starts with the photo held up in front of the set, and the steps stack into one phone. */
   html.motion .hero { min-height: calc(100svh - 56px); }
   html.motion .h-world { opacity: 0.35; }
-  html.motion .h-card { transform: translate(15.5%, 8.7%) scale(4.2) rotate(-3deg); }
-  @media (max-width: 900px) { html.motion .h-card { transform: translate(9.7%, 5.5%) scale(2.6) rotate(-3deg); } }
+  html.motion .h-card { transform: translate(13.4%, 24.4%) scale(3.5) rotate(-3deg); }
+  @media (max-width: 900px) { html.motion .h-card { transform: translate(8.3%, 15.3%) scale(2.19) rotate(-3deg); } }
   html.motion .card-chip { opacity: 1; }
   html.motion .h-frustum line, html.motion .h-frustum rect { stroke-dashoffset: 1; }
   html.motion .readout { opacity: 0; }

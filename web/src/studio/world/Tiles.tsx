@@ -4,7 +4,7 @@
 // `alignGround` below, which only moves the tiles so their street surface sits on z = 0 for display; nothing is stored.
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Matrix4, Raycaster, Vector3, type Camera } from 'three';
+import { CompressedTexture, LinearMipmapLinearFilter, Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, Raycaster, Vector3, type Camera } from 'three';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { TilesRenderer } from '3d-tiles-renderer';
 import { GoogleCloudAuthPlugin, GLTFExtensionsPlugin, TileCompressionPlugin, TilesFadePlugin } from '3d-tiles-renderer/plugins';
@@ -30,15 +30,34 @@ export default function Tiles({ apiKey, origin, probes, visible, extraCamera, on
 
   const tiles = useMemo(() => {
     const t = new TilesRenderer();
+    // Refine buildings to 4 screen pixels instead of the renderer's 16-pixel default.
+    t.errorTarget = 4;
     const draco = new DRACOLoader().setDecoderPath('/studio/draco/');
     t.registerPlugin(new GoogleCloudAuthPlugin({ apiToken: apiKey, autoRefreshToken: true }));
     t.registerPlugin(new GLTFExtensionsPlugin({ dracoLoader: draco }));
-    t.registerPlugin(new TileCompressionPlugin());
+    t.registerPlugin(new TileCompressionPlugin({ disableMipmaps: false }));
     t.registerPlugin(new TilesFadePlugin());
+    const anisotropy = Math.min(8, gl.capabilities.getMaxAnisotropy());
+    t.addEventListener('load-model', ({ scene }) => {
+      scene.traverse(object => {
+        if (!(object instanceof Mesh)) return;
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        for (const material of materials) {
+          if (!(material instanceof MeshBasicMaterial || material instanceof MeshStandardMaterial) || !material.map) continue;
+          // Keep facade and street textures legible when viewed at oblique angles.
+          if (!(material.map instanceof CompressedTexture)) {
+            material.map.generateMipmaps = true;
+            material.map.minFilter = LinearMipmapLinearFilter;
+          }
+          material.map.anisotropy = anisotropy;
+          material.map.needsUpdate = true;
+        }
+      });
+    });
     t.group.matrixAutoUpdate = false;
     tilesRef.current = t;
     return t;
-  }, [apiKey]);
+  }, [apiKey, gl]);
   useEffect(() => () => { tiles.dispose(); if (tilesRef.current === tiles) tilesRef.current = null; }, [tiles]);
 
   // ECEF -> local east-north-up of the spot, then down by the ground offset.

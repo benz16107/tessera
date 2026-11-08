@@ -5,8 +5,8 @@ import '../styles/tokens.css';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import { DESCRIPTION, SITE_URL } from '../site.ts';
-interface Props { title: string; description?: string }
-const { title, description = DESCRIPTION } = Astro.props;
+interface Props { title: string; description?: string; current?: 'home' | 'tracks' | 'docs' }
+const { title, description = DESCRIPTION, current = 'home' } = Astro.props;
 ---
 <!doctype html>
 <html lang="en" data-theme="dark">
@@ -27,7 +27,7 @@ const { title, description = DESCRIPTION } = Astro.props;
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
-    <header class="land-head"><SiteHeader current="home" /></header>
+    <header class="land-head"><SiteHeader current={current} /></header>
     <main id="main"><slot /></main>
     <SiteFooter />
   </body>

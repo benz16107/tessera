@@ -136,18 +136,18 @@ export function toneToBorder(frame: Buffer, w: number, crop: Buffer, box: { left
 /** Where an edited crop should replace the frame: the placeholder's own pixels, plus pixels near it (within `reach` px) that
  *  the edit really changed (the new person, their shadow). Background the model merely redrew elsewhere in the crop stays
  *  original, so no box edge shows. One channel, crop-local, softened by `soft` px. */
-export async function changedRegion(frame: Buffer, w: number, crop: Buffer, box: { left: number; top: number; width: number; height: number }, objLocal: Buffer, reach: number, soft = 2): Promise<Buffer> {
+export async function changedRegion(frame: Buffer, w: number, crop: Buffer, box: { left: number; top: number; width: number; height: number }, objLocal: Buffer, reach: number, soft = 2, keepObj = true, diff = 36): Promise<Buffer> {
   const bw = box.width, bh = box.height;
   const near = await blur1(objLocal, bw, bh, reach);
   const r = Buffer.alloc(bw * bh);
   for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
     const i = y * bw + x, o = ((box.top + y) * w + box.left + x) * 3, e = i * 3;
     const d = Math.max(Math.abs(frame[o] - crop[e]), Math.abs(frame[o + 1] - crop[e + 1]), Math.abs(frame[o + 2] - crop[e + 2]));
-    r[i] = objLocal[i] || (near[i] > 6 && d > 36) ? 255 : 0;
+    r[i] = (keepObj && objLocal[i]) || (near[i] > 6 && d > diff) ? 255 : 0;
   }
   // Close small holes (a jacket close to the street's colour) and soften the edge.
   const closed = await blur1(r, bw, bh, Math.max(2, reach / 6));
-  for (let i = 0; i < r.length; i++) r[i] = closed[i] > 90 || objLocal[i] ? 255 : 0;
+  for (let i = 0; i < r.length; i++) r[i] = closed[i] > 90 || (keepObj && objLocal[i]) ? 255 : 0;
   return blur1(r, bw, bh, soft);
 }
 

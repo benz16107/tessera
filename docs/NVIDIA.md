@@ -62,7 +62,7 @@ The studio renders only the user's objects from the shot camera (beauty, depth, 
 
 Measured on the public URL (test session, Qwen-Image as the generator because FLUX refused): composite 0.6 s; check 1 failed in 3.9 s ("lit from a low side angle while the real scene is flat overcast"); strength raised to 0.70 and re-rendered; check 2 in 5.5 s; Nano Omni's second opinion in 1.2 s (it called our crude test object "disproportionately large compared to the surrounding buildings"); 29 s in total.
 
-Placeholders become real. Grey mannequins and low-poly stand-in props are placeholders. Each one gets its own mask from the studio's object-ID layer and a prompt built from its row ("the grey mannequin in the centre, about 7 m from the camera, becomes a real person, walking, about 1.72 m tall, casual clothes that suit a cloudy late autumn golden hour, lit by soft overcast light, facing the camera"). Its padded crop is edited on its own and tone-matched to the photo at the crop's border. Only the placeholder and what the edit changed next to it are pasted back, fully opaque, so the rest of the photo stays exactly as it was. When over 35% of a mannequin comes back unchanged, the crop is edited again. The physics check also asks whether any person still looks like a mannequin, a statue or a 3D model, or is see-through. A flagged object gets one more edit, and the render keeps whichever round scored better. Before and after on the A9TVAN photo, one and two people: `web/screenshots/render-people-*.png` (about 25 to 30 s each with Qwen-Image doing the edits).
+Placeholders become real. Grey mannequins and low-poly stand-in props are placeholders. Each one gets its own mask from the studio's object-ID layer and a prompt built from its row ("the grey mannequin in the centre, about 7 m from the camera, becomes a real person, walking, about 1.72 m tall, casual clothes that suit a cloudy late autumn golden hour, lit by soft overcast light, facing the camera"). Its padded crop is edited on its own and tone-matched at the border. The user's photo is a clean backplate, because the mannequin was never in it, so wherever the mannequin stood the photo comes back first. Then only the new subject is pasted, fully opaque. Its silhouette comes from Nemotron's box around it plus a second edit that turns everything but the subject flat green, keyed out, with the contact shadow under its feet kept. No background the model redrew remains. When over 35% of a mannequin comes back unchanged, the crop is edited again. The physics check also asks whether any person still looks like a mannequin, a statue or a 3D model, or is see-through; a flagged object gets one more edit, and the render keeps whichever round scored better. Before and after on the A9TVAN photo, one and two people: `web/screenshots/render-people-*.png` (24 to 60 s each, Qwen-Image doing the edits).
 
 ### 4. Generation into the set
 `POST /api/props/generate` ends every mode as a `scene_object` at real-world size:
@@ -121,6 +121,10 @@ Response: `{ "url", "compositeUrl", "model", "fallback", "prompt", "label": "AI 
 - `GET /api/search?q=&session=`, `GET /api/assets/search?q=`.
 - `GET /api/nvidia/models` returns this table's models and live latency.
 - `GET /asset/<id>.glb` serves generated props; `GET /splat/<spot>.<ext>` serves Gaussian splats.
+
+## Restarts
+
+A deploy restarts the crew without dropping work. On SIGTERM it stops claiming jobs, answers new renders, generations and set commands with 503 and Retry-After: 30, waits up to 150 s for the ones in flight (systemd allows 180 s), then exits. `ops/deploy-vultr.sh` prints "waiting for N in-flight jobs" while it drains. Tested: a render started before a deploy finished with HTTP 200, and a new generation request during the drain got the 503.
 
 ## What did not work, and what we did instead
 

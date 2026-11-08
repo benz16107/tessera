@@ -335,8 +335,20 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   return sendFile(res, index, 'no-cache');
 }
 
+const LONG = /^\/api\/(render|props\/generate|set\/(command|critique|callsheet|rebuild|read|apply|check)|voice\/transcribe)$/;
+let draining = false, inFlight = 0;
+/** For a graceful restart: refuse new long requests and report how many are still running. */
+export const stopAccepting = () => { draining = true; };
+export const longRequests = () => inFlight;
+
 export function startHttp() {
   createServer((req, res) => {
+    // Long model calls: refused with 503 while the crew drains for a restart, counted while they run so the drain can wait.
+    if (req.method === 'POST' && LONG.test((req.url ?? '').split('?')[0])) {
+      if (draining) { res.writeHead(503, { 'content-type': 'application/json', 'retry-after': '30' }); res.end(JSON.stringify({ error: 'the crew is restarting; try again in 30 s' })); return; }
+      inFlight++;
+      res.once('close', () => inFlight--);
+    }
     handle(req, res).catch(e => {
       console.error('http error:', e);
       if (!res.headersSent) json(res, 500, { error: 'internal error' }); else res.end();
