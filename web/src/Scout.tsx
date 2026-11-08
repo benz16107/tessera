@@ -11,6 +11,9 @@ import { useClaimInvite } from './photon/hooks.ts';
 import { bearing, metersBetween, angleDiff, compassWord, norm360 } from './geo.ts';
 import { Check, Turn, Up, Viewfinder } from './simple/icons.tsx';
 import { fmtDistance, parseGeo, photoCredit } from './simple/lib.ts';
+import { Quaternion, Vector3 } from 'three';
+import { cameraHpr, enuToLlh } from './studio/frame.ts';
+import { parseParams } from './studio/scene/objects.ts';
 import './simple/simple.css';
 
 const ARRIVED_M = 8; // matches the module's scout_arrived toast
@@ -62,6 +65,7 @@ export function ScoutView({ session }: { session: Session }) {
   const sid = session.id;
   const { identity } = useSpacetimeDB();
   const [cams] = useTable(tables.camera.where(r => r.sessionId.eq(sid)));
+  const [objs] = useTable(tables.sceneObject.where(r => r.sessionId.eq(sid)));
   const [results] = useTable(tables.solveResult.where(r => r.sessionId.eq(sid)));
   const [photos] = useTable(tables.photo.where(r => r.sessionId.eq(sid)));
   const [parts] = useTable(tables.participant.where(r => r.sessionId.eq(sid)));
@@ -83,7 +87,12 @@ export function ScoutView({ session }: { session: Session }) {
   const placed = [...results].filter(r => r.confidence !== 'none').sort((a, b) => Number(b.jobId - a.jobId))[0];
   // A free-location shoot (anywhere.md) has no solved pose: walk to its pin; its heading is unknown, so no turn at the mark.
   const pin = parseGeo(session.spotId);
-  const target = cams[0]?.pose ?? placed?.pose ?? (pin ? { lat: pin.lat, lon: pin.lon, heading: NaN } : undefined);
+  // Its Cam A, once Studio drags it off the pin or turns it from its starting 0°, is the mark and the way to face.
+  const camA = pin ? objs.filter(o => o.kind === 'camera').find(o => parseParams(o.params).shot === '1') : undefined;
+  const camLl = camA && pin ? enuToLlh(pin, new Vector3(camA.x, camA.y, 0)) : null;
+  const camHd = camA ? cameraHpr(new Quaternion(camA.qx, camA.qy, camA.qz, camA.qw).normalize()).heading : NaN;
+  const pinTarget = pin ? { lat: camLl?.lat ?? pin.lat, lon: camLl?.lon ?? pin.lon, heading: Number.isFinite(camHd) && Math.abs(norm360(camHd + 180) - 180) > 0.5 ? camHd : NaN } : undefined;
+  const target = cams[0]?.pose ?? placed?.pose ?? pinTarget;
   const ghost = placed ? photos.find(p => p.id === placed.photoId) : [...photos].sort((a, b) => Number(b.id - a.id))[0];
   const planners = parts.filter(p => p.online && p.role === 'planner' && !(identity && p.identity.isEqual(identity))).map(p => p.name);
 
