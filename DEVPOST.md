@@ -69,11 +69,23 @@ General Track is automatic.
 - Product and docs: https://tesseraphoto.com
 - Every track in detail: https://tesseraphoto.com/tracks/
 - Code: https://github.com/benz16107/tessera
-- Video: **TODO**
+- Video: https://www.youtube.com/watch?v=3ggfl2Hq9Fg
 
 ## A film set for the photo you want to take
 
 Drop a photo of a place. Tessera finds where the photographer stood, which way they faced and what lens they used, then rebuilds the place as a live 3D set your group plans in.
+
+### Sponsor tracks: a detailed page for each
+
+**Every sponsor track has its own page: what we built for it, where it runs in the product, the proof and the limits.** All of them: https://tesseraphoto.com/tracks/
+
+| Track | What we built | Strongest proof | Page |
+|---|---|---|---|
+| NVIDIA | Nemotron runs the set: words to objects, the photo rebuilt as stand-ins, a render that checks its own physics, props at real size, call sheet, voice, offline on CPU; plus our LoRA lens reader | 16 objects from one sentence in 6.6 s; 72.4% long-lens recall on unseen landmarks | [Detailed page](https://tesseraphoto.com/tracks/nvidia/) |
+| SpacetimeDB | The whole shared set is one module: every object, job, version and message is a row; no other backend | 900 of 900 edits at 10 Hz, median 42 to 50 ms; an outsider sees 0 rows until they join | [Detailed page](https://tesseraphoto.com/tracks/spacetime/) |
+| Photon | The set on the apps people already use: a photo located by text, versions as reply threads, check-ins, props, alerts; a phone call that guides you | 9 live round trips on Telegram; the other channels 29 of 29 against a stand-in | [Detailed page](https://tesseraphoto.com/tracks/photon/) |
+| HackUTD Best Design | Three directions in Figma before code; Darkroom became Studio and Viewfinder became Simple, over one live set | Studio's tokens, fonts and icons came out of the Figma frames through Figma's MCP server | [Detailed page](https://tesseraphoto.com/tracks/design/) |
+| MLH Vultr | Production on a Vultr VM in Dallas, Object Storage for photos and props, Serverless Inference for safety, speech and the render | Content Safety on Vultr in 0.51 s per text; the app and the site on one VM with automatic HTTPS | [Detailed page](https://tesseraphoto.com/tracks/vultr/) |
 
 ### The problem
 
@@ -141,39 +153,6 @@ The tools in these threads (Google Earth, Street View, spot guides, sun apps) ea
 - **What is next?** More spots, starting with one we shoot ourselves at UTD; a calibrated confidence score; the lens reader on the phone; the other Photon lines.
 
 ![The four steps on a phone](https://tesseraphoto.com/devpost/4-phones.jpg)
-
-## Sponsor tracks
-
-Every track has its own page with what we built, where it runs, the proof, the limits and the video plan: https://tesseraphoto.com/tracks/
-
-| Track | What we built | Strongest proof | Page |
-|---|---|---|---|
-| NVIDIA | Nemotron runs the set: words to objects, the photo rebuilt as stand-ins, a render that checks its own physics, props at real size, call sheet, voice, offline on CPU; plus our LoRA lens reader | 16 objects from one sentence in 6.6 s; 72.4% long-lens recall on unseen landmarks | [page](https://tesseraphoto.com/tracks/nvidia/) |
-| SpacetimeDB | The whole shared set is one module: every object, job, version and message is a row; no other backend | 900 of 900 edits at 10 Hz, median 42 to 50 ms; an outsider sees 0 rows until they join | [page](https://tesseraphoto.com/tracks/spacetime/) |
-| Photon | The set on the apps people already use: a photo located by text, versions as reply threads, check-ins, props, alerts; a phone call that guides you | 9 live round trips on Telegram; the other channels 29 of 29 against a stand-in | [page](https://tesseraphoto.com/tracks/photon/) |
-| HackUTD Best Design | Three directions in Figma before code; Darkroom became Studio and Viewfinder became Simple, over one live set | Studio's tokens, fonts and icons came out of the Figma frames through Figma's MCP server | [page](https://tesseraphoto.com/tracks/design/) |
-| MLH Vultr | Production on a Vultr VM in Dallas, Object Storage for photos and props, Serverless Inference for safety, speech and the render | Content Safety on Vultr in 0.51 s per text; the app and the site on one VM with automatic HTTPS | [page](https://tesseraphoto.com/tracks/vultr/) |
-
-### NVIDIA: Nemotron, beyond a chatbot
-**Best shown in:** Studio's command bar and render panel, Simple's "Describe a change", and the Telegram thread.
-
-Nemotron does the work between your words and the set as tool-calling workflows, and every step is a row the studio shows live. Lightning routes a command in 0.23 s and Super plans with reasoning on, turning "left third, 5 m away" into metres through the shot camera. Super VL reads your photo and places stand-ins where its people and cars stood (10 vehicles, a street lamp and an umbrella in 5.8 s), reads its light, critiques the composition, and writes a call sheet inside the real golden hour. The render puts your objects into your photo and Nemotron checks each one's light, shadow and scale before you see it. Props come from words or a photo at real size through TRELLIS, voice runs on Parakeet and Magpie, Bolt runs the same edits offline on the Vultr VM's CPU, and Content Safety screens every input. Our own LoRA fine-tune of Nemotron Nano 12B v2 VL reads the lens of any photo.
-
-**Proof:** 16 objects placed from one sentence in 6.6 s; an offline command on CPU with Bolt in 30.8 s; the lens LoRA at 72.4% long-lens recall on unseen landmarks against 48.3% for OpenAI zero-shot and 12.6% for the base model, trained in 44 minutes. Limits, published: FLUX.1-dev returned HTTP 500, so Qwen-Image renders and is named; TRELLIS failed about half its calls, and a failed prop becomes a flat cut-out. Also tried: we trained a Gaussian splat of the spot on an NVIDIA A100 and cleaned it with NVIDIA Difix3D; at street level it wasn't clear enough to ship, so the 3D world uses Google's tiles and our clay model with the user's photo projected onto it.
-
-### SpacetimeDB: must power the primary function
-**Best shown in:** Studio with the People and live data drawer open, a second browser joined by code, and the scout page on a phone.
-
-The product is a shared set, and SpacetimeDB is its only backend: no server, websocket layer, queue or cron of ours between the browsers, the scout's phone, the GPU worker and the chat bridge. Every person, prop, light and camera is a row; a drag locks and updates it, and every client sees it from its subscription. Solving a photo is a job row the worker claims, with a lease the database sweeps back if the worker dies. Row-level security keeps a shoot private to its members. Scene history gives undo and restore to anyone, and a text thread is a version tree over it. Schedules run presence, a live sun every screen shares and golden-hour reminders; a procedure calls Nemotron from inside the database; HTTP routes take the phone agent's signed webhook; a second database holds the shared prop and shot library through inter-database calls.
-
-**Proof:** the proof script passes 38 of 38 on scratch and 19 of 19 on production, and an outsider receives 0 rows until they join by code. Load test: 3 clients dragging at 10 Hz for 30 s, 900 of 900 edits committed, median round trip 42 to 50 ms. The title procedure's call to Nemotron takes 121 to 126 ms. Limits, published: row-level security is marked experimental, and the membership table is public (anonymous ids and numeric session ids, no names or content).
-
-### Photon: the set in your texts, plus the voice call
-**Best shown in:** a Telegram chat with @ShotMatchSetBot beside the studio.
-
-Most people on a shoot will never open a 3D editor, and the scout's hands are full, so the set comes to the app they already use. A texted photo comes back located with where to stand, the heading, the lens and the next good light. An edit by text returns as v1 with its render, and a native reply to v1 forks the set to v1.1. A photo from the street checks you in and says which way to step. A texted photo of an object becomes a prop. A render started in the studio arrives on its own as an album of lens options, and the golden-hour alert arrives when the database schedule fires, with the conditions at the mark. The phone call guides the caller to the mark from their live position and edits the set by voice.
-
-**Proof:** 9 live round trips through Photon's live API and the Telegram bot on Nov 8, 12:42 to 1:24 AM CT, with screenshots on the track page. Limits, published: iMessage, SMS, email, WhatsApp Business and the voice line need numbers and DNS in Photon's dashboard, so they are proven against a stand-in for the Photon Beta API with the real crew, database and models (29 of 29 checks), not live. In the live run the hosted photo-to-3D model returned an error, so the texted lamp became a flat cut-out.
 
 <!-- DEVPOST SHORT END -->
 
