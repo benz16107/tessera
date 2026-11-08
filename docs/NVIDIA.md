@@ -89,6 +89,9 @@ With `offline: true`, or whenever the hosted router or planner fails, Bolt on th
 ### 9. Search and safety
 Nemotron embeddings plus the VL reranker search the asset library (including props generated earlier in the session), the session's messages and the spots (`GET /api/search?q=&session=`). Every upload, command, prop prompt and render instruction passes Nemotron Content Safety first.
 
+### 10. Nemotron places photos from anywhere
+Only DUMBO has a 3D model, so a photo from anywhere else used to fail the solve. Now the crew places it first. With the photo's GPS, Nominatim (OpenStreetMap) names the place. Without GPS, Nemotron 3.5 Super VL reads the photo (shop and street signs, landmarks, script, architecture, vegetation) and names the most specific place it can, and Nominatim geocodes that name on the server. Coordinates only ever come from the photo's GPS or from the geocoder, never from the model. A name the map can't find comes back with no coordinates and low confidence. The client plans a free-location shoot at the pin when confidence is medium or high and the place is not a mapped spot; otherwise it solves as before. Measured live: Ben's Clifton Hill photo was read from its signs (Travelodge, Ruby Tuesday) as Clifton Hill, Niagara Falls, high confidence, 40 m from its own GPS; a Commons photo of the Eiffel Tower came back as the Eiffel Tower, high; a DUMBO photo came back as Washington Street under the Manhattan Bridge with `nearestSpot: nyc_dumbo`, so it solves as today. About 2.5 s each.
+
 ## HTTP contracts
 
 The crew serves these on the public URL (`https://app.tesseraphoto.com`). `sessionId` is the session's numeric id as a string. Errors are `{ "error": "..." }` with a 4xx or 5xx status. The studio's panels in `web/src/nvidia/` and the Photon thread use them.
@@ -102,6 +105,10 @@ Response:
   "steps": [{ "tool": "move_object", "args": "{\"id\":9,\"frame_x\":-0.6}", "result": "{\"moved\":\"9\",...}", "ms": 68 }], "data": null }
 ```
 `intent` is `edit | question | rebuild | call_sheet | route | critique | refused | error`. `data` carries the call sheet or cuOpt route for those intents. The call can take 1 to 15 s (Super with reasoning), up to about 90 s offline.
+
+### `POST /api/locate`
+Request: `{ "photoUrl": "/photo/<file>.jpg", "lat"?: number, "lon"?: number }`. Pass the upload's `gpsLat`/`gpsLon` when the photo has GPS (the stored copy has its EXIF stripped).
+Response: `{ "place", "lat", "lon", "confidence": "high" | "medium" | "low", "reason", "headingDeg": number | null, "source": "gps" | "nemotron", "nearestSpot": "<spot id>" | null, "query", "model", "ms" }`. `lat`/`lon` come from GPS or Nominatim and are null when nothing matched (then confidence is low). Errors: 400 for a bad `photoUrl`, 503 when no model or geocoder answered. Nominatim is called with a User-Agent naming Tessera, at most once a second, and cached in `data/geocode.json`.
 
 ### `POST /api/props/generate`
 Request: `{ "sessionId": "18", "mode": "auto | text3d | image3d | photo3d | flat", "prompt": "a red vintage bicycle", "image": "data:image/jpeg;base64,...", "imageUrl": "/photo/<file>.jpg", "label": "my bike" (alias "name"), "mount": "ground | wall | stand | screen", "frame_x": -0.8, "distance_m": 6, "facing": "camera | away | left | right | <degrees>", "height_m": 1.0, "width_m": 0.6, "place": true }`.

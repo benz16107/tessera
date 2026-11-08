@@ -15,6 +15,7 @@ import { shadowParams, sunFromRead } from './composite.ts';
 import { searchAll, searchAssets } from './search.ts';
 import { localAsset } from './props3d.ts';
 import { generateProp } from './gen.ts';
+import { locateGps, locatePhoto, realDeps } from './locate.ts';
 import { render } from './render.ts';
 import { magpie, transcribe } from './speech.ts';
 import { physicalCheck, screenText } from './models.ts';
@@ -84,6 +85,21 @@ async function nvidiaRoute(p: string, req: IncomingMessage, res: ServerResponse,
   const fail = (code: number, e: unknown) => json(res, code, { error: (e as Error)?.message ?? String(e) });
 
   if (p === '/api/nvidia/models' && req.method === 'GET') { json(res, 200, { models: NVIDIA_CATALOG, usage: usage() }); return true; }
+
+  // Photos from anywhere: Nemotron names the place, Nominatim geocodes it (contract in docs/NVIDIA.md).
+  if (p === '/api/locate' && post) {
+    const b = await readJson(req);
+    const file = typeof b?.photoUrl === 'string' ? await ensureLocal(b.photoUrl) : null;
+    if (!file) { json(res, 400, { error: 'give {photoUrl: "/photo/<file>.jpg"} from /api/upload' }); return true; }
+    const lat = Number(b.lat), lon = Number(b.lon), gps = b.lat != null && b.lon != null && Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+    try {
+      const deps = realDeps();
+      const r = gps ? await locateGps(lat, lon, deps) : await locatePhoto(await dataUrl(file, 1024), deps);
+      console.log(`locate ${b.photoUrl}: ${r.source} "${r.place}" ${r.confidence} ${r.lat?.toFixed(4) ?? '-'},${r.lon?.toFixed(4) ?? '-'} ${r.ms} ms`);
+      json(res, 200, r);
+    } catch (e) { fail(503, e); }
+    return true;
+  }
 
   if (p === '/api/set/command' && post) {
     const b = await readJson(req), sid = await sessionOf(b?.sessionId);
@@ -388,7 +404,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   return sendFile(res, index, 'no-cache');
 }
 
-const LONG = /^\/api\/(render|props\/generate|set\/(command|critique|callsheet|rebuild|read|apply|check)|voice\/transcribe)$/;
+const LONG = /^\/api\/(locate|render|props\/generate|set\/(command|critique|callsheet|rebuild|read|apply|check)|voice\/transcribe)$/;
 let draining = false, inFlight = 0, rendersRunning = 0;
 const RENDERS_DIR = join(REPO, 'data/renders');
 /** Background renders by request id, for GET /api/render/<id>. */
