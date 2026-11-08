@@ -71,7 +71,7 @@ Made on demand by NVIDIA TRELLIS through the crew (see `docs/NVIDIA.md`); each o
 
 ## Photoreal set (`/splat/<spot>.*`)
 
-The DUMBO Gaussian splat is trained from the spot's 127 Wikimedia Commons photos (40 authors), so it is released under
-CC BY-SA 4.0 and the studio shows "3D scene trained from photos by 40 Wikimedia Commons contributors, CC BY-SA 4.0,
+The DUMBO Gaussian splat is trained from 55 of the spot's Wikimedia Commons photos (26 authors), so it is released under
+CC BY-SA 4.0 and the studio shows "3D scene trained from photos by 26 Wikimedia Commons contributors, CC BY-SA 4.0,
 credits at /credits" whenever it renders. Details in `spots/nyc_dumbo/SPLAT.md`. Rendered with Spark
 (https://sparkjs.dev, MIT License).

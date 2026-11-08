@@ -18,47 +18,13 @@ import { conn, logStep, until } from './stdb.ts';
 import { ensureLocal, saveImage } from './images.ts';
 import { chat, editImage, parseJson, physicalCheck, thinking } from './models.ts';
 import { genai } from './props3d.ts';
-import { lightWords } from './geo.ts';
 import { sunAt } from './sun.ts';
 import { sessionLight, type LightRead } from './vision.ts';
+import { fluxSize, renderPrompt } from './prompts.ts';
+export { fluxSize, lensWords, renderPrompt } from './prompts.ts';
 import { describeObjects, setContext, sessionObjects } from './set.ts';
 import { relativeAngle } from './geo.ts';
 import { alphaOf, applyShadow, azDiff, blendMasked, blur1, contactMask, harmonizeBeauty, jpeg, matchParams, over, rawRgb, rawRgba, ringOf, shadowParams, sunFromRead } from './composite.ts';
-
-export function lensWords(f35: number, aperture?: number, focusM?: number): string {
-  const lens = f35 < 20 ? `${Math.round(f35)} mm ultra-wide lens, strong perspective` : f35 < 35 ? `${Math.round(f35)} mm wide lens` : f35 < 60 ? `${Math.round(f35)} mm normal lens, natural perspective`
-    : f35 < 105 ? `${Math.round(f35)} mm short telephoto, gentle compression` : `${Math.round(f35)} mm telephoto, compressed background`;
-  const dof = aperture === undefined ? '' : aperture <= 2.8 ? `, f/${aperture}, shallow depth of field${focusM ? ` focused at ${Math.round(focusM * 10) / 10} m` : ''}, background softly blurred`
-    : aperture >= 8 ? `, f/${aperture}, deep focus, everything sharp` : `, f/${aperture}, moderate depth of field`;
-  return lens + dof;
-}
-
-export type PromptIn = { light?: LightRead; f35: number; aperture?: number; focusM?: number; sun?: { az: number; alt: number }; heading?: number; objects: string[]; people: number; text?: string; place?: string };
-
-/** The render prompt: subject, place, light (planned sun first, else the photo's own light read), lens and the user's words. */
-export function renderPrompt(o: PromptIn): string {
-  const subject = o.objects.length ? `A photograph with ${o.objects.slice(0, 8).join(', ')}` : 'A photograph';
-  const light = o.sun && o.heading !== undefined ? lightWords(o.sun.az, o.sun.alt, o.heading)
-    : o.light ? `${o.light.time_look} light, sun ${o.light.sun_side}, ${o.light.hardness} light, about ${Math.round(o.light.color_temp_k)} K, ${o.light.sky} sky` : '';
-  return [
-    `${subject}${o.place ? ` at ${o.place}` : ''}`,
-    light && `Lighting: ${light}`,
-    `Shot on a ${lensWords(o.f35, o.aperture, o.focusM)}`,
-    o.text?.trim(),
-    'Photorealistic, every object lit by the same light as the street, matching shadows on the ground, matching colour and film grain, same camera position and framing, no text, no watermark',
-  ].filter(Boolean).join('. ');
-}
-
-/** FLUX.1-dev takes sizes from 768 to 1344 in steps of 64; pick the one closest to the frame's aspect at about a megapixel. */
-export function fluxSize(w: number, h: number): { width: number; height: number } {
-  const sizes = Array.from({ length: 10 }, (_, i) => 768 + 64 * i);
-  let best = { width: 1024, height: 1024 }, err = Infinity;
-  for (const a of sizes) for (const b of sizes) {
-    const e = Math.abs(Math.log((a / b) / (w / h))) * 4 + Math.abs(Math.log((a * b) / 1_100_000));
-    if (e < err) { err = e; best = { width: a, height: b }; }
-  }
-  return best;
-}
 
 export type RenderIn = {
   sessionId: bigint; photoId: bigint; beauty: Buffer; shadow?: Buffer; text?: string; f35?: number; aperture?: number; focusM?: number; iso?: number;

@@ -75,3 +75,20 @@ export const Seg = <T extends string>({ value, options, onChange, flat, label }:
     {options.map(o => <button key={o.value} aria-pressed={o.value === value} onClick={() => onChange(o.value)}>{o.label}</button>)}
   </div>
 );
+
+/** A collapsed-by-default section ("Exposure", "Lens profile", "Advanced"). Open state is remembered per name in this browser. */
+export function Disclosure({ title, meta, children, defaultOpen = false }: { title: string; meta?: ReactNode; children: ReactNode; defaultOpen?: boolean }) {
+  const key = `studio/open/${title}`;
+  const [open, setOpen] = useState(() => {
+    try { const v = localStorage.getItem(key); return v === null ? defaultOpen : v === '1'; } catch { return defaultOpen; }
+  });
+  const toggle = () => setOpen(o => { try { localStorage.setItem(key, o ? '0' : '1'); } catch { /* private mode */ } return !o; });
+  return (
+    <section className="st-disc">
+      <button aria-expanded={open} onClick={toggle}>
+        <Ico n="down" s={12} /><span>{title}</span>{meta && <span className="st-meta">{meta}</span>}
+      </button>
+      {open && children}
+    </section>
+  );
+}

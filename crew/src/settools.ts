@@ -9,6 +9,13 @@ import { searchAssets } from './search.ts';
 import { generateProp } from './gen.ts';
 import { sunWindows } from './sun.ts';
 import { planShootDay } from './shootday.ts';
+import { conditions } from './layers/index.ts';
+
+/** The geo thread's live conditions (crew/src/layers), trimmed for a model. Slow sources land in `unavailable`, never an error. */
+export async function conditionsFor(sid: bigint, at?: Date) {
+  const c = await conditions({ sessionId: sid, at });
+  return { at: c.at, text: c.text, color_chance: c.colorChance, alerts: c.alerts, blockers: (c.blockers ?? []).slice(0, 6), ...(Object.keys(c.errors ?? {}).length && { unavailable: c.errors }) };
+}
 
 const clamp = (x: unknown, lo: number, hi: number, d: number) => { const n = Number(x); return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
 const COLORS: Record<string, string> = { red: '#b3261e', blue: '#1f4fa3', green: '#2e7d32', yellow: '#e8b923', black: '#1a1a1a', white: '#f2f2f2', orange: '#e0661b', pink: '#e27396', purple: '#6a3d9a', brown: '#6d4c2f', grey: '#8a8a8a', gray: '#8a8a8a', silver: '#c0c0c0', teal: '#1c8c8c', cream: '#efe6d2' };
@@ -233,6 +240,11 @@ export const SET_TOOLS: Record<string, Tool> = {
       if (!reads.scene?.items.length) return { placed: [], note: 'Nemotron found no people, vehicles or props in the photo' };
       return placeStandIns(ctx, reads.scene);
     },
+  },
+  conditions: {
+    description: 'Weather, sunrise/sunset colour chance, tide, NWS alerts, permits and scaffolding that block the shot, building shadow on the street, and the moon, for this session at a time',
+    parameters: { type: 'object', properties: { time: { type: 'string', description: 'ISO time; default the set clock' } } },
+    async run(sid, a) { return conditionsFor(sid, typeof a.time === 'string' && !Number.isNaN(Date.parse(a.time)) ? new Date(a.time) : undefined); },
   },
   plan_shoot_day: {
     description: 'Plan the shoot day: this shot plus similar viewpoints at the spot, each at its best light, in a walking order solved by NVIDIA cuOpt.',

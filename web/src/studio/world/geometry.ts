@@ -54,10 +54,12 @@ export function occluderGeometry(g: StreetGeometry, inset = 1) {
 }
 
 // Gaussian splats trained by splat/train.sh, in each spot model's georegistered frame (see spots/<id>/SPLAT.md).
-export const SPLATS: Record<string, { urls: string[]; offset: [number, number, number]; credit: string }> = {
+// `urls` are tried in order (the lite file first: 27.5 MB on venue Wi-Fi), `full` is the high-quality option.
+export const SPLATS: Record<string, { urls: string[]; full: string[]; offset: [number, number, number]; credit: string }> = {
   nyc_dumbo: {
-    urls: ['/splat/nyc_dumbo.compressed.ply', '/splat/nyc_dumbo.splat', '/splat/nyc_dumbo.spz', '/splat/nyc_dumbo.ply'],
+    urls: ['/splat/nyc_dumbo_lite.compressed.ply', '/splat/nyc_dumbo_lite.splat', '/splat/nyc_dumbo.compressed.ply', '/splat/nyc_dumbo.splat'],
+    full: ['/splat/nyc_dumbo.compressed.ply', '/splat/nyc_dumbo.splat'],
     offset: [5.349, 71.953, 0],
-    credit: '3D scene trained from photos by 40 Wikimedia Commons contributors, CC BY-SA 4.0, credits at /credits',
+    credit: '3D scene trained from photos by 26 Wikimedia Commons contributors, CC BY-SA 4.0, credits at /credits',
   },
 };

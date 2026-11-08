@@ -71,6 +71,7 @@ import RestoreToVersionReducer from "./restore_to_version_reducer";
 import ScheduleReminderReducer from "./schedule_reminder_reducer";
 import SendSetEventReducer from "./send_set_event_reducer";
 import SetCrewCodeReducer from "./set_crew_code_reducer";
+import SetLayerToggleReducer from "./set_layer_toggle_reducer";
 import SetLibraryReducer from "./set_library_reducer";
 import SetPersonPoseReducer from "./set_person_pose_reducer";
 import SetPlanTimeReducer from "./set_plan_time_reducer";
@@ -94,6 +95,8 @@ import CameraRow from "./camera_table";
 import ChannelLinkRow from "./channel_link_table";
 import CheckinRow from "./checkin_table";
 import DevicePoseRow from "./device_pose_table";
+import LayerSnapshotRow from "./layer_snapshot_table";
+import LayerToggleRow from "./layer_toggle_table";
 import LiveSessionsRow from "./live_sessions_table";
 import MessageRow from "./message_table";
 import MySceneLocksRow from "./my_scene_locks_table";
@@ -214,6 +217,34 @@ const tablesSchema = __schema({
       { name: 'device_pose_participant_id_key', constraint: 'unique', columns: ['participantId'] },
     ],
   }, DevicePoseRow),
+  layerSnapshot: __table({
+    name: 'layer_snapshot',
+    indexes: [
+      { accessor: 'id', name: 'layer_snapshot_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'spotId', name: 'layer_snapshot_spot_id_idx_btree', algorithm: 'btree', columns: [
+        'spotId',
+      ] },
+    ],
+    constraints: [
+      { name: 'layer_snapshot_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, LayerSnapshotRow),
+  layerToggle: __table({
+    name: 'layer_toggle',
+    indexes: [
+      { accessor: 'id', name: 'layer_toggle_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'sessionId', name: 'layer_toggle_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'layer_toggle_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, LayerToggleRow),
   message: __table({
     name: 'message',
     indexes: [
@@ -614,6 +645,7 @@ const reducersSchema = __reducers(
   __reducerSchema("schedule_reminder", ScheduleReminderReducer),
   __reducerSchema("send_set_event", SendSetEventReducer),
   __reducerSchema("set_crew_code", SetCrewCodeReducer),
+  __reducerSchema("set_layer_toggle", SetLayerToggleReducer),
   __reducerSchema("set_library", SetLibraryReducer),
   __reducerSchema("set_person_pose", SetPersonPoseReducer),
   __reducerSchema("set_plan_time", SetPlanTimeReducer),
@@ -662,6 +694,8 @@ export const tables = {
   channelLink: __qb.channelLink,
   checkin: __qb.checkin,
   devicePose: __qb.devicePose,
+  layerSnapshot: __qb.layerSnapshot,
+  layerToggle: __qb.layerToggle,
   message: __qb.message,
   outbox: __qb.outbox,
   participant: __qb.participant,
@@ -735,6 +769,7 @@ export const reducers = {
   scheduleReminder: __reducerAccessors.scheduleReminder,
   sendSetEvent: __reducerAccessors.sendSetEvent,
   setCrewCode: __reducerAccessors.setCrewCode,
+  setLayerToggle: __reducerAccessors.setLayerToggle,
   setLibrary: __reducerAccessors.setLibrary,
   setPersonPose: __reducerAccessors.setPersonPose,
   setPlanTime: __reducerAccessors.setPlanTime,

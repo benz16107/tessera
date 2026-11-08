@@ -24,7 +24,7 @@ import { makeObject, newUid, parseParams, stateOf, withParams, fmtParams, type A
 import { optics as opticsOf, frameFromPhoto, fitFrame, type Fit } from './camera/shot.ts';
 import { bodyById, lensById } from './catalog/index.ts';
 import Tiles, { tilesRef } from './world/Tiles.tsx';
-import Splat, { useSplatUrl, splatRef } from './world/Splat.tsx';
+import Splat, { useSplatUrl, sparkRef } from './world/Splat.tsx';
 import Catchers from './world/Catchers.tsx';
 import { geometryFor, groundZ, SPLATS } from './world/geometry.ts';
 import { ObjectNode, SelectionBox, objectSizes } from './world/SceneObjects.tsx';
@@ -33,11 +33,12 @@ import Overlays from './editor/Overlays.tsx';
 import Timeline from './editor/Timeline.tsx';
 import Inspector from './editor/Inspector.tsx';
 import Outliner, { type WorldMode } from './editor/Outliner.tsx';
-import Library, { AddMenu } from './editor/Library.tsx';
+import AddDrawer from './editor/Library.tsx';
 import { generate, shrinkToDataUrl, type GenResult } from './editor/Generate.tsx';
-import { Ico, Seg } from './editor/ui.tsx';
+import { Ico, Seg, Disclosure } from './editor/ui.tsx';
 import RenderSection from './render/RenderSection.tsx';
 import { NvidiaSlot, SpacetimeSlot, PhotonSlot } from './slots.tsx';
+import { ViewSwitch } from '../simple/ViewSwitch.tsx';
 import { xrStore, VrButton } from './xr/VR.tsx';
 import { SetEventsBridge, SetEventMarks, ViewBroadcaster, CheckinBridge, CheckinMarksSlot, type SetEv } from './world/SetEvents.tsx';
 import type { Layers } from './render/layers.ts';
@@ -119,7 +120,9 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const photo = photos.find(p => p.id === solved?.photoId) ?? [...photos].sort((a, b) => Number(b.id - a.id))[0];
   const origin: Origin | null = spot ? { lat: spot.lat, lon: spot.lon, height: 0 } : solved ? { lat: solved.pose.lat, lon: solved.pose.lon, height: 0 } : null;
   const zone = spotZone(session.spotId, origin?.lon ?? 0);
-  const splatUrl = useSplatUrl(session.spotId);
+  const [splatFull, setSplatFull] = useState(false);
+  const [splatSkip, setSplatSkip] = useState<string[]>([]);
+  const splatUrl = useSplatUrl(session.spotId, splatFull, splatSkip);
   const [world, setWorld] = useState<WorldMode>('tiles');
   const [splatState, setSplatState] = useState<{ loaded: boolean; progress: number }>({ loaded: false, progress: 0 });
   useEffect(() => { if (splatUrl) setWorld('splat'); }, [splatUrl]);
@@ -205,11 +208,25 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const [backplate, setBackplate] = useState<'photo' | 'world'>('photo');
   const [overlay, setOverlay] = useState<'thirds' | 'golden' | 'spiral' | 'off'>('thirds');
   const [extraOv, setExtraOv] = useState<string[]>(['horizon']);
-  const [addMenu, setAddMenu] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [timeHover, setTimeHover] = useState(false);
+  const [timePinned, setTimePinned] = useState(false);
+  const [focus, setFocus] = useState(false);
+  const [viewMenu, setViewMenu] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
+  const [cmdOpts, setCmdOpts] = useState(false);
+  const [focusHint, setFocusHint] = useState(() => { try { return !localStorage.getItem('studio/hint-focus'); } catch { return false; } });
+  const timeT = useRef<number | undefined>(undefined);
+  const hoverTime = (over: boolean) => { clearTimeout(timeT.current); timeT.current = window.setTimeout(() => setTimeHover(over), over ? 150 : 350); };
+  useEffect(() => {
+    if (!focusHint) return;
+    const t = setTimeout(() => { setFocusHint(false); try { localStorage.setItem('studio/hint-focus', '1'); } catch { /* private mode */ } }, 9000);
+    return () => clearTimeout(t);
+  }, [focusHint]);
   const [renderOpen, setRenderOpen] = useState(false);
   const [liveOpen, setLiveOpen] = useState(false);
   const [attribution, setAttribution] = useState('');
-  const [groundOffset, setGroundOffset] = useState<number | null>(null);
+  const [, setGroundOffset] = useState<number | null>(null); // the tiles' display alignment; kept out of the UI
   const [cmd, setCmd] = useState<ViewCmd | null>(null);
   const [pendingUid, setPendingUid] = useState<string | null>(null);
   const [vrOrigin, setVrOrigin] = useState<Vector3 | null>(null);
@@ -387,8 +404,10 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
       const k = e.key.toLowerCase();
       if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); if (e.shiftKey) scene.redo(); else scene.undo(); return; }
       if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); scene.redo(); return; }
+      if ((e.ctrlKey || e.metaKey) && k === 'k') { e.preventDefault(); setCmdOpen(true); return; }
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.shiftKey && k === 'a') { e.preventDefault(); setAddMenu(true); return; }
+      if (e.shiftKey && k === 'a') { e.preventDefault(); setAddOpen(true); return; }
+      if (k === 'tab') { e.preventDefault(); setFocus(f => !f); setFocusHint(false); try { localStorage.setItem('studio/hint-focus', '1'); } catch { /* private mode */ } return; }
       if (k === 'g') setTool('translate');
       else if (k === 'r') setTool('rotate');
       else if (k === 's') setTool('scale');
@@ -403,7 +422,11 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
       else if (k === '1') { setView('persp'); setCmd({ n: Date.now(), kind: 'front' }); }
       else if (k === '3') { setView('persp'); setCmd({ n: Date.now(), kind: 'right' }); }
       else if (k === '5' || k === 'home') { setView('persp'); setCmd({ n: Date.now(), kind: 'home' }); }
-      else if (k === 'escape') { setSelected(null); setAddMenu(false); setDropAsk(null); setMeasure([]); }
+      else if (k === 'escape') {
+        if (addOpen) setAddOpen(false); else if (viewMenu) setViewMenu(false); else if (cmdOpen) setCmdOpen(false); else if (focus) setFocus(false);
+        else { setSelected(null); setDropAsk(null); setMeasure([]); }
+      }
+      else if (k === 'k' && (e.metaKey || e.ctrlKey)) setCmdOpen(true);
       else return;
       e.preventDefault();
     };
@@ -457,7 +480,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const online = presence.length ? presence : parts.filter(p => p.online).map(p => ({ name: p.name, color: '', identity: p.identity, status: 'active' }));
   const camSub = (r: SceneObject) => {
     const b = bodyById(shot.bodyId), l = lensById(shot.lensId);
-    return { name: `${camName(r)} · ${b?.name ?? ''}`, sub: `${l?.name.replace(/^(Sony|Canon|Nikon|Fujifilm|Sigma|Tamron) /, '') ?? ''} @ ${Math.round(shot.focalMm)} mm` };
+    void b; void l;
+    return { name: camName(r), sub: `${Math.round(shot.focalMm)} mm · f/${shot.aperture}` };
   };
   const keyframes = versions.flatMap(v => {
     const m = v.label.match(/(\d{1,2}):(\d{2})\s*([AP]M)/i);
@@ -479,33 +503,35 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   if (!credits.length) credits = [<span key="n" className="gcred">{photoBack ? 'Your photo as the backplate; no map content in this view' : 'World hidden'}</span>];
 
   return (
-    <div className="studio">
+    <div className="studio" data-time={timeHover || timePinned ? 'open' : 'slim'} data-focus={focus}>
       <header className="st-top">
         <a className="st-logo" href={`/p/${session.code}`} onClick={e => { e.preventDefault(); navigate(`/p/${session.code}`); }} title="Back to the planner">SHOTMATCH</a>
-        <div className="st-setname"><span>{spot?.name ?? session.title}</span><Ico n="down" s={12} /><span className="saved">{scene.canUndo || scene.canRedo ? 'Saved live' : 'Saved'}</span></div>
+        <ViewSwitch code={session.code} current="studio" selected={selected} onArrive={h => { if (h.selected !== null) setSelected(h.selected); if (h.first) setView('shot'); }} />
+        <div className="st-setname"><span>{spot?.name ?? session.title}</span><span className="saved">Saved live</span></div>
+        {/* Simple | Studio toggle: the "simple" thread owns this one spot. */}
+        <div className="st-modeslot" />
         <nav className="st-tabs-top" role="tablist" aria-label="Pages">
-          {([['set', 'SET'], ['shots', `SHOTS ${versions.length}`], ['renders', `RENDERS ${previews.filter(p => p.state === 'done' && p.imageUrl).length}`]] as const).map(([k, l]) => (
-            <button key={k} role="tab" aria-selected={page === k} onClick={() => setPage(k)}>{l}</button>
+          {([['set', 'Set', 0], ['shots', 'Shots', versions.length], ['renders', 'Renders', previews.filter(p => p.state === 'done' && p.imageUrl).length]] as const).map(([k, l, n]) => (
+            <button key={k} role="tab" aria-selected={page === k} onClick={() => setPage(k)}>{l}{k !== 'set' && <small>{n}</small>}</button>
           ))}
         </nav>
         <div className="st-session">
           <div className="st-avatars" aria-label="People on the set">
             {online.slice(0, 6).map(p => <span key={p.identity.toHexString()} title={`${p.name}${isMe(p.identity) ? ' (you)' : ''}, ${p.status}`} data-idle={p.status !== 'active'} style={{ ['--c' as string]: p.color || undefined }}>{p.name.slice(0, 1).toUpperCase()}</span>)}
           </div>
-          <span className="st-code">{session.code}</span>
-          <button className="st-btn" aria-pressed={liveOpen} onClick={() => setLiveOpen(v => !v)} title="People on iMessage, SMS and the web; SpacetimeDB live data and history">People</button>
-          <button className="st-btn" onClick={() => { navigator.clipboard?.writeText(`${location.origin}/studio/${session.code}`).then(() => setToast('Link copied. Anyone with it joins this set live.')).catch(() => setToast(`${location.origin}/studio/${session.code}`)); }}>Share</button>
+          <button className="st-btn ghost" aria-pressed={liveOpen} onClick={() => setLiveOpen(v => !v)} title="People on iMessage, SMS and the web; SpacetimeDB live data and history">People</button>
+          <button className="st-btn ghost" title={`Session ${session.code}`} onClick={() => { navigator.clipboard?.writeText(`${location.origin}/studio/${session.code}`).then(() => setToast('Link copied. Anyone with it joins this set live.')).catch(() => setToast(`${location.origin}/studio/${session.code}`)); }}>Share</button>
           <VrButton />
           <button className="st-btn primary" onClick={() => { setPage('set'); setView('shot'); setRenderOpen(true); setSelected(shotRow?.id ?? null); }}><Ico n="camera" s={16} /> Render</button>
         </div>
       </header>
 
-      <aside className="st-left" aria-label="Scene and assets">
+      <aside className="st-left" aria-label="Scene">
         <Outliner rows={scene.rows} selected={selected} shotId={shotRow?.id ?? null} camLabel={camSub} lockOwner={lockOwner}
           onSelect={id => setSelected(id)} onToggle={r => editRow(r, { ...stateOf(r), visible: !r.visible }, '')}
           spotLabel={spot?.name.split(',')[0].replace(/^.* from /, '') ?? 'Spot'} world={world}
-          worlds={splatUrl ? ['splat', 'tiles', 'off'] : ['tiles', 'off']} onWorld={setWorld} sunTime={fmtTime(planTime, zone)} photo={photo} />
-        <Library onAdd={i => addItem(i)} sessionId={sid} onGenerated={onGenerated} genFile={genFile} />
+          worlds={splatUrl ? ['splat', 'tiles', 'off'] : ['tiles', 'off']} onWorld={setWorld} sunTime={fmtTime(planTime, zone)} photo={photo}
+          onAdd={() => setAddOpen(v => !v)} addOpen={addOpen} />
       </aside>
 
       <main className="st-viewport" ref={vpRef} aria-label="3D viewport"
@@ -536,7 +562,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                 )}
                 {splatUrl && world !== 'off' && (
                   <Splat spotId={session.spotId} url={splatUrl} visible={showSplat}
-                    onProgress={f => setSplatState(s => ({ ...s, progress: f }))} onLoaded={() => setSplatState({ loaded: true, progress: 1 })} />
+                    onProgress={f => setSplatState(s => ({ ...s, progress: f }))} onLoaded={() => setSplatState({ loaded: true, progress: 1 })}
+                    onError={e => { console.warn('splat failed, trying the next file', splatUrl, e); setSplatState({ loaded: false, progress: 0 }); setSplatSkip(k => [...k, splatUrl]); }} />
                 )}
                 <Catchers geo={geo} occlude={view === 'shot'} shadowOpacity={0.5} onTeleport={p => setVrOrigin(p)}
                   onPointerMove={e => { if (ev) { const p = threeToEnu(e.point); ev.cursor({ x: p.x, y: p.y, z: p.z }); } }}
@@ -625,54 +652,92 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
 
         {view !== 'shot' && (
           <div className="st-chrome">
-            <div className="st-viewswitch">{viewSwitch}</div>
-            <div className="st-rail" role="toolbar" aria-label="Tools">
-              {([['select', 'cursor', 'Select (W)'], ['translate', 'move', 'Move (G)'], ['rotate', 'rotate', 'Rotate (R)'], ['scale', 'scale', 'Scale (S)']] as const).map(([t, i, l]) => (
-                <button key={t} aria-pressed={tool === t} onClick={() => setTool(t)} title={l} aria-label={l}><Ico n={i} s={18} /></button>
-              ))}
-              <hr />
-              <button onClick={() => addItem({ kind: 'person', pose: 'walk' })} title="Add a person" aria-label="Add a person"><Ico n="walk" s={18} /></button>
-              <button onClick={() => addItem({ kind: 'light', lightType: 'area' })} title="Add a softbox" aria-label="Add a light"><Ico n="bulb" s={18} /></button>
-              <button onClick={() => addItem({ kind: 'camera' })} title="Add a camera" aria-label="Add a camera"><Ico n="camera" s={18} /></button>
-              <hr />
-              <button aria-pressed={tool === 'measure'} onClick={() => { setTool(t => (t === 'measure' ? 'select' : 'measure')); setMeasure([]); }} title="Measure (M): click two points" aria-label="Measure"><Ico n="ruler" s={18} /></button>
-              <button aria-pressed={laser} onClick={() => setLaser(v => !v)} title="Laser pointer for everyone (L, or Alt+click)" aria-label="Laser pointer"><Ico n="crosshair" s={18} /></button>
-              <button aria-pressed={snap} onClick={() => setSnap(v => !v)} title="Snap to the street and your objects" aria-label="Snap" style={{ font: '600 9px var(--mono)' }}>SNAP</button>
-              <button aria-pressed={gridOn} onClick={() => setGridOn(v => !v)} title="Grid" aria-label="Grid" style={{ font: '600 9px var(--mono)' }}>GRID</button>
-            </div>
-            <div className="st-cmd"><NvidiaSlot name="CommandBar" props={{ sessionId: sid, photoId: photo?.id }} fallbackText="" /></div>
-            <span className="st-pill" style={{ right: 16, top: 98 }}>{view === 'top' ? 'Top, north up' : `Persp · ${camHeight.toFixed(1)} m up`}</span>
+            {!focus && <div className="st-viewswitch">{viewSwitch}</div>}
+            {!focus && (
+              <div className="st-rail st-float" role="toolbar" aria-label="Tools">
+                {([['select', 'cursor', 'Select (W)'], ['translate', 'move', 'Move (G)'], ['rotate', 'rotate', 'Rotate (R)'], ['scale', 'scale', 'Scale (S)']] as const).map(([t, i, l]) => (
+                  <button key={t} aria-pressed={tool === t} onClick={() => setTool(t)} title={l} aria-label={l}><Ico n={i} s={18} /></button>
+                ))}
+                <hr />
+                <button aria-expanded={addOpen} onClick={() => setAddOpen(v => !v)} title="Add (Shift+A)" aria-label="Add people, props and lights"><span aria-hidden="true" style={{ font: '400 22px/1 var(--sans)' }}>+</span></button>
+                <hr />
+                <button aria-pressed={tool === 'measure'} onClick={() => { setTool(t => (t === 'measure' ? 'select' : 'measure')); setMeasure([]); }} title="Measure (M)" aria-label="Measure"><Ico n="ruler" s={18} /></button>
+                <button aria-pressed={laser} onClick={() => setLaser(v => !v)} title="Laser pointer for everyone (L, or Alt+click)" aria-label="Laser pointer"><Ico n="crosshair" s={18} /></button>
+                <button aria-expanded={viewMenu} onClick={() => setViewMenu(v => !v)} title="View options" aria-label="View options"><span aria-hidden="true" style={{ font: '600 16px/1 var(--sans)', letterSpacing: 1 }}>···</span></button>
+              </div>
+            )}
+            {viewMenu && !focus && (
+              <div className="st-menu" style={{ left: 60, top: 300 }} role="menu" aria-label="View options">
+                <button role="menuitemcheckbox" aria-checked={snap} onClick={() => setSnap(v => !v)}>Snap to the street</button>
+                <button role="menuitemcheckbox" aria-checked={gridOn} onClick={() => setGridOn(v => !v)}>Grid</button>
+                {splatUrl && <button role="menuitemcheckbox" aria-checked={splatFull} onClick={() => { setSplatFull(v => !v); setSplatState({ loaded: false, progress: 0 }); }}>Full-quality set (155 MB)</button>}
+                <button role="menuitem" onClick={() => { setFocus(true); setViewMenu(false); }}>Focus mode <span className="st-meta" style={{ marginLeft: 'auto' }}>Tab</span></button>
+              </div>
+            )}
+            {!focus && (
+              <div className="st-cmd">
+                <div className={`st-float${cmdOpen ? ' st-cmd-open' : ''}`} data-opts={cmdOpts}>
+                  {!cmdOpen && (
+                    <button className="st-cmd-pill" onClick={() => setCmdOpen(true)}>Describe a change <span className="st-meta" style={{ marginLeft: 'auto', background: 'none' }}>Nemotron</span><span className="st-meta">⌘K</span></button>
+                  )}
+                  <div style={{ display: cmdOpen ? 'block' : 'none' }}>
+                    <NvidiaSlot name="CommandBar" props={{ sessionId: sid, photoId: photo?.id }} fallbackText="" />
+                    <div className="st-cmd-tools">
+                      <button className="st-btn small ghost" aria-pressed={cmdOpts} onClick={() => setCmdOpts(v => !v)}>Options</button>
+                      <button className="st-btn small ghost" onClick={() => setCmdOpen(false)}>Close</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {focus && (
+              <div className="st-minibar st-float" role="toolbar" aria-label="Focus mode tools">
+                {viewSwitch}
+                <hr />
+                {([['select', 'cursor', 'Select (W)'], ['translate', 'move', 'Move (G)'], ['rotate', 'rotate', 'Rotate (R)'], ['scale', 'scale', 'Scale (S)']] as const).map(([t, i, l]) => (
+                  <button key={t} aria-pressed={tool === t} onClick={() => setTool(t)} title={l} aria-label={l}><Ico n={i} s={16} /></button>
+                ))}
+                <button onClick={() => setAddOpen(v => !v)} title="Add (Shift+A)" aria-label="Add"><span aria-hidden="true" style={{ font: '400 20px/1 var(--sans)' }}>+</span></button>
+                <hr />
+                <button className="st-btn small" onClick={() => setFocus(false)}>Exit focus <span className="st-meta">Tab</span></button>
+              </div>
+            )}
             {shotRow && (
               <>
-                <span className="st-pill" style={{ left: pip.x, top: pip.y - 22 }}>{shotName} · {Math.round(o.f35)} mm · {aspectLabel(shot.aspect)}</span>
-                <button className="st-pip" style={{ left: pip.x, top: pip.y, width: pip.w, height: pip.h }} onClick={() => setView('shot')} aria-label={`Look through ${shotName}`} />
+                <button className="st-pip" style={{ left: pip.x, top: pip.y, width: pip.w, height: pip.h }} onClick={() => setView('shot')} aria-label={`Look through ${shotName}`} title={`Look through ${shotName} (0)`} />
+                <span className="st-pip-label" style={{ left: pip.x + 6, top: pip.y + pip.h - 22 }}>{shotName} · {Math.round(o.f35)} mm</span>
               </>
             )}
-            <div className="st-status">
-              {!shotRow && <span className="st-pill" style={{ position: 'static' }}>{solved ? `Creating ${shotName} at the solved pose` : 'No solved photo yet: place objects freely'}</span>}
-              {world === 'splat' && splatUrl && !splatState.loaded && <span className="st-pill" style={{ position: 'static' }}>Streaming the photoreal set {Math.round(splatState.progress * 100)}%</span>}
-              {tool === 'measure' && <span className="st-pill" style={{ position: 'static' }}>Measure: click two points on the street</span>}
-              {laser && <span className="st-pill" style={{ position: 'static' }}>Laser: click to show everyone a spot</span>}
-              {groundOffset !== null && showTiles && <span className="st-pill" style={{ position: 'static' }} title="Tiles moved so the street matches our geometry (display only)">tiles aligned {groundOffset >= 0 ? '+' : ''}{groundOffset.toFixed(1)} m</span>}
-            </div>
+            {scene.rows.filter(r => r.kind !== 'camera').length === 0 && scene.ready && !addOpen && (
+              <div className="st-hint st-float" role="note">
+                <span>Press <kbd>+</kbd> to add people, props and lights, or describe a change.</span>
+                <button className="st-btn small" onClick={() => setAddOpen(true)}>Add</button>
+              </div>
+            )}
           </div>
         )}
-        <div className="st-credits">{credits}{photo && <span className="right">Photo: {nameOf(photo.owner)}'s upload · {photo.width} × {photo.height}</span>}</div>
-        {(scene.error || toast) && <button className="st-err" style={{ color: toast && !scene.error ? 'var(--text)' : undefined }} onClick={() => { scene.clearError(); setToast(''); }}>{scene.error || toast}</button>}
+        <div className="st-corner" aria-live="polite">
+          {focusHint && !focus && <span className="st-chip">Press Tab for focus mode: just the view and a small toolbar</span>}
+          {!shotRow && <span className="st-chip">{solved ? `Placing ${shotName} where the photo was taken` : 'No solved photo yet: place objects freely'}</span>}
+          {world === 'splat' && splatUrl && !splatState.loaded && <span className="st-chip">Loading the photoreal set {Math.round(splatState.progress * 100)}%</span>}
+          {tool === 'measure' && <span className="st-chip">Measure: click two points on the street</span>}
+          {laser && <span className="st-chip">Laser on: click to show everyone a spot</span>}
+          {view === 'persp' && <span className="st-chip mono">Eye {camHeight.toFixed(1)} m</span>}
+          {(scene.error || toast) && <button className={`st-chip ${scene.error ? 'err' : 'toast'}`} onClick={() => { scene.clearError(); setToast(''); }}>{scene.error || toast}</button>}
+        </div>
+        <div className="st-credits">{credits}{photo && <span className="right">Photo: {nameOf(photo.owner)}'s upload</span>}</div>
         {dragOver && <div className="st-dropzone-hint">Drop the image where it should go</div>}
         {dropAsk && (
           <div className="st-dropask" style={{ left: dropAsk.x, top: dropAsk.y }} role="dialog" aria-label="Use the dropped image">
             <p>{dropAsk.file.name}{dropAsk.at?.wall ? ', on the wall' : ''}</p>
             <button className="st-btn small" onClick={() => { void placeImage(dropAsk.file, dropAsk.at); setDropAsk(null); }}><Ico n="image" /> Place as image</button>
-            <button className="st-btn small primary" onClick={() => { lastPoint.current = dropAsk.at?.enu ?? null; setGenFile({ file: dropAsk.file, n: Date.now() }); setDropAsk(null); }}><Ico n="cube" /> Make it 3D</button>
-            <button className="st-btn small" onClick={() => setDropAsk(null)}>Cancel</button>
+            <button className="st-btn small" onClick={() => { lastPoint.current = dropAsk.at?.enu ?? null; setGenFile({ file: dropAsk.file, n: Date.now() }); setAddOpen(true); setDropAsk(null); }}><Ico n="cube" /> Make it 3D</button>
+            <button className="st-btn small ghost" onClick={() => setDropAsk(null)}>Cancel</button>
           </div>
         )}
-        {addMenu && <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'start center', paddingTop: 64, background: '#0006', zIndex: 30 }} onClick={() => setAddMenu(false)}>
-          <div onClick={e => e.stopPropagation()}><AddMenu onAdd={i => addItem(i)} onClose={() => setAddMenu(false)} /></div>
-        </div>}
-        <BuildCard spotName={spot?.name} solved={solved ? { f35: solved.pose.f35, heading: solved.pose.heading, inliers: solved.inliers, alt: solved.pose.alt, pitch: solved.pose.pitch, secs: solved.secs } : null}
-          hasCam={!!shotRow} worldReady={splatState.loaded || attribution !== ''} splat={!!splatUrl} progress={splatState.progress} />
+        {addOpen && <AddDrawer onAdd={i => addItem(i)} sessionId={sid} onGenerated={onGenerated} genFile={genFile} onClose={() => setAddOpen(false)} startTab={genFile ? 'Generate' : undefined} />}
+        {!focus && <BuildCard spotName={spot?.name} solved={solved ? { f35: solved.pose.f35, heading: solved.pose.heading, inliers: solved.inliers, alt: solved.pose.alt, pitch: solved.pose.pitch, secs: solved.secs } : null}
+          hasCam={!!shotRow} worldReady={splatState.loaded || attribution !== ''} splat={!!splatUrl} progress={splatState.progress} />}
         {page !== 'set' && (
           <div className="st-page">
             <button className="st-btn small" onClick={() => setPage('set')} style={{ marginBottom: 16 }}>Back to the set</button>
@@ -702,7 +767,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
 
       <aside className="st-right" aria-label="Inspector">
         {renderOpen && view === 'shot' && (
-          <div className="st-insp" style={{ paddingBottom: 0 }}>
+          <div className="st-insp" style={{ paddingBottom: 0, gap: 16 }}>
             <RenderSection getLayers={getLayers} sessionId={sid} photoId={photo?.id} shot={shot} f35={o.f35}
               time={`${fmtTime(planTime, zone)} (${sun.altitude.toFixed(0)}° sun)`} sun={sun} />
             <NvidiaSlot name="ArtDirector" props={{ sessionId: sid, photoId: photo?.id, getLayers }} fallbackText="" />
@@ -717,15 +782,18 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
           groundAt={gz}
           onFaceCamera={r => { const yaw = faceCamFrom(new Vector3(r.x, r.y, r.z)); const q = yawQuat(yaw); editRow(r, { ...stateOf(r), qx: q.x, qy: q.y, qz: q.z, qw: q.w }, ''); }} />
         {!selRow && (
-          <div className="st-insp" style={{ paddingTop: 0 }}>
-            <NvidiaSlot name="CallSheet" props={{ sessionId: sid }} fallbackText="" />
-            <NvidiaSlot name="PoweredBy" props={{}} fallbackText="" />
+          <div className="st-panel-extra">
+            <Disclosure title="Call sheet and models">
+              <NvidiaSlot name="CallSheet" props={{ sessionId: sid }} fallbackText="" />
+              <NvidiaSlot name="PoweredBy" props={{}} fallbackText="" />
+            </Disclosure>
           </div>
         )}
       </aside>
 
       {origin && <Timeline at={planTime} lat={origin.lat} lon={origin.lon} zone={zone} camHeading={shotPose?.hpr.heading ?? null} camName={shotName}
-        onChange={changeTime} keyframes={keyframes} sunControl={<SpacetimeSlot name="SunClock" props={{ sessionId: sid }} />} />}
+        onChange={changeTime} keyframes={keyframes} sunControl={<SpacetimeSlot name="SunClock" props={{ sessionId: sid }} />}
+        open={timeHover || timePinned} pinned={timePinned} onHover={hoverTime} onPin={() => setTimePinned(v => !v)} />}
 
       <SetEventsBridge sessionId={sid} me={identity ?? undefined} onChange={setEv} />
       <CheckinBridge sessionId={sid} onChange={setCheckins} />
@@ -753,13 +821,13 @@ function BuildCard({ spotName, solved, hasCam, worldReady, splat, progress }: {
   useEffect(() => { if (done) { const t = setTimeout(() => setClosed(true), 2500); return () => clearTimeout(t); } }, [done]);
   if (closed) return null;
   const step = (s: string, title: string, sub: string, bar?: number) => (
-    <li data-s={s}><b>{s === 'done' ? 'DONE' : s === 'now' ? (bar !== undefined ? `${Math.round(bar * 100)}%` : 'NOW') : 'NEXT'}</b><span>{title}</span><small>{sub}</small>
+    <li data-s={s}><b aria-label={s === 'done' ? 'Done' : s === 'now' ? 'In progress' : 'Next'} /><span>{title}</span><small>{sub}</small>
       {bar !== undefined && s === 'now' && <div className="bar"><i style={{ width: `${Math.max(4, bar * 100)}%` }} /></div>}</li>
   );
   const n = [!!spotName, !!solved, worldReady, hasCam].filter(Boolean).length;
   return (
-    <section className="st-build" aria-live="polite">
-      <header style={{ display: 'flex' }}><span className="st-label" style={{ flex: 1 }}>Building your set</span><span className="st-meta">{n} of 4</span></header>
+    <section className="st-build st-float" aria-live="polite">
+      <header style={{ display: 'flex', alignItems: 'baseline' }}><span style={{ flex: 1, font: '500 13px var(--sans)' }}>Building your set</span><span className="st-meta">{n} of 4</span></header>
       <ol>
         {step(spotName ? 'done' : 'now', 'Found the spot', spotName ?? 'Looking up the spot')}
         {step(solved ? 'done' : 'now', 'Solved the camera', solved ? `${Math.round(solved.f35)} mm, facing ${Math.round(solved.heading)}°. ${solved.inliers} matches in ${Math.round(solved.secs)} s` : 'Waiting for the solve')}
@@ -767,8 +835,8 @@ function BuildCard({ spotName, solved, hasCam, worldReady, splat, progress }: {
         {step(hasCam ? 'done' : solved ? 'now' : 'next', 'Placing Cam A where you stood', solved ? `${solved.alt.toFixed(1)} m above the ground, tilted ${solved.pitch.toFixed(0)}° ${solved.pitch >= 0 ? 'up' : 'down'}` : 'After the solve')}
       </ol>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <p className="st-note" style={{ flex: 1 }}>The set opens when the area around the mark has loaded.</p>
-        <button className="st-btn small" onClick={() => setClosed(true)}>{done ? 'Open' : 'Skip'}</button>
+        <span style={{ flex: 1 }} />
+        <button className="st-btn small ghost" onClick={() => setClosed(true)}>{done ? 'Done' : 'Hide'}</button>
       </div>
     </section>
   );
@@ -818,9 +886,9 @@ function PipRenderer({ shotCam, o, rect }: { shotCam: PerspectiveCamera; o: { fr
     pipCam.fov = o.vfovDeg; pipCam.aspect = o.frame.w / o.frame.h; pipCam.near = 0.1; pipCam.far = 5000;
     pipCam.updateProjectionMatrix(); pipCam.updateMatrixWorld();
     const hide: Object3D[] = [];
-    scene.traverse(x => { if ((x.userData.helper || x.userData.world || (x as { isTransformControlsRoot?: boolean; isTransformControls?: boolean }).isTransformControlsRoot || (x as { isTransformControls?: boolean }).isTransformControls) && x.visible) hide.push(x); });
+    scene.traverse(x => { if ((x.userData.helper || (x as { isTransformControlsRoot?: boolean; isTransformControls?: boolean }).isTransformControlsRoot || (x as { isTransformControls?: boolean }).isTransformControls) && x.visible) hide.push(x); });
     if (tilesRef.current?.group.visible) hide.push(tilesRef.current.group);
-    if (splatRef.current?.visible) hide.push(splatRef.current);
+    if (sparkRef.current?.visible) hide.push(sparkRef.current);
     hide.forEach(x => (x.visible = false));
     const bg = scene.background;
     scene.background = null;
@@ -969,7 +1037,7 @@ function Capture({ capture, camera, vfovDeg, frame, objects }: {
       const { renderLayers } = await import('./render/layers.ts');
       const hide: Object3D[] = [];
       if (tilesRef.current) hide.push(tilesRef.current.group);
-      if (splatRef.current) hide.push(splatRef.current); // our own data, but the layers carry only the user's objects
+      if (sparkRef.current) hide.push(sparkRef.current); // our own data, but the layers carry only the user's objects
       return renderLayers({ gl, scene, camera, vfovDeg, width: frame.w, height: frame.h, hide, objects: objects() });
     };
   });

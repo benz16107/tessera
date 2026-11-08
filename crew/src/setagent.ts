@@ -11,19 +11,8 @@ import { fpxOf, frameOf, groundAt, hfovOf } from './setgeo.ts';
 import { SET_TOOLS, runTool, toolSpecs, type StepLog } from './settools.ts';
 import { callSheet, sessionLight, readsFor } from './vision.ts';
 
-export const INTENTS = ['edit', 'question', 'rebuild', 'call_sheet', 'route', 'critique'] as const;
-export type Intent = (typeof INTENTS)[number];
-export type Route = { intent: Intent; complex: boolean; reply: string };
-
-/** The router's JSON, normalised; unknown or missing fields fall back to a complex edit (the safe, capable path). */
-export function readRoute(raw: string): Route {
-  const j = parseJson(raw) ?? {};
-  const intent = INTENTS.includes(j.intent) ? j.intent : 'edit';
-  return { intent, complex: j.complex !== false, reply: String(j.reply ?? '').slice(0, 600) };
-}
-
-/** Which model runs an edit: compositions (several objects, relations, judgment) need Super's reasoning; one-object edits do not. */
-export const editTier = (r: Route) => (r.complex ? { model: MODELS.agent, think: true } : { model: MODELS.fast, think: false });
+export { INTENTS, editTier, readRoute, type Intent, type Route } from './prompts.ts';
+import { editTier, readRoute, type Intent } from './prompts.ts';
 
 /** Plain words for the shot camera and the set, shared by every prompt. */
 export function setBrief(ctx: SetCtx): string {
@@ -42,7 +31,7 @@ const SYSTEM = `You are the set builder in ShotMatch, a virtual photo set. You t
 Rules: call every tool needed in as few turns as possible (several calls in one turn is good). Use library props (add_prop) when one fits; search_assets when unsure; generate_prop only for things the library lacks. Posters, murals, signs and screens: add_image.
 "On the left" means frame_x about -0.6; "left wall" about -0.85; "in the background" means farther (15 to 40 m); "close" 2 to 4 m. People "walking toward camera" use pose walk and facing camera.
 String lights: add_lights type point, count 10 to 16, warm 2200 to 2700 K, height 2.6 to 3.2 m, spanning frame_x from one side to the other above the subjects.
-Use existing object ids to move or delete. Never invent ids. When done, reply in one or two plain sentences saying what you placed and where. No markdown.`;
+Use existing object ids to move or delete. Never invent ids. For weather, sunset colour, tide, permits, scaffolding or shade, call conditions. When done, reply in one or two plain sentences saying what you placed and where. No markdown.`;
 
 const ROUTER = `Classify one message to a virtual photo set editor. Reply with strict JSON only: {"intent": "edit|question|rebuild|call_sheet|route|critique", "complex": true|false, "reply": "..."}.
 edit: add, move, remove, recolor or relight objects, people, props, lights, or change the camera, lens or time. complex is true when the edit involves two or more objects, relations between objects, or composition judgment; false for one simple object change.
@@ -154,8 +143,11 @@ export async function setCommand(sessionId: bigint, text: string, opts: { offlin
   const { r, ms: routeMs } = routed;
   try {
     if (r.intent === 'question') {
+      // Weather, light, tide, permit or shade questions get the live conditions (geo layers) as context.
+      const cond = /weather|rain|cloud|sky|colou?r|sunset|sunrise|golden|tide|wind|haze|smog|alert|permit|scaffold|closure|shade|shadow|moon|crowd/i.test(clean)
+        ? await runTool(sessionId, 'conditions', {}, steps).catch(() => null) : null;
       const m = await chat(NVIDIA_BASE, key!, { model: MODELS.fast, ...thinking(false), temperature: 0.3, max_tokens: 300, messages: [
-        { role: 'system', content: `You answer questions about a virtual photo set in one to three plain sentences.\n${setBrief(ctx)}` }, { role: 'user', content: clean }] }, 20_000, 'quick reply');
+        { role: 'system', content: `You answer questions about a virtual photo set in one to three plain sentences.\n${setBrief(ctx)}${cond?.text ? `\nLive conditions: ${cond.text}` : ''}` }, { role: 'user', content: clean }] }, 20_000, 'quick reply');
       return done({ reply: String(m.content ?? r.reply).trim(), intent: 'question', model: MODELS.fast, routeMs });
     }
     if (r.intent === 'rebuild') {

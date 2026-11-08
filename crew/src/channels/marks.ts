@@ -61,3 +61,15 @@ export function alertLead(kind: string, start: Date, now = new Date()): string {
   const min = Math.round((start.getTime() - now.getTime()) / 60_000);
   return min > 1 ? `${kind[0].toUpperCase()}${kind.slice(1)} starts in ${min} min.` : `${kind[0].toUpperCase()}${kind.slice(1)} is starting now.`;
 }
+
+export type ShotConditions = { colorChance: { score: number; label: string; why: string } | null; blockers: { label: string; m: number }[] };
+
+/** The phone-sized conditions line for an alert: the colour chance, then at most two permits or closures near the mark. */
+export function conditionsLine(c: ShotConditions | null | undefined): string {
+  if (!c) return '';
+  const parts: string[] = [];
+  if (c.colorChance) parts.push(`${c.colorChance.label[0].toUpperCase()}${c.colorChance.label.slice(1)} colour chance (${c.colorChance.score}/100): ${c.colorChance.why}.`);
+  const near = c.blockers.slice(0, 2).map(b => `${b.label.charAt(0).toLowerCase()}${b.label.slice(1)} ${Math.round(b.m)} m away`);
+  if (near.length) parts.push(`Watch for ${near.join(' and ')}.`);
+  return parts.join(' ');
+}

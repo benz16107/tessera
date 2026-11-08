@@ -141,6 +141,26 @@ export function sessionLight(sessionId: bigint): LightRead | undefined {
   return undefined;
 }
 
+/** The live conditions paragraph for a session (geo layers), or '' when it is unavailable. Waits at most 15 s (a cold call). */
+async function liveConditions(sessionId: bigint, at?: Date): Promise<string> {
+  const { conditions } = await import('./layers/index.ts');
+  const c = await Promise.race([conditions({ sessionId, at }).catch(e => { console.warn(`conditions: ${e.message}`); return null; }), new Promise<null>(r => setTimeout(() => r(null), 15_000))]);
+  if (c?.text) await logStep(sessionId, 'conditions', at ? at.toISOString() : 'plan time', c.text.slice(0, 3800), 0);
+  return c?.text ?? '';
+}
+
+/** Super with reasoning on for a plan that must come back as JSON; when the reply is cut off or incomplete, once more with reasoning off. */
+async function planJson(messages: any[], role: string, ok: (v: any) => boolean, temperature: number): Promise<any> {
+  let last = '';
+  for (const think of [true, false]) {
+    const m = await chat(NVIDIA_BASE, key(), { model: MODELS.agent, ...thinking(think), temperature, max_tokens: think ? 16000 : 4000, messages }, 150_000, `${role}${think ? ' (reasoning on)' : ''}`).catch(e => ({ content: '', error: e.message }));
+    const v = parseJson(String(m.content ?? ''));
+    if (v && ok(v)) return v;
+    last = String(m.content || (m as any).error || '').slice(0, 120);
+  }
+  throw new Error(`${role} gave no usable JSON: ${last}`);
+}
+
 export type Fix = { title: string; why: string; steps: { tool: string; args: Record<string, unknown> }[] };
 export type Critique = { summary: string; strengths: string[]; fixes: Fix[]; model: string };
 
@@ -152,17 +172,16 @@ export async function critique(sessionId: bigint, image: string): Promise<Critiq
   const ctx = setContext(sessionId);
   if (!ctx) throw new Error('the session has no shot camera yet');
   const s = conn.db.shotSettings.sessionId.find(sessionId);
+  const cond = await liveConditions(sessionId);
   const text = `You are an art director reviewing a still from a photo shoot plan. The image is the planned frame.
 The shot camera: ${Math.round(ctx.cam.f35)} mm equivalent, pitch ${Math.round(ctx.cam.pitch)} deg, roll ${ctx.cam.roll.toFixed(1)} deg${s ? `, f/${s.aperture}` : ''}.
 ${framingNote(ctx.cam)}
 Objects in the set (frame_x -1 left edge to 1 right edge, frame_y -1 bottom to 1 top; thirds lines at +-0.33):
 ${describeObjects(ctx)}
-Critique the composition: rule of thirds, leading lines, subject placement and separation, horizon level and height, balance, negative space.
+${cond ? `Real-world conditions at the planned time (live data): ${cond}\nIf scaffolding, a closure, building shadow or the weather would change this frame, say so and make one fix address it.\n` : ''}Critique the composition: rule of thirds, leading lines, subject placement and separation, horizon level and height, balance, negative space.
 Then give 2 or 3 concrete fixes. Each fix must be a list of tool calls on the set using only these tools and existing ids: ${CRITIQUE_TOOLS}.
 Reply with strict JSON only: {"summary": "<two sentences>", "strengths": ["..."], "fixes": [{"title": "<6 words>", "why": "<one sentence>", "steps": [{"tool": "move_object", "args": {"id": 12, "frame_x": -0.33}}]}]}`;
-  const m = await chat(NVIDIA_BASE, key(), { model: MODELS.agent, ...thinking(true), temperature: 0.3, max_tokens: 6000, messages: [ask(text, image)] }, 150_000, 'art director');
-  const j = parseJson(String(m.content ?? ''));
-  if (!j) throw new Error(`art director gave no JSON: ${String(m.content).slice(0, 120)}`);
+  const j = await planJson([ask(text, image)], 'art director', v => Array.isArray(v?.fixes), 0.3);
   const fixes: Fix[] = (Array.isArray(j.fixes) ? j.fixes : []).slice(0, 3).map((f: any) => ({
     title: String(f.title ?? 'Fix').slice(0, 60), why: String(f.why ?? '').slice(0, 240),
     steps: (Array.isArray(f.steps) ? f.steps : []).filter((x: any) => x && typeof x.tool === 'string').slice(0, 6).map((x: any) => ({ tool: x.tool, args: x.args ?? {} })),
@@ -183,6 +202,8 @@ export async function callSheet(sessionId: bigint) {
   const people = sessionObjects(sessionId).filter(o => o.kind === 'person').map(o => o.name);
   const light = sessionLight(sessionId);
   const planTime = conn.db.session.id.find(sessionId)?.planTime;
+  // Conditions at the plan time, else at the next golden hour (the geo thread's live layers).
+  const cond = await liveConditions(sessionId, planTime ? undefined : w.golden?.start);
   const text = `Write a call sheet for a photo shoot at ${spot?.name ?? ctx.spotId}.
 Hero shot: camera facing ${Math.round(ctx.cam.heading)} deg, ${Math.round(ctx.cam.f35)} mm equivalent${body ? ` on a ${body.name}` : ''}${s ? `, f/${s.aperture}, 1/${Math.round(1 / s.shutterS)} s, ISO ${s.iso}` : ''}.
 Light windows: ${win(w.golden)}; ${win(w.blue)}; front-lit golden hour: ${win(w.goldenFrontLit)}.
@@ -190,13 +211,12 @@ ${planTime ? `The crew planned ${fmtTime(new Date(Number(planTime.microsSinceUni
 The original photo's light: ${light?.summary ?? 'not read yet'}.
 People in the set: ${people.length ? people.join(', ') : 'none placed yet'}.
 Set: ${describeObjects(ctx)}
-Plan 4 to 6 shots that build on the hero shot (variations in lens, framing, people, light). Times must fall inside the light windows above.
+${cond ? `Real-world conditions (live data): ${cond}\n` : ''}Plan 4 to 6 shots that build on the hero shot (variations in lens, framing, people, light). Times must fall inside the light windows above.
+Use the conditions: favour the window with the better colour chance, plan around tides, alerts, permits, scaffolding and building shadow, and say so in each shot's notes.
 Reply with strict JSON only: {"title": "...", "date": "...", "call_time": "...", "wrap_time": "...", "location": "...",
 "shots": [{"n": 1, "name": "...", "time": "...", "lens_mm": 35, "aperture": 2.8, "shutter": "1/250", "framing": "...", "people": "...", "light": "...", "notes": "..."}],
 "crew_notes": ["..."]}`;
-  const m = await chat(NVIDIA_BASE, key(), { model: MODELS.agent, ...thinking(true), temperature: 0.4, max_tokens: 6000, messages: [{ role: 'user', content: text }] }, 150_000, 'call sheet');
-  const j = parseJson(String(m.content ?? ''));
-  if (!j || !Array.isArray(j.shots)) throw new Error(`call sheet gave no JSON: ${String(m.content).slice(0, 120)}`);
-  return { ...j, model: MODELS.agent, windows: { golden: win(w.golden), blue: win(w.blue), front_lit: win(w.goldenFrontLit) } };
+  const j = await planJson([{ role: 'user', content: text }], 'call sheet', v => Array.isArray(v?.shots), 0.4);
+  return { ...j, model: MODELS.agent, windows: { golden: win(w.golden), blue: win(w.blue), front_lit: win(w.goldenFrontLit) }, conditions: cond };
 }
 

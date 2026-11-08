@@ -10,7 +10,8 @@
     "generate:library": "spacetime generate --lang typescript --bindings module --module-path ./library --out-dir src/remote_bindings/library",
     "proof": "node --no-warnings scripts/proof.ts",
     "loadtest": "node --no-warnings scripts/loadtest.ts",
-    "check": "node --no-warnings scripts/sha256.check.ts"
+    "check": "node --no-warnings scripts/sha256.check.ts",
+    "docs:links": "cd .. && python3 -I module/scripts/doclinks.py"
   },
   "dependencies": {
     "@spacetimedb/rate-limit": "^0.1.0",

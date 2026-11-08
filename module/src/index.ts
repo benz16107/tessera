@@ -404,6 +404,31 @@ const checkin = table({ name: 'checkin', public: true }, {
   name: t.string().default(''),
 });
 
+// Geo layers (the geo thread): one row per (spotId, layer), refreshed in place by the refresh_layers procedure. Spot
+// data only, no session content, so public.
+const layerSnapshot = table({ name: 'layer_snapshot', public: true }, {
+  id: t.u64().primaryKey().autoInc(),
+  spotId: t.string().index('btree'),
+  layer: t.string(),        // weather | alerts
+  fetchedAt: t.timestamp(), // last successful fetch (or the first failed attempt when there never was one)
+  summary: t.string(),      // JSON
+  geojsonUrl: t.string(),   // relative; the crew serves the polygons
+  error: t.string(),        // '' when the last fetch worked
+});
+const layerTimer = table({ name: 'layer_timer' }, {
+  scheduledId: t.u64().primaryKey().autoInc(),
+  scheduledAt: t.scheduleAt(),
+});
+// Which map layers a session shows, shared by everyone in the set. Session data under row-level security.
+const layerToggle = table({ name: 'layer_toggle', public: true }, {
+  id: t.u64().primaryKey().autoInc(),
+  sessionId: t.u64().index('btree'),
+  layer: t.string(),
+  on: t.bool(),
+  updatedBy: t.identity(),
+  updatedAt: t.timestamp(),
+});
+
 const voiceCall = table({ name: 'voice_call' }, {
   conversationId: t.string().primaryKey(),
   sessionId: t.u64(),   // 0 when the call named no session
@@ -418,7 +443,7 @@ const spacetimedb = schema({
   config, spot, session, participant, photo, solveJob, solveResult, camera, person,
   devicePose, previewJob, message, agentStep, toast, sweepTimer, reminder, outbox, shotSettings, sceneObject,
   sessionMember, presence, presenceTimer, setEvent, activity, sceneChange, lastChange, sunClock, titleJob,
-  libraryLink, publishPropOutbox, publishShotOutbox, libraryProp, publicShot, voiceCall, channelLink, shotVersion, checkin,
+  libraryLink, publishPropOutbox, publishShotOutbox, libraryProp, publicShot, voiceCall, channelLink, shotVersion, checkin, layerSnapshot, layerTimer, layerToggle,
 }, {
   // Secrets live in the database environment, set at publish time from ~/.config/shotmatch (module/scripts/publish.sh).
   // Never in source, never sent to clients.
@@ -528,6 +553,10 @@ const grantCrew = (ctx: Ctx, sessionId?: bigint) => {
 const ensureSetup = (ctx: Ctx) => {
   rateLimit.install(ctx.as.rateLimit); // idempotent: first admin is the publisher, plus its 30 s bucket sweep
   if (ctx.db.presenceTimer.count() === 0n) ctx.db.presenceTimer.insert({ scheduledId: 0n, scheduledAt: ScheduleAt.interval(10_000_000n) });
+  if (ctx.db.layerTimer.count() === 0n) {
+    ctx.db.layerTimer.insert({ scheduledId: 0n, scheduledAt: ScheduleAt.interval(15n * 60_000_000n) });
+    ctx.db.layerTimer.insert({ scheduledId: 0n, scheduledAt: ScheduleAt.time(ctx.timestamp.microsSinceUnixEpoch) }); // one refresh now
+  }
   const crew = ctx.db.config.id.find(0)?.crew;
   for (const m of [...ctx.db.sessionMember.iter()]) if (m.role === 'crew' && !(crew && m.identity.equals(crew))) ctx.db.sessionMember.id.delete(m.id);
   grantCrew(ctx);
@@ -1213,6 +1242,7 @@ export const deleteSession = spacetimedb.reducer({ sessionId: t.u64() }, (ctx, {
   if (clock) ctx.db.sunClock.scheduledId.delete(clock.scheduledId);
   for (const x of [...ctx.db.publicShot.sessionId.filter(sessionId)]) ctx.db.publicShot.shareCode.delete(x.shareCode);
   for (const x of [...ctx.db.channelLink.sessionId.filter(sessionId)]) ctx.db.channelLink.id.delete(x.id);
+  for (const x of [...ctx.db.layerToggle.sessionId.filter(sessionId)]) ctx.db.layerToggle.id.delete(x.id);
   for (const x of [...ctx.db.shotVersion.sessionId.filter(sessionId)]) ctx.db.shotVersion.id.delete(x.id);
   for (const x of [...ctx.db.checkin.sessionId.filter(sessionId)]) ctx.db.checkin.id.delete(x.id);
   for (const x of [...ctx.db.sessionMember.sessionId.filter(sessionId)]) ctx.db.sessionMember.id.delete(x.id);
@@ -1437,6 +1467,74 @@ export const titleSession = spacetimedb.procedure({ onSchedule: titleJob }, { jo
 });
 
 // ---------------------------------------------------------------------------------------------------------------
+// Geo layers: a scheduled procedure fetches weather (Open-Meteo) and NWS alerts for active spots every 15 minutes,
+// straight from the database; sessions toggle which layers they show.
+
+const LAYERS = ['weather', 'alerts', 'quakes', 'film', 'closures', 'construction', 'tides', 'buildings', 'shadow', 'pois', 'photographers', 'moon'];
+export const setLayerToggle = spacetimedb.reducer({ sessionId: t.u64(), layer: t.string(), on: t.bool() }, (ctx, { sessionId, layer, on }) => {
+  requireMember(ctx, sessionId);
+  if (!LAYERS.includes(layer)) throw new SenderError('unknown layer');
+  const old = [...ctx.db.layerToggle.sessionId.filter(sessionId)].find(r => r.layer === layer);
+  if (old) ctx.db.layerToggle.id.update({ ...old, on, updatedBy: ctx.sender, updatedAt: ctx.timestamp });
+  else ctx.db.layerToggle.insert({ id: 0n, sessionId, layer, on, updatedBy: ctx.sender, updatedAt: ctx.timestamp });
+  trace(ctx, sessionId, 'setLayerToggle', `${layer} ${on ? 'on' : 'off'}`);
+});
+
+const ACTIVE_US = 2n * 3600n * 1_000_000n;
+const HOURLY = 'cloud_cover_low,cloud_cover_mid,cloud_cover_high,visibility,precipitation_probability,wind_speed_10m,temperature_2m,relative_humidity_2m';
+const fetchLayer = (ctx: { http: { fetch: (u: string, i?: any) => any } }, layer: string, lat: number, lon: number): string => {
+  if (layer === 'weather') {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=${HOURLY}&wind_speed_unit=mph&temperature_unit=fahrenheit&timezone=GMT&forecast_days=2`;
+    const r = ctx.http.fetch(url, { timeout: TimeDuration.fromMillis(15_000) });
+    if (!r.ok) throw new Error(`Open-Meteo HTTP ${r.status}`);
+    const hourly = r.json()?.hourly;
+    if (!hourly) throw new Error('Open-Meteo reply had no hourly data');
+    return JSON.stringify(hourly);
+  }
+  const r = ctx.http.fetch(`https://api.weather.gov/alerts/active?point=${lat.toFixed(4)},${lon.toFixed(4)}`, {
+    headers: { 'User-Agent': 'ShotMatch (me@thebenzhou.com)', Accept: 'application/geo+json' }, timeout: TimeDuration.fromMillis(15_000),
+  });
+  if (!r.ok) throw new Error(`weather.gov HTTP ${r.status}`);
+  const features: any[] = r.json()?.features ?? [];
+  const alerts = features.map(f => f?.properties ?? {}).map(p => ({ event: p.event ?? '', severity: p.severity ?? '', headline: p.headline ?? '', onset: p.onset ?? '', ends: p.ends ?? '', areaDesc: p.areaDesc ?? '' }));
+  return JSON.stringify({ count: alerts.length, alerts });
+};
+
+export const refreshLayers = spacetimedb.procedure({ onSchedule: layerTimer }, { timer: layerTimer.rowType }, t.unit(), ctx => {
+  // Active spots: sessions with presence now or a scene edit in the last 2 hours, plus nyc_dumbo.
+  const spots = ctx.withTx(tx => {
+    const since = tx.timestamp.microsSinceUnixEpoch - ACTIVE_US;
+    const sessions = new Set<bigint>([...tx.db.presence.iter()].map(p => p.sessionId));
+    for (const c of tx.db.sceneChange.iter()) if (c.at.microsSinceUnixEpoch >= since) sessions.add(c.sessionId);
+    const bySpot = new Map<string, bigint[]>([['nyc_dumbo', []]]);
+    for (const id of sessions) {
+      const spotId = tx.db.session.id.find(id)?.spotId;
+      if (spotId) bySpot.set(spotId, [...(bySpot.get(spotId) ?? []), id]);
+    }
+    return [...bySpot].flatMap(([spotId, sessionIds]) => {
+      const sp = tx.db.spot.id.find(spotId);
+      return sp ? [{ spotId, lat: sp.lat, lon: sp.lon, sessionIds }] : [];
+    });
+  });
+  for (const sp of spots) for (const layer of ['weather', 'alerts']) {
+    const t0 = Date.now();
+    let summary = '', error = '';
+    try { summary = fetchLayer(ctx, layer, sp.lat, sp.lon); } catch (e) { error = String((e as Error)?.message ?? e).slice(0, 300); }
+    const ms = Date.now() - t0;
+    console.log(`refresh_layers ${layer} ${sp.spotId}: ${error || 'ok'} (${ms} ms)`);
+    ctx.withTx(tx => {
+      const old = [...tx.db.layerSnapshot.spotId.filter(sp.spotId)].find(r => r.layer === layer);
+      const row = { spotId: sp.spotId, layer, geojsonUrl: `/api/layers?spot=${sp.spotId}&layers=${layer}`, error };
+      if (old) tx.db.layerSnapshot.id.update({ ...old, ...row, ...(error ? {} : { summary, fetchedAt: tx.timestamp }) });
+      else tx.db.layerSnapshot.insert({ id: 0n, ...row, summary, fetchedAt: tx.timestamp });
+      for (const sid of sp.sessionIds)
+        traceAs(tx, sid, 'refreshLayers', 'procedure', error ? `${layer} for ${sp.spotId} failed: ${error}` : `refreshed ${layer} for ${sp.spotId} in ${ms} ms`);
+    });
+  }
+  return {};
+});
+
+// ---------------------------------------------------------------------------------------------------------------
 // Views. Per-user views read ctx.sender; anonymous views are computed once and shared by every subscriber.
 
 // Per-user: the sessions I'm in (the home page's "Your shoots"). Query-builder semijoin, evaluated incrementally.
@@ -1492,6 +1590,7 @@ export const propLibrary = spacetimedb.anonymousView({ name: 'prop_library', pub
 const SESSION_TABLES = [
   'participant', 'photo', 'solve_job', 'solve_result', 'camera', 'person', 'device_pose', 'preview_job', 'message', 'agent_step',
   'reminder', 'outbox', 'shot_settings', 'scene_object', 'presence', 'scene_change', 'sun_clock', 'channel_link', 'shot_version', 'checkin',
+  'layer_toggle',
 ];
 const EVENT_TABLES = ['toast', 'set_event', 'activity'];
 const member_sql = (tb: string, col = 'session_id') =>

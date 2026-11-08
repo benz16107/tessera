@@ -22,5 +22,5 @@ const localConfig = (): Plugin => ({
 
 export default mergeConfig(base, defineConfig({
   plugins: [localConfig()],
-  server: { proxy: { '/api': to, '/photo': to, '/preview': to, '/spot-photo': to, '/asset': to } },
+  server: { proxy: { '/api': to, '/photo': to, '/preview': to, '/spot-photo': to, '/asset': to, '/splat': to } },
 }));

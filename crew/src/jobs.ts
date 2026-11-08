@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { conn, step, logStep } from './stdb.ts';
 import { PREVIEWS_DIR, SOLVER_URL, loadSpots } from './config.ts';
 import { dataUrl, ensureLocal, forget, saveImage } from './images.ts';
-import { safetyCheck, readLens, editImage, solverRange, physicalCheck, FINE_TUNED } from './models.ts';
+import { safetyCheck, readLens, editImage, solverRange, physicalCheck, FINE_TUNED, LENS_LIMIT_MIN_F35 } from './models.ts';
 import { sunWindows, windowWords } from './sun.ts';
 import { cropForF35, lightWords, placementWords } from './geo.ts';
 import type { SolveJob, PreviewJob } from './module_bindings/types.ts';
@@ -132,7 +132,7 @@ async function runSolve(j: SolveJob, spotLoaded: boolean) {
     let lens: Awaited<ReturnType<typeof readLens>> = null;
     try {
       lens = await step(sid, 'read_lens', `photo ${j.photoId}`, () => readLens(img),
-        v => (v ? `about ${Math.round(v.f35)} mm (${v.source}${v.source === FINE_TUNED ? '' : ', advisory only'})` : 'skipped: no lens model (LENS_URL or NVIDIA key)'));
+        v => (v ? `about ${Math.round(v.f35)} mm (${v.source}${v.source === FINE_TUNED && v.f35 >= LENS_LIMIT_MIN_F35 ? ', limits the focal search' : ', advisory only'})` : 'skipped: no lens model (LENS_URL or NVIDIA key)'));
     } catch { /* logged by step; the solver runs without a focal range */ }
     const f35Range = solverRange(j.lensHintF35, lens);
 

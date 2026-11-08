@@ -22,6 +22,7 @@ import { NVIDIA_CATALOG } from './catalog.ts';
 import { dataUrl } from './images.ts';
 import { setContext } from './set.ts';
 import { photonRoute } from './channels/http.ts';
+import { layersRoute } from './layers/index.ts';
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
@@ -298,6 +299,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     return json(res, await voiceEnded(body.toString('utf8'), typeof sig === 'string' ? sig : undefined), {});
   }
 
+  if (await layersRoute(p, req, res, url)) return; // geodata layers (crew/src/layers, geo thread)
   if (await photonRoute(p, req, res, url)) return;
   if (await nvidiaRoute(p, req, res, url)) return;
   if (p.startsWith('/api/')) return json(res, 404, { error: 'no such endpoint' });

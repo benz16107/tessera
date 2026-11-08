@@ -75,6 +75,8 @@ Render results (nvidia): `preview_job` has `kind` ('preview' default, or 'render
 
 Photon: `channel_link` (`addChannelLink`, `removeChannelLink`, crew `markChannelVerified`; crew `participantId: 0` = invitee), `shot_version` (crew `recordShotVersion`, `updateShotVersion`; anyone `restoreToVersion`, which forks v3 into v3.1 over scene history), `checkin` (crew `recordCheckin`, with a toast).
 
+Geo layers (geo thread): public `layer_snapshot` (`spotId`, `layer` weather|alerts, `fetchedAt`, `summary` JSON, `geojsonUrl`, `error`), one row per spot and layer, refreshed every 15 minutes by the `refreshLayers` procedure; session-scoped `layer_toggle` (`sessionId`, `layer`, `on`, `updatedBy`, `updatedAt`) written by `setLayerToggle({ sessionId, layer, on })`.
+
 Shared set extras: `heartbeat` (presence), `sendSetEvent` (cursor, ping, view, follow, unfollow; rate-limited), `setSunClock` (0 off, 1 live, up to 3600x time-lapse of `session.planTime`), `undoSceneChange`, `restoreSceneTo`, `shareShot`. Views: `my_sessions`, `my_scene_locks`, `session_card(code)`, `live_sessions`, `spot_library`, `shot_library`, `prop_library`. HTTP: `GET /health`, `GET /shot?code=`, `POST /hooks/elevenlabs` at `https://maincloud.spacetimedb.com/v1/database/shotmatch/route`.
 
 The crew becomes the worker identity by calling `registerCrew(code)` with `~/.config/shotmatch/crew_code`. Only the crew may `claimJob`, `reportProgress`, `finishJob`, `claimPreview`, `renewPreview`, `finishPreview`, `logAgentStep`, and post `out` messages or non-web channels. Leases last 60 s (180 s for previews) and are renewed by `reportProgress`. The `sweep` schedule requeues expired jobs every 10 s, giving up after 3 attempts.

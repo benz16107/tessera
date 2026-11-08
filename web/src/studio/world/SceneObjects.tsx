@@ -149,7 +149,7 @@ export function CameraGizmo({ o, selected, isShot, focusM }: { o: Optics; select
   const tx = Math.tan((o.hfovDeg * Math.PI) / 360), ty = Math.tan((o.vfovDeg * Math.PI) / 360);
   const rect = (d: number): [number, number, number][] => [[-tx * d, -ty * d, -d], [tx * d, -ty * d, -d], [tx * d, ty * d, -d], [-tx * d, ty * d, -d], [-tx * d, -ty * d, -d]];
   const L = 3;
-  const c = selected ? '#e8a33d' : isShot ? '#e9e2d3' : '#8f877a';
+  const c = selected ? '#f2a33a' : isShot ? '#e9e2d3' : '#8f877a';
   const near = Math.min(o.dof.nearM, 80), far = Math.min(o.dof.farM, 80), focus = Math.min(focusM, 80);
   return (
     <group userData={{ helper: true }}>
@@ -159,14 +159,14 @@ export function CameraGizmo({ o, selected, isShot, focusM }: { o: Optics; select
       <mesh position={[0, 0, 0.12]}><boxGeometry args={[0.24, 0.16, 0.2]} /><meshBasicMaterial color={c} /></mesh>
       {isShot && (
         <>
-          <Line points={rect(focus)} color="#e8a33d" lineWidth={1} dashed dashSize={0.3} gapSize={0.2} />
+          <Line points={rect(focus)} color="#f2efe8" lineWidth={1} dashed dashSize={0.3} gapSize={0.2} transparent opacity={0.6} />
           {[near, far].map((d, i) => (
             <mesh key={i} position={[0, 0, -d]}>
               <planeGeometry args={[2 * tx * d, 2 * ty * d]} />
-              <meshBasicMaterial color="#e8a33d" transparent opacity={0.07} depthWrite={false} side={2} />
+              <meshBasicMaterial color="#f2efe8" transparent opacity={0.05} depthWrite={false} side={2} />
             </mesh>
           ))}
-          {[near, far].map((d, i) => <Line key={`l${i}`} points={rect(d)} color="#e8a33d" lineWidth={0.75} transparent opacity={0.5} />)}
+          {[near, far].map((d, i) => <Line key={`l${i}`} points={rect(d)} color="#f2efe8" lineWidth={0.75} transparent opacity={0.35} />)}
         </>
       )}
     </group>

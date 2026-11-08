@@ -46,10 +46,10 @@ Line numbers point into `module/src/index.ts` unless another file is named.
 
 Every session-scoped table is visible only to that session's participants and the crew identity. Spots and the library views stay public.
 
-- The filters: [`visibility`, line 1499](../module/src/index.ts#L1499), built from [`SESSION_TABLES`, line 1492](../module/src/index.ts#L1492) and [`EVENT_TABLES`, line 1496](../module/src/index.ts#L1496). One filter per table: `SELECT t.* FROM t JOIN session_member ON t.session_id = session_member.session_id WHERE session_member.identity = :sender`.
-- [`session_member`, line 238](../module/src/index.ts#L238) holds one row per participant per session, plus one for the crew in every session ([`grant`, line 516](../module/src/index.ts#L516), [`ensureSetup`, line 528](../module/src/index.ts#L528)).
-- Event tables can't be the lookup side of a filter join, so each event row is addressed to one recipient ([`audience`, line 470](../module/src/index.ts#L470), [`notify`, line 476](../module/src/index.ts#L476), [`traceAs`, line 480](../module/src/index.ts#L480)) and filtered by `recipient = :sender`.
-- Joining by code without leaking sessions: the session row is filtered too, so a newcomer reads the anonymous view `session_card(code)` ([line 1457](../module/src/index.ts#L1457)) to see the title, then calls `joinSession`. The code is the capability. Client side: [`useSessionCard`](../web/src/spacetime/hooks.ts#L19), used by [`Planner.tsx` line 110](../web/src/Planner.tsx#L110) and [`Scout.tsx` line 14](../web/src/Scout.tsx#L14).
+- The filters: [`visibility`, line 1598](../module/src/index.ts#L1598), built from [`SESSION_TABLES`, line 1590](../module/src/index.ts#L1590) and [`EVENT_TABLES`, line 1595](../module/src/index.ts#L1595). One filter per table: `SELECT t.* FROM t JOIN session_member ON t.session_id = session_member.session_id WHERE session_member.identity = :sender`.
+- [`session_member`, line 238](../module/src/index.ts#L238) holds one row per participant per session, plus one for the crew in every session ([`grant`, line 541](../module/src/index.ts#L541), [`ensureSetup`, line 553](../module/src/index.ts#L553)).
+- Event tables can't be the lookup side of a filter join, so each event row is addressed to one recipient ([`audience`, line 495](../module/src/index.ts#L495), [`notify`, line 501](../module/src/index.ts#L501), [`traceAs`, line 505](../module/src/index.ts#L505)) and filtered by `recipient = :sender`.
+- Joining by code without leaking sessions: the session row is filtered too, so a newcomer reads the anonymous view `session_card(code)` ([line 1555](../module/src/index.ts#L1555)) to see the title, then calls `joinSession`. The code is the capability. Client side: [`useSessionCard`](../web/src/spacetime/hooks.ts#L19), used by [`Planner.tsx` line 110](../web/src/Planner.tsx#L110) and [`Scout.tsx` line 14](../web/src/Scout.tsx#L14).
 
 Why we chose filters over per-user views: they keep every existing table subscription in the web app, the studio and the crew exactly as it was (`tables.photo.where(sessionId = ...)`), while the database decides what each client receives.
 
@@ -59,47 +59,50 @@ Proof (`node scripts/proof.ts shotmatch`, two fresh anonymous identities against
 
 | View | Kind | Line | What it does |
 |---|---|---|---|
-| `my_sessions` | per user, query builder semijoin | [1443](../module/src/index.ts#L1443) | Sessions I'm in. The home page's "Your shoots" list reads it ([`Planner.tsx` line 29](../web/src/Planner.tsx#L29)). |
-| `my_scene_locks` | per user | [1447](../module/src/index.ts#L1447) | Objects whose gizmo I hold, in any session. |
-| `session_card(code)` | anonymous, with an argument | [1457](../module/src/index.ts#L1457) | Title, spot, people online and object count for one code. |
-| `live_sessions` | anonymous | [1466](../module/src/index.ts#L1466) | Sessions with someone online right now, with counts and no codes or titles. Reads through the `by_online` index ([line 45](../module/src/index.ts#L45)). |
-| `spot_library` | anonymous, query builder | [1481](../module/src/index.ts#L1481) | Spots that have a 3D model. |
-| `shot_library` | anonymous, query builder | [1483](../module/src/index.ts#L1483) | Finished shots people chose to share. |
-| `prop_library` | anonymous, query builder | [1485](../module/src/index.ts#L1485) | Generated props from every session, mirrored from `shotmatch-library`. |
+| `my_sessions` | per user, query builder semijoin | [1541](../module/src/index.ts#L1541) | Sessions I'm in. The home page's "Your shoots" list reads it ([`Planner.tsx` line 29](../web/src/Planner.tsx#L29)). |
+| `my_scene_locks` | per user | [1545](../module/src/index.ts#L1545) | Objects whose gizmo I hold, in any session. |
+| `session_card(code)` | anonymous, with an argument | [1555](../module/src/index.ts#L1555) | Title, spot, people online and object count for one code. |
+| `live_sessions` | anonymous | [1564](../module/src/index.ts#L1564) | Sessions with someone online right now, with counts and no codes or titles. Reads through the `by_online` index ([line 45](../module/src/index.ts#L45)). |
+| `spot_library` | anonymous, query builder | [1579](../module/src/index.ts#L1579) | Spots that have a 3D model. |
+| `shot_library` | anonymous, query builder | [1581](../module/src/index.ts#L1581) | Finished shots people chose to share. |
+| `prop_library` | anonymous, query builder | [1583](../module/src/index.ts#L1583) | Generated props from every session, mirrored from `shotmatch-library`. |
 
 Anonymous views are computed once and shared by every subscriber; the query-builder ones are evaluated incrementally by the query engine.
 
 ### 3. Procedure with outbound HTTP: Nemotron names the shoot
 
-When the crew finishes a solve for a session still called "Untitled shoot", `finishJob` inserts a one-shot row into the `title_job` schedule table ([line 719](../module/src/index.ts#L719)). That runs the procedure [`titleSession`, line 1385](../module/src/index.ts#L1385): it reads the spot, lens, heading, plan time, people and what the group said in one transaction, calls NVIDIA's `nvidia/nemotron-3.5-lightning-30b-a3b` with `ctx.http.fetch` ([line 1408](../module/src/index.ts#L1408)), then writes the title, an `agent_step` row and a toast in a second transaction. No worker is involved. Measured: 121 to 126 ms for the NVIDIA call ("Washington Street Bridge View", "Northward Frame").
+When the crew finishes a solve for a session still called "Untitled shoot", `finishJob` inserts a one-shot row into the `title_job` schedule table ([line 748](../module/src/index.ts#L748)). That runs the procedure [`titleSession`, line 1415](../module/src/index.ts#L1415): it reads the spot, lens, heading, plan time, people and what the group said in one transaction, calls NVIDIA's `nvidia/nemotron-3.5-lightning-30b-a3b` with `ctx.http.fetch` ([line 1438](../module/src/index.ts#L1438)), then writes the title, an `agent_step` row and a toast in a second transaction. No worker is involved. Measured: 121 to 126 ms for the NVIDIA call ("Washington Street Bridge View", "Northward Frame").
 
-Secrets: the NVIDIA key and the ElevenLabs webhook secret are database environment variables declared in the schema ([line 425](../module/src/index.ts#L425)) and set at publish time from `~/.config/shotmatch` by [`module/scripts/publish.sh`](../module/scripts/publish.sh). They are never in source and never reach clients. Publishing keeps stored values, so `npm run publish` keeps working.
+Secrets: the NVIDIA key and the ElevenLabs webhook secret are database environment variables declared in the schema ([line 450](../module/src/index.ts#L450)) and set at publish time from `~/.config/shotmatch` by [`module/scripts/publish.sh`](../module/scripts/publish.sh). They are never in source and never reach clients. Publishing keeps stored values, so `npm run publish` keeps working.
+
+A second procedure, [`refreshLayers`, line 1503](../module/src/index.ts#L1503), runs every 15 minutes from the `layer_timer` schedule. It finds the active spots (sessions with someone present or a scene edit in the last 2 hours, plus `nyc_dumbo`) and, for each, fetches the hourly cloud, visibility, rain, wind and temperature forecast from Open-Meteo and the active National Weather Service alerts, then writes one [`layer_snapshot`, line 409](../module/src/index.ts#L409) row per spot and layer (public spot data). A failed fetch keeps the last good summary and records the error. Each refresh posts an activity event to the sessions at that spot, so it shows in the Live inspector. Measured on production: weather 90 ms, alerts 212 ms. Which layers a session shows is shared through [`layer_toggle`, line 423](../module/src/index.ts#L423) (session data under row-level security) and [`setLayerToggle`, line 1474](../module/src/index.ts#L1474).
 
 ### 4. HTTP handlers (inbound)
 
-Router at [line 1580](../module/src/index.ts#L1580), served at `https://maincloud.spacetimedb.com/v1/database/shotmatch/route/...`:
+Router at [line 1679](../module/src/index.ts#L1679), served at `https://maincloud.spacetimedb.com/v1/database/shotmatch/route/...`:
 
-- `GET /health` ([line 1513](../module/src/index.ts#L1513)): counts read in a transaction. Try it: [health](https://maincloud.spacetimedb.com/v1/database/shotmatch/route/health).
-- `GET /shot?code=<share code>` ([line 1521](../module/src/index.ts#L1521)): public JSON for a shared shot (image, spot, camera position, heading, lens). Strict routing has no path parameters, so the code is a query parameter.
-- `POST /hooks/elevenlabs` ([line 1541](../module/src/index.ts#L1541)): the phone agent's post-call webhook. The module checks the `ElevenLabs-Signature` HMAC-SHA256 itself ([`module/src/sha256.ts`](../module/src/sha256.ts), checked against `node:crypto` by `npm run check`), rejects anything older than 30 minutes, dedupes retries by conversation id, and writes the transcript straight into the session's `message` rows plus a toast. The session comes from the agent's `session_code` dynamic variable, or for a real phone call from the caller's number matched against `channel_link`. It is live: the ShotMatch phone agent's post-call webhook points here (ElevenLabs webhook `d459b97d6a1d4ad5b44f47116c15a707`), with its HMAC secret in the database environment. Proof: a bad signature gets 401, a valid one writes 2 transcript rows, a retry is a no-op, and a call with only a caller number lands in the session that linked that number.
+- `GET /health` ([line 1612](../module/src/index.ts#L1612)): counts read in a transaction. Try it: [health](https://maincloud.spacetimedb.com/v1/database/shotmatch/route/health).
+- `GET /shot?code=<share code>` ([line 1620](../module/src/index.ts#L1620)): public JSON for a shared shot (image, spot, camera position, heading, lens). Strict routing has no path parameters, so the code is a query parameter.
+- `POST /hooks/elevenlabs` ([line 1640](../module/src/index.ts#L1640)): the phone agent's post-call webhook. The module checks the `ElevenLabs-Signature` HMAC-SHA256 itself ([`module/src/sha256.ts`](../module/src/sha256.ts), checked against `node:crypto` by `npm run check`), rejects anything older than 30 minutes, dedupes retries by conversation id, and writes the transcript straight into the session's `message` rows plus a toast. The session comes from the agent's `session_code` dynamic variable, or for a real phone call from the caller's number matched against `channel_link`. It is live: the ShotMatch phone agent's post-call webhook points here (ElevenLabs webhook `d459b97d6a1d4ad5b44f47116c15a707`), with its HMAC secret in the database environment. Proof: a bad signature gets 401, a valid one writes 2 transcript rows, a retry is a no-op, and a call with only a caller number lands in the session that linked that number.
 
 ### 5. Schedules
 
 | Schedule | Interval | Line | Job |
 |---|---|---|---|
-| `sweep_timer` runs `sweep` | 10 s | [1225](../module/src/index.ts#L1225) | Requeues solve and preview jobs whose worker stopped renewing its lease (kill the worker mid-solve and the job comes back). A render's layers lived in the crew's request, so an expired render fails instead ([line 1238](../module/src/index.ts#L1238)). |
-| `reminder` runs `fireReminder` | one-shot | [1179](../module/src/index.ts#L1179) | Golden-hour reminder: a toast plus an outbox row the crew texts out. |
-| `presence_timer` runs `presenceSweep` | 10 s | [1257](../module/src/index.ts#L1257) | Marks a silent editor idle after 30 s, drops them after 2 minutes, and frees the gizmo locks they hold. A frozen tab keeps its websocket open, so `onDisconnect` alone never frees its lock. |
-| `sun_clock` runs `sunTick` | 1 s, per session | [1313](../module/src/index.ts#L1313) | Live sun: while the row exists, the set's clock (`session.planTime`) follows the real clock (rate 1) or plays a time-lapse (60x, 600x). The studio's sun light reads `planTime`, so every client's light moves together. Proof: 600x moved the set 30.0 minutes in 3.2 s. |
+| `sweep_timer` runs `sweep` | 10 s | [1255](../module/src/index.ts#L1255) | Requeues solve and preview jobs whose worker stopped renewing its lease (kill the worker mid-solve and the job comes back). A render's layers lived in the crew's request, so an expired render fails instead ([line 1268](../module/src/index.ts#L1268)). |
+| `reminder` runs `fireReminder` | one-shot | [1208](../module/src/index.ts#L1208) | Golden-hour reminder: a toast plus an outbox row the crew texts out. |
+| `presence_timer` runs `presenceSweep` | 10 s | [1287](../module/src/index.ts#L1287) | Marks a silent editor idle after 30 s, drops them after 2 minutes, and frees the gizmo locks they hold. A frozen tab keeps its websocket open, so `onDisconnect` alone never frees its lock. |
+| `sun_clock` runs `sunTick` | 1 s, per session | [1343](../module/src/index.ts#L1343) | Live sun: while the row exists, the set's clock (`session.planTime`) follows the real clock (rate 1) or plays a time-lapse (60x, 600x). The studio's sun light reads `planTime`, so every client's light moves together. Proof: 600x moved the set 30.0 minutes in 3.2 s. |
 | `title_job` runs `titleSession` (procedure) | one-shot | [315](../module/src/index.ts#L315) | See 3. |
+| `layer_timer` runs `refreshLayers` (procedure) | 15 min | [1503](../module/src/index.ts#L1503) | Weather and NWS alerts for active spots, fetched by the database itself. |
 
 ### 6. Event tables: ephemeral collaboration
 
-- [`set_event`, line 263](../module/src/index.ts#L263), written by [`sendSetEvent`, line 1281](../module/src/index.ts#L1281): cursors on the ground, laser-pointer pings ("Maya is pointing here"), camera views and follow requests. Rows reach the session's members once and are never stored: `SELECT COUNT(*) FROM set_event` is always 0.
+- [`set_event`, line 263](../module/src/index.ts#L263), written by [`sendSetEvent`, line 1311](../module/src/index.ts#L1311): cursors on the ground, laser-pointer pings ("Maya is pointing here"), camera views and follow requests. Rows reach the session's members once and are never stored: `SELECT COUNT(*) FROM set_event` is always 0.
 - [`activity`, line 278](../module/src/index.ts#L278): one event per reducer call in a session, so the Live data inspector can name other people's calls (a client only learns reducer names for its own calls).
 - `toast` ([line 205](../module/src/index.ts#L205)): "Shot located", "Maya reached the spot".
 - Client: [`useSetEvents`](../web/src/spacetime/hooks.ts#L81) (cursors fade after 3 s, pings after 4 s, cursor sends throttled to 10 Hz, follow and "follow me"). The studio draws them in the 3D set.
-- The official [Rate Limit module](https://spacetimedb.com/modules/rate-limit) is mounted as a submodule ([line 417](../module/src/index.ts#L417)) and caps each sender at 40 set events a second and 8 pings per 10 seconds ([line 1279](../module/src/index.ts#L1279)). Proof: a 12-ping burst let 7 through and refused 5.
+- The official [Rate Limit module](https://spacetimedb.com/modules/rate-limit) is mounted as a submodule ([line 442](../module/src/index.ts#L442)) and caps each sender at 40 set events a second and 8 pings per 10 seconds ([line 1309](../module/src/index.ts#L1309)). Proof: a 12-ping burst let 7 through and refused 5.
 
 ### 7. Inter-database communication
 
@@ -107,8 +110,8 @@ Router at [line 1580](../module/src/index.ts#L1580), served at `https://mainclou
 
 - Receiver bindings: `npm run generate:library` (`spacetime generate --bindings module`) writes [`module/src/remote_bindings/library`](../module/src/remote_bindings/library/index.ts) from the library's source, so a wrong argument is a compile error.
 - Outboxes: [`publish_prop_outbox`, line 327](../module/src/index.ts#L327) and [`publish_shot_outbox`, line 335](../module/src/index.ts#L335). The target column has the library's identity type, read from [`library_link`, line 323](../module/src/index.ts#L323).
-- Real use: when the crew adds a TRELLIS prop (`kind = prop_generated`) to any set, [`sharePropToLibrary`, line 826](../module/src/index.ts#L826) queues it in the same transaction. The library dedupes by URL and counts sessions; [`onPublishProp`, line 1365](../module/src/index.ts#L1365) mirrors it into `library_prop`, and every session's asset library (`prop_library` view) offers it.
-- Sharing a shot: [`shareShot`, line 1334](../module/src/index.ts#L1334) gives a finished preview or render an 8-letter share code and sends it; [`onPublishShot`, line 1352](../module/src/index.ts#L1352) marks it published; `GET /shot?code=` serves it.
+- Real use: when the crew adds a TRELLIS prop (`kind = prop_generated`) to any set, [`sharePropToLibrary`, line 855](../module/src/index.ts#L855) queues it in the same transaction. The library dedupes by URL and counts sessions; [`onPublishProp`, line 1395](../module/src/index.ts#L1395) mirrors it into `library_prop`, and every session's asset library (`prop_library` view) offers it.
+- Sharing a shot: [`shareShot`, line 1364](../module/src/index.ts#L1364) gives a finished preview or render an 8-letter share code and sends it; [`onPublishShot`, line 1382](../module/src/index.ts#L1382) marks it published; `GET /shot?code=` serves it.
 - In production this already carries real work: the crew's TRELLIS props ("wooden cafe chalkboard sign", "vintage travel poster of the Brooklyn Bridge at sunset", "silver car") went out through the outbox, the library accepted them, and they appear in every session's Library panel. `spacetime logs shotmatch` shows `idc publish_prop "wooden cafe chalkboard sign" -> shotmatch-library: ok`.
 - The library accepts calls only from databases in its `trusted_db` allow list ([`module/library/src/index.ts`](../module/library/src/index.ts)); the caller's `ctx.sender` is the calling database's identity.
 
@@ -116,31 +119,31 @@ The guarantees we rely on come from SpacetimeDB: the call is sent if and only if
 
 ### 8. Scene history: time travel the set
 
-- [`scene_change`, line 288](../module/src/index.ts#L288): who changed which object, with its state before and after as JSON. [`recordChange`, line 797](../module/src/index.ts#L797) folds a drag (edits by one person to one object less than 2 s apart) into one entry: the load test's 900 edits left 6 history rows.
-- Undo by anyone: [`undoSceneChange`, line 876](../module/src/index.ts#L876) puts the object back the way it was before that change.
-- Restore to any point: [`restoreSceneTo`, line 899](../module/src/index.ts#L899) (shared helper [`restoreTo`, line 886](../module/src/index.ts#L886)): every object touched since goes to the `before` state of its earliest later change, in one transaction. Restores are themselves history rows, so a restore can be undone.
+- [`scene_change`, line 288](../module/src/index.ts#L288): who changed which object, with its state before and after as JSON. [`recordChange`, line 826](../module/src/index.ts#L826) folds a drag (edits by one person to one object less than 2 s apart) into one entry: the load test's 900 edits left 6 history rows.
+- Undo by anyone: [`undoSceneChange`, line 905](../module/src/index.ts#L905) puts the object back the way it was before that change.
+- Restore to any point: [`restoreSceneTo`, line 928](../module/src/index.ts#L928) (shared helper [`restoreTo`, line 915](../module/src/index.ts#L915)): every object touched since goes to the `before` state of its earliest later change, in one transaction. Restores are themselves history rows, so a restore can be undone.
 - Client: the History tab's scrubber ([`HistoryScrubber`](../web/src/spacetime/LiveInspector.tsx#L125)) and [`sceneAt`](../web/src/spacetime/hooks.ts#L152), which rebuilds the set at any point on the client for a ghost preview before restoring.
 
 ### 9. Photon: a text thread as a version tree over scene history
 
 The iMessage bridge (Photon) treats a thread as versions of the shot. Each version points at a `scene_change` id, so the set at that version is exactly what scene history rebuilds.
 
-- [`shot_version`, line 378](../module/src/index.ts#L378): label (v1, v2, v3), parent version, the Photon message id, channel, scene change id, image. [`recordShotVersion`, line 963](../module/src/index.ts#L963) (crew) and [`updateShotVersion`, line 986](../module/src/index.ts#L986) (the render lands later).
-- "Go back to v1 but make it 85 mm": [`restoreToVersion`, line 998](../module/src/index.ts#L998) restores the set to v1's snapshot with the same history machinery and records a new branch under it, v1.1. The thread becomes a tree; the set's history stays one undoable line.
-- [`channel_link`, line 363](../module/src/index.ts#L363): how each person is reached (iMessage, Telegram, SMS, WhatsApp, email, voice), including invitees who have no SpacetimeDB identity yet ([`addChannelLink`, line 913](../module/src/index.ts#L913)).
-- [`checkin`, line 391](../module/src/index.ts#L391): a scout's photo from the mark, scored against the planned camera, with a toast to everyone ([`recordCheckin`, line 1016](../module/src/index.ts#L1016)).
+- [`shot_version`, line 378](../module/src/index.ts#L378): label (v1, v2, v3), parent version, the Photon message id, channel, scene change id, image. [`recordShotVersion`, line 992](../module/src/index.ts#L992) (crew) and [`updateShotVersion`, line 1015](../module/src/index.ts#L1015) (the render lands later).
+- "Go back to v1 but make it 85 mm": [`restoreToVersion`, line 1027](../module/src/index.ts#L1027) restores the set to v1's snapshot with the same history machinery and records a new branch under it, v1.1. The thread becomes a tree; the set's history stays one undoable line.
+- [`channel_link`, line 363](../module/src/index.ts#L363): how each person is reached (iMessage, Telegram, SMS, WhatsApp, email, voice), including invitees who have no SpacetimeDB identity yet ([`addChannelLink`, line 942](../module/src/index.ts#L942)).
+- [`checkin`, line 391](../module/src/index.ts#L391): a scout's photo from the mark, scored against the planned camera, with a toast to everyone ([`recordCheckin`, line 1045](../module/src/index.ts#L1045)).
 
 All three are session data under the same row-level security.
 
 ### 10. The rest of the toolbox
 
-- Lifecycle reducers: [`init`, line 537](../module/src/index.ts#L537), [`onConnect`, line 549](../module/src/index.ts#L549), [`onDisconnect`, line 554](../module/src/index.ts#L554) (marks people offline, drops their presence, frees their locks). `init` never re-runs on a publish, so the owner-only [`upgrade`, line 544](../module/src/index.ts#L544) runs the same idempotent setup after one.
-- Indexes and unique constraints: `session.code` is unique ([line 33](../module/src/index.ts#L33)) and session codes are drawn with `ctx.random` ([`newCode`, line 498](../module/src/index.ts#L498)); `sun_clock.session_id` is unique (one clock per session); btree indexes on every `session_id` feed the filter joins and the views.
+- Lifecycle reducers: [`init`, line 566](../module/src/index.ts#L566), [`onConnect`, line 578](../module/src/index.ts#L578), [`onDisconnect`, line 583](../module/src/index.ts#L583) (marks people offline, drops their presence, frees their locks). `init` never re-runs on a publish, so the owner-only [`upgrade`, line 573](../module/src/index.ts#L573) runs the same idempotent setup after one.
+- Indexes and unique constraints: `session.code` is unique ([line 33](../module/src/index.ts#L33)) and session codes are drawn with `ctx.random` ([`newCode`, line 523](../module/src/index.ts#L523)); `sun_clock.session_id` is unique (one clock per session); btree indexes on every `session_id` feed the filter joins and the views.
 - `scheduleAt` and `Timestamp`: schedule tables above; job leases are `Timestamp`s compared in the sweep.
-- `SenderError`: every validation failure the caller should see, for example the gizmo lock ("someone else is moving this object", [line 848](../module/src/index.ts#L848)) and the rate limit.
-- `t.result`: the `onResult` reducers receive `t.result(t.unit(), t.string())` ([line 1354](../module/src/index.ts#L1354)).
+- `SenderError`: every validation failure the caller should see, for example the gizmo lock ("someone else is moving this object", [line 877](../module/src/index.ts#L877)) and the rate limit.
+- `t.result`: the `onResult` reducers receive `t.result(t.unit(), t.string())` ([line 1384](../module/src/index.ts#L1384)).
 - Migration-safe changes only: new tables, and columns appended with `.default()` (`preview_job.kind`, `preview_job.requestId`, `toast.recipient`, `channel_link.name`, the `checkin` position columns). Demo session A9TVAN survived every publish.
-- The nvidia worker's requests: [`joinSessionAsCrew`, line 578](../module/src/index.ts#L578) and render rows in `preview_job` with `kind = 'render'` ([`startRender`, line 1089](../module/src/index.ts#L1089); the crew finds its row by `requestId`).
+- The nvidia worker's requests: [`joinSessionAsCrew`, line 607](../module/src/index.ts#L607) and render rows in `preview_job` with `kind = 'render'` ([`startRender`, line 1118](../module/src/index.ts#L1118); the crew finds its row by `requestId`).
 
 ## Identity and security model
 
@@ -148,7 +151,7 @@ All three are session data under the same row-level security.
 |---|---|---|---|
 | Planner (browser) | anonymous SpacetimeDB identity | token in `localStorage`, keyed by host and database ([`web/src/main.tsx`](../web/src/main.tsx)) | create sessions, join by code, edit the sets it is a member of |
 | Scout (phone page) | a second anonymous identity | its own token key (`/scout`), so one browser can plan and scout as two people | join as scout, push GPS and compass |
-| Crew (worker) | anonymous identity made privileged | token in `~/.config/shotmatch/crew_token`; it redeems a one-time code the owner set (`setCrewCode`, `registerCrew` at [line 570](../module/src/index.ts#L570)) | claim jobs, finish solves and renders, record versions and check-ins, read every session |
+| Crew (worker) | anonymous identity made privileged | token in `~/.config/shotmatch/crew_token`; it redeems a one-time code the owner set (`setCrewCode`, `registerCrew` at [line 599](../module/src/index.ts#L599)) | claim jobs, finish solves and renders, record versions and check-ins, read every session |
 | Owner | Ben's CLI identity (the publisher) | `spacetime login` | `upgrade`, `setLibrary`, `setCrewCode`, delete any session; sees all rows (owners bypass filters) |
 | `shotmatch` as a caller | the database's own identity | Maincloud | publish to the library, which allow-lists it in `trusted_db` |
 | HTTP request | a random identity per request | none | nothing by identity; the webhook proves itself with its HMAC signature |
@@ -167,7 +170,7 @@ Load test ([`module/scripts/loadtest.ts`](../module/scripts/loadtest.ts)): 3 hea
 
 The median round trip equals one network round trip, so the database's own time per edit is small next to the network. The tail varies run to run with the network. Throughput was 27.3 committed transactions a second, the rate we sent; no call failed.
 
-Other numbers: Nemotron title procedure 121 to 126 ms for the NVIDIA call; the inspector's heartbeat round trip read 30 ms in one browser run and 245 to 553 ms in headless Chrome on the same Wi-Fi; `proof.ts` passes 37 of 37 checks on the scratch database `shotmatch-scratch` and 19 of 19 on production (crew steps skipped there because they would re-register the crew identity).
+Other numbers: Nemotron title procedure 121 to 126 ms for the NVIDIA call; the inspector's heartbeat round trip read 30 ms in one browser run and 245 to 553 ms in headless Chrome on the same Wi-Fi; `proof.ts` passes 38 of 38 checks on the scratch database `shotmatch-scratch` and 19 of 19 on production (crew steps skipped there because they would re-register the crew identity).
 
 ## How to check it yourself
 

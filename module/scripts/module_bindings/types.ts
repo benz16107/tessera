@@ -94,6 +94,33 @@ export const LastChange = __t.object("LastChange", {
 });
 export type LastChange = __Infer<typeof LastChange>;
 
+export const LayerSnapshot = __t.object("LayerSnapshot", {
+  id: __t.u64(),
+  spotId: __t.string(),
+  layer: __t.string(),
+  fetchedAt: __t.timestamp(),
+  summary: __t.string(),
+  geojsonUrl: __t.string(),
+  error: __t.string(),
+});
+export type LayerSnapshot = __Infer<typeof LayerSnapshot>;
+
+export const LayerTimer = __t.object("LayerTimer", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+});
+export type LayerTimer = __Infer<typeof LayerTimer>;
+
+export const LayerToggle = __t.object("LayerToggle", {
+  id: __t.u64(),
+  sessionId: __t.u64(),
+  layer: __t.string(),
+  on: __t.bool(),
+  updatedBy: __t.identity(),
+  updatedAt: __t.timestamp(),
+});
+export type LayerToggle = __Infer<typeof LayerToggle>;
+
 export const LibraryLink = __t.object("LibraryLink", {
   id: __t.u32(),
   db: __t.identity(),

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { io } from 'socket.io-client';
 import { fakePhoton } from './fake-photon.ts';
 import { lensOptions, plan, sheetMarkdown, channelOf, platformOf, type SetEvent } from '../src/channels/format.ts';
-import { correction, guide, awayWords, alertLead } from '../src/channels/marks.ts';
+import { correction, guide, awayWords, alertLead, conditionsLine } from '../src/channels/marks.ts';
 import { parseCommand, cleanAddress } from '../src/channels/commands.ts';
 import { labelIn, treeText } from '../src/channels/tree.ts';
 import { tryOrder, people } from '../src/channels/order.ts';
@@ -82,6 +82,11 @@ test('alerts: distance on foot and the lead line', () => {
   assert.equal(awayWords(undefined), '');
   const now = new Date('2026-11-08T22:32:00Z');
   assert.equal(alertLead('golden hour', new Date('2026-11-08T22:52:00Z'), now), 'Golden hour starts in 20 min.');
+  const c = { colorChance: { score: 37, label: 'fair', why: '11% mid and high cloud to catch the light, no low cloud in the way' },
+    blockers: [{ label: 'Sidewalk shed', m: 41 }, { label: 'Supported scaffold', m: 41 }, { label: 'Street closure', m: 120 }] };
+  assert.equal(conditionsLine(c), 'Fair colour chance (37/100): 11% mid and high cloud to catch the light, no low cloud in the way. Watch for sidewalk shed 41 m away and supported scaffold 41 m away.');
+  assert.equal(conditionsLine({ colorChance: null, blockers: [] }), '');
+  assert.equal(conditionsLine(null), '');
 });
 
 test('alerts: a late message skips an iMessage line the person never texted, and falls back by channel', () => {

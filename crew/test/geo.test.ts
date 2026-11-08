@@ -98,7 +98,11 @@ test('placed people become thirds and distances relative to the camera', () => {
 import { solverRange, FINE_TUNED } from '../src/models.ts';
 test('only a user hint or the fine-tuned lens model narrows the solver', () => {
   assert.deepEqual(solverRange(80, null), [60, 106.4]);
-  assert.deepEqual(solverRange(undefined, { f35: 50, source: FINE_TUNED }), [30, 80]);
+  // The fine-tune limits the search only for long reads, with a wide window; normal and wide reads stay advisory.
+  assert.deepEqual(solverRange(undefined, { f35: 100, source: FINE_TUNED }), [45, 220]);
+  assert.equal(solverRange(undefined, { f35: 24, source: FINE_TUNED }), undefined);
+  assert.equal(solverRange(undefined, { f35: 50, source: FINE_TUNED }), undefined);
+  assert.deepEqual(solverRange(85, { f35: 24, source: FINE_TUNED }), [63.8, 113.1]); // a user's hint still wins
   assert.equal(solverRange(undefined, { f35: 28, source: 'nvidia/nemotron-3.5-super-vl-120b-a12b' }), undefined);
 });
 
@@ -111,4 +115,11 @@ test('walk and spoken words', () => {
   const spot = { id: 's', name: 'DUMBO', lat: 40.7, lon: -74, radiusM: 100, cameras: 1, modelVersion: '' };
   const r: any = { confidence: 'solid', reason: '', pose: { lat: 40.7 - dLat(40), lon: -74, alt: 0, heading: 0, pitch: 0, roll: 0, f35: 50 } };
   assert.equal(spokenPlan(spot, r), 'The mark is about 40 metres south of the centre of DUMBO. Face north and zoom to 2.1x.');
+});
+
+test('the lens fine-tune gets its training prompt verbatim', async () => {
+  const { LENS_TRAINING_PROMPT } = await import('../src/models.ts');
+  const { readFileSync } = await import('node:fs');
+  const py = readFileSync(new URL('../../lens/labels.py', import.meta.url), 'utf8');
+  assert.equal(/^PROMPT = "(.*)"$/m.exec(py)?.[1], LENS_TRAINING_PROMPT);
 });

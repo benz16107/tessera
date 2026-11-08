@@ -105,10 +105,15 @@ export async function screenText(text: string): Promise<Safety> {
 export const FINE_TUNED = 'fine-tuned lens model';
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
-/** The focal range the solver may search: a user's hint first, then the fine-tuned lens model. The base VL read is advisory only. */
+/** The focal range the solver may search: a user's hint first, then a fine-tuned read of 70 mm or more. Everything else is advisory.
+ *  The fine-tune is good at long lenses (67% telephoto recall on held-out landmarks) and weak on normal ones (9% recall for
+ *  35 to 70 mm, mostly read as wide: the 52.9 mm hero photo reads 24 mm), and the limit exists for the telephoto line-of-sight
+ *  slide, so only long reads narrow the search, with a wide window. */
+export const LENS_LIMIT_MIN_F35 = 70;
+export const LENS_TRAINING_PROMPT = 'What is the 35 mm-equivalent focal length of this photo? Answer JSON.';
 export function solverRange(hint: number | undefined, lens: { f35: number; source: string } | null): [number, number] | undefined {
   if (hint !== undefined) return [r1(hint * 0.75), r1(hint * 1.33)];
-  if (lens?.source === FINE_TUNED) return [r1(lens.f35 * 0.6), r1(lens.f35 * 1.6)];
+  if (lens?.source === FINE_TUNED && lens.f35 >= LENS_LIMIT_MIN_F35) return [r1(lens.f35 * 0.45), r1(lens.f35 * 2.2)];
   return undefined;
 }
 
@@ -116,7 +121,10 @@ const firstNumber = (s: string) => { const m = /"?f35"?\s*:\s*([\d.]+)/.exec(s) 
 
 /** 35 mm-equivalent focal estimate from the fine-tuned lens model, else Nemotron VL, else null. */
 export async function readLens(image: string): Promise<{ f35: number; source: string } | null> {
-  const prompt = 'Estimate the 35 mm-equivalent focal length (diagonal) this photo was taken with. Reply with strict JSON only: {"f35": <number>}';
+  // The fine-tune gets its training prompt (lens/labels.py PROMPT): 55.6% bin accuracy with it, 44.0% with the zero-shot prompt
+  // (lens/RESULTS.md). LENS_PROMPT in the service overrides it.
+  const zeroShot = 'Estimate the 35 mm-equivalent focal length (diagonal) this photo was taken with. Reply with strict JSON only: {"f35": <number>}';
+  const prompt = process.env.LENS_URL ? process.env.LENS_PROMPT ?? LENS_TRAINING_PROMPT : zeroShot;
   let base: string, key: string | null, model: string, source: string;
   if (process.env.LENS_URL) {
     base = process.env.LENS_URL.replace(/\/$/, ''); key = null; model = process.env.LENS_MODEL ?? 'lens'; source = FINE_TUNED;

@@ -38,7 +38,7 @@ const SESSION_Q = ['SELECT * FROM session', 'SELECT * FROM participant', 'SELECT
   'SELECT * FROM presence', 'SELECT * FROM set_event', 'SELECT * FROM activity', 'SELECT * FROM preview_job', 'SELECT * FROM sun_clock',
   'SELECT * FROM toast', 'SELECT * FROM my_sessions', 'SELECT * FROM my_scene_locks', 'SELECT * FROM live_sessions', 'SELECT * FROM prop_library',
   'SELECT * FROM shot_library', 'SELECT * FROM spot_library', 'SELECT * FROM agent_step', 'SELECT * FROM shot_version',
-  'SELECT * FROM channel_link', 'SELECT * FROM checkin'];
+  'SELECT * FROM channel_link', 'SELECT * FROM checkin', 'SELECT * FROM layer_toggle', 'SELECT * FROM layer_snapshot'];
 const OBJ = { kind: 'model', assetId: 'bicycle', name: 'Red bike', x: 1, y: 2, z: 0, qx: 0, qy: 0, qz: 0, qw: 1, scale: 1, color: '#c33', intensity: 0, lightType: '', params: '', visible: true };
 
 const maya = await connect('Maya'), jun = await connect('Jun');
@@ -54,9 +54,11 @@ check('my_sessions view returns the new session to its owner', !!s, s?.code);
 if (!s) process.exit(1);
 await maya.reducers.addSceneObject({ sessionId: s.id, ...OBJ });
 const obj = await until(() => [...maya.db.sceneObject.iter()].find(o => o.sessionId === s.id));
+await maya.reducers.setLayerToggle({ sessionId: s.id, layer: 'weather', on: true });
 await sleep(800);
 const leak = [...jun.db.session.iter()].some(x => x.id === s.id) || [...jun.db.sceneObject.iter()].some(o => o.sessionId === s.id)
-  || [...jun.db.participant.iter()].some(p => p.sessionId === s.id) || [...jun.db.sceneChange.iter()].some(c => c.sessionId === s.id);
+  || [...jun.db.participant.iter()].some(p => p.sessionId === s.id) || [...jun.db.sceneChange.iter()].some(c => c.sessionId === s.id)
+  || [...jun.db.layerToggle.iter()].some(c => c.sessionId === s.id);
 check('RLS: a non-participant sees no session, participant, object or history rows', !leak && !!obj,
   `Jun sees ${jun.db.session.count()} sessions, ${jun.db.sceneObject.count()} objects`);
 
@@ -66,6 +68,8 @@ const card = await until(() => [...jun.db.sessionCard.iter()].find(c => c.code =
 check('session_card(code) view: the code shows the card to anyone', !!card, card ? `"${card.title}", ${card.objects} object(s), ${card.online} online` : '');
 await jun.reducers.joinSession({ code: s.code, name: 'Jun', role: 'planner' });
 const junSees = await until(() => [...jun.db.sceneObject.iter()].find(o => o.sessionId === s.id));
+const tog = await until(() => [...jun.db.layerToggle.iter()].find(x => x.sessionId === s.id && x.layer === 'weather' && x.on));
+check('layer_toggle: Maya\'s weather layer reaches Jun once he joins; layer_snapshot is public', !!tog && [...jun.db.layerSnapshot.iter()].some(x => x.spotId === 'nyc_dumbo'), `${jun.db.layerSnapshot.count()} snapshots visible`);
 check('RLS: after joining, Jun sees the session and its objects', !!junSees && [...jun.db.session.iter()].some(x => x.id === s.id),
   `${[...jun.db.participant.iter()].filter(p => p.sessionId === s.id).length} participants visible`);
 

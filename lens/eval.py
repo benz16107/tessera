@@ -17,6 +17,7 @@ HERE = Path(__file__).resolve().parent
 DATA = HERE.parent / "data" / "lens"
 CFG = Path.home() / ".config" / "shotmatch"
 RESULTS = DATA / "results.json"
+KEEP = "## Fine-tune run"
 # what crew/src/models.ts readLens() sends; kept in sync by hand
 CREW_PROMPT = 'Estimate the 35 mm-equivalent focal length (diagonal) this photo was taken with. Reply with strict JSON only: {"f35": <number>}'
 
@@ -33,7 +34,14 @@ def metrics(preds):
     ok_bin = [p is not None and to_bin(p) == r["bin"] for r, p in zip(test, ps)]
     err = [abs(p - r["f35"]) / r["f35"] if p else float("inf") for r, p in zip(test, ps)]
     dumbo = [i for i, r in enumerate(test) if r["group"] == "nyc_dumbo"]
+    # the test split is mostly 24-35 mm phone photos, so plain accuracy rewards always saying "wide";
+    # balanced accuracy is the mean of per-bin recalls, and long-lens recall is the case the solver needs help with
+    recall = [sum(ok for r, ok in zip(test, ok_bin) if r["bin"] == b) / cnt
+              for b in BINS if (cnt := sum(r["bin"] == b for r in test))]
+    long_ = [i for i, r in enumerate(test) if r["bin"] in ("tele", "super-tele")]
+    long_ok = sum(ps[i] is not None and ps[i] >= 70 for i in long_)
     return dict(n=n, parsed=sum(p is not None for p in ps),
+                bal_acc=round(sum(recall) / len(recall), 3), long_recall=round(long_ok / max(1, len(long_)), 3),
                 bin_acc=round(sum(ok_bin) / n, 3), median_abs_pct_err=round(statistics.median(err) * 100, 1),
                 within25=round(sum(e <= 0.25 for e in err) / n, 3),
                 dumbo_n=len(dumbo), dumbo_bin_acc=round(sum(ok_bin[i] for i in dumbo) / max(1, len(dumbo)), 3))
@@ -118,10 +126,13 @@ def write_md(res):
     counts = {s: {b: sum(rows[f]["bin"] == b for f in fs) for b in BINS} for s, fs in splits["files"].items()}
     L = ["# Lens reader results", "",
          "Test split: whole landmarks the model never saw (" + ", ".join(splits["groups"]["test"]) +
-         f"), {len(test)} photos. The headline is bin accuracy.", "",
-         "| Reader | Bin accuracy | Median abs % error | Within 25% | NYC DUMBO bin acc | Answered |", "|---|---|---|---|---|---|"]
+         f"), {len(test)} photos. Bin accuracy rewards always saying \"wide\" (58% of the split), so read it with balanced bin accuracy "
+         "(mean of the five per-bin recalls) and long-lens recall (a 70 mm or longer photo read as 70 mm or longer), the case the solver needs help with.", "",
+         "| Reader | Bin accuracy | Balanced bin acc | Long-lens recall (>= 70 mm) | Median abs % error | Within 25% | NYC DUMBO bin acc | Answered |",
+         "|---|---|---|---|---|---|---|---|"]
+    pc = lambda x: "n/a" if x is None else f"{x:.1%}"
     for k, v in res.items():
-        L.append(f"| {k} | {v['bin_acc']:.1%} | {v['median_abs_pct_err']}% | {v['within25']:.1%} | {v['dumbo_bin_acc']:.1%} (n={v['dumbo_n']}) | {v['parsed']}/{v['n']} |")
+        L.append(f"| {k} | {v['bin_acc']:.1%} | {pc(v.get('bal_acc'))} | {pc(v.get('long_recall'))} | {v['median_abs_pct_err']}% | {v['within25']:.1%} | {v['dumbo_bin_acc']:.1%} (n={v['dumbo_n']}) | {v['parsed']}/{v['n']} |")
     L += ["", "## Dataset", "", "| Split | " + " | ".join(BINS) + " | total |", "|---|" + "---|" * (len(BINS) + 1)]
     for s, c in counts.items():
         L.append(f"| {s} | " + " | ".join(str(c[b]) for b in BINS) + f" | {sum(c.values())} |")
@@ -132,7 +143,10 @@ def write_md(res):
           "- The leave-one-out landmark row reads other test photos of the same landmark, so it is an optimistic ceiling for a landmark prior. A new landmark cannot use it.",
           "- Zero-shot models get the image and a prompt asking for strict JSON. The fine-tuned model gets its training prompt."]
     L += [f"- {k}: {v['note']}" for k, v in res.items() if v.get("note")]
-    (HERE / "RESULTS.md").write_text("\n".join(L) + "\n")
+    # hand-written sections after this marker survive a rerun
+    old = (HERE / "RESULTS.md").read_text() if (HERE / "RESULTS.md").exists() else ""
+    keep = old[old.index(KEEP):] if KEEP in old else ""
+    (HERE / "RESULTS.md").write_text("\n".join(L) + "\n" + ("\n" + keep if keep else ""))
 
 
 if __name__ == "__main__":

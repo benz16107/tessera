@@ -7,9 +7,12 @@ import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark';
 import { SPLATS } from './geometry.ts';
 
 export const splatRef: { current: SplatMesh | null } = { current: null };
+/** Spark's renderer object. Secondary renders (picture-in-picture, render layers) hide this, not the splat mesh: Spark rebuilds
+ *  its splat list a frame late, so toggling the mesh every frame would leave the main view with an empty list. */
+export const sparkRef: { current: SparkRenderer | null } = { current: null };
 
 /** First splat URL that answers, or null. Checked once per spot. */
-export function useSplatUrl(spotId: string) {
+export function useSplatUrl(spotId: string, full = false, skip: string[] = []) {
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     const override = new URLSearchParams(location.search).get('splat'); // test a splat file before its route exists
@@ -17,8 +20,9 @@ export function useSplatUrl(spotId: string) {
     const cfg = SPLATS[spotId];
     if (!cfg) return;
     let live = true;
+    setUrl(null);
     (async () => {
-      for (const u of cfg.urls) {
+      for (const u of (full ? [...cfg.full, ...cfg.urls] : cfg.urls).filter(x => !skip.includes(x))) {
         try {
           const r = await fetch(u, { method: 'HEAD' });
           const type = r.headers.get('content-type') ?? '';
@@ -27,12 +31,12 @@ export function useSplatUrl(spotId: string) {
       }
     })();
     return () => { live = false; };
-  }, [spotId]);
+  }, [spotId, full, skip.join()]); // eslint-disable-line react-hooks/exhaustive-deps
   return url;
 }
 
-export default function Splat({ spotId, url, visible, onProgress, onLoaded }: {
-  spotId: string; url: string; visible: boolean; onProgress?: (f: number) => void; onLoaded?: () => void;
+export default function Splat({ spotId, url, visible, onProgress, onLoaded, onError }: {
+  spotId: string; url: string; visible: boolean; onProgress?: (f: number) => void; onLoaded?: () => void; onError?: (e: unknown) => void;
 }) {
   const { gl, scene } = useThree();
   const cfg = SPLATS[spotId];
@@ -40,15 +44,20 @@ export default function Splat({ spotId, url, visible, onProgress, onLoaded }: {
   const mesh = useMemo(() => {
     const m = new SplatMesh({
       url,
+      lod: true, // Spark builds a level-of-detail tree in a worker, so far splats draw coarser and laptops keep their frame rate
       onProgress: e => { if (e.lengthComputable && e.total) onProgress?.(e.loaded / e.total); },
       onLoad: () => onLoaded?.(),
     });
     m.userData.world = true;
+    m.initialized.catch(e => onError?.(e)); // a file Spark can't parse: the studio moves to the next one
     splatRef.current = m;
     return m;
   }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
   // The renderer object goes at the scene root (it collects every SplatMesh in the scene); the splat sits in the ENU group.
-  useEffect(() => { scene.add(spark); return () => { scene.remove(spark); spark.dispose(); }; }, [spark, scene]);
+  useEffect(() => {
+    scene.add(spark); sparkRef.current = spark;
+    return () => { scene.remove(spark); spark.dispose(); if (sparkRef.current === spark) sparkRef.current = null; };
+  }, [spark, scene]);
   useEffect(() => () => { mesh.dispose(); if (splatRef.current === mesh) splatRef.current = null; }, [mesh]);
   return (
     <>

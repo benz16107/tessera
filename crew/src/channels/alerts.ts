@@ -12,7 +12,8 @@ import { sharedStore } from '../store.ts';
 import { isRefusal, photonEnabled } from './api.ts';
 import { run, targetFor, type Link } from './deliver.ts';
 import { linksFor } from './people.ts';
-import { alertLead, awayWords } from './marks.ts';
+import { alertLead, awayWords, conditionsLine } from './marks.ts';
+import { conditions } from '../layers/index.ts';
 import type { Channel } from './format.ts';
 import { people, tryOrder } from './order.ts';
 export { FALLBACK, people, tryOrder } from './order.ts';
@@ -54,10 +55,14 @@ export async function deliverAlert(sessionId: bigint, baseText: string, idem: st
   const store = sharedStore(), saved = store.get<{ start: string; kind: string }>('alerts', String(sessionId));
   const lead = saved && Math.abs(new Date(saved.start).getTime() - Date.now()) < 3 * 3600_000 ? alertLead(saved.kind, new Date(saved.start)) : baseText;
   const code = conn.db.session.id.find(sessionId)?.code ?? '';
+  // The geo thread's shot conditions for the window (colour chance, permits near the mark). Never worth a late alert: 15 s cap.
+  const at = saved ? new Date(saved.start) : new Date(Date.now() + 20 * 60_000);
+  const cond = await Promise.race([conditions({ sessionId, at }).catch(() => null), new Promise<null>(r => setTimeout(() => r(null), 15_000))]);
+  const extra = conditionsLine(cond);
   const hasThread = (l: Link) => store.threads().some(t => t.channel === l.channel && !!t.handle && t.sessionId === String(sessionId));
   for (const person of people(linksFor(sessionId))) {
     const order = tryOrder(person, hasThread), d = distanceOf(sessionId, person[0]);
-    const text = [lead, awayWords(d) || `Open the scout page to walk to the mark: ${PUBLIC_URL}/s/${code}`].join(' ');
+    const text = [lead, awayWords(d) || `Open the scout page to walk to the mark: ${PUBLIC_URL}/s/${code}`, extra].filter(Boolean).join(' ');
     const r: AlertResult = { name: person[0].name, tried: [], ok: false };
     for (const l of order) {
       r.tried.push(l.channel);
