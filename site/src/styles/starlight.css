@@ -47,17 +47,18 @@ h1#_top { text-wrap: balance; letter-spacing: -0.02em; font-weight: 600; line-he
 .sl-markdown-content table { display: block; overflow-x: auto; border-collapse: collapse; font-size: var(--t-sm); line-height: 1.5; }
 .sl-markdown-content th,
 .sl-markdown-content td { border: 0; border-bottom: 1px solid var(--line); padding: 0.5rem 0.75rem; vertical-align: top; background: none; }
-.sl-markdown-content th { color: var(--text-3); font: 400 var(--t-xs) / 1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; text-align: left; border-bottom-color: var(--line-2); }
+.sl-markdown-content th { color: var(--text-3); font: 500 var(--t-xs) / 1.4 var(--data); text-transform: uppercase; letter-spacing: 0.08em; text-align: left; border-bottom-color: var(--line-2); }
 .sl-markdown-content tr:nth-child(2n) { background: none; }
 
 .sl-markdown-content img { border-radius: var(--r-panel); outline: 1px solid rgba(255, 255, 255, 0.1); outline-offset: -1px; }
-.sl-markdown-content a { text-underline-offset: 0.18em; }
+.sl-markdown-content a { text-underline-offset: 0.18em; text-decoration-color: var(--link-underline); }
+.sl-markdown-content a:hover { text-decoration-color: currentColor; }
 
 /* Sidebar: amber marks only the current page. */
 .sidebar-content a[aria-current='page'],
-.sidebar-content a[aria-current='page']:hover { background: var(--raise); color: var(--text); font-weight: 600; }
+.sidebar-content a[aria-current='page']:hover { background: var(--selected); color: var(--text); font-weight: 600; }
 .sidebar-content a { border-radius: var(--r); font-size: var(--t-sm); }
-.sidebar-content .group-label .large { font: 400 var(--t-xs) / 1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); }
+.sidebar-content .group-label .large { font: 500 var(--t-xs) / 1.4 var(--data); text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); }
 
 /* Asides, cards and pagination as Studio panels: 10 px corners, a hairline all the way round, no coloured stripe. */
 .starlight-aside { border: 0; border-radius: var(--r-panel); background: var(--panel); box-shadow: 0 0 0 1px var(--line-2); }
@@ -66,7 +67,7 @@ h1#_top { text-wrap: balance; letter-spacing: -0.02em; font-weight: 600; line-he
 .pagination-links a { border-radius: var(--r-panel); border-color: var(--line); background: var(--panel); }
 .pagination-links a:hover { border-color: var(--line-2); }
 site-search button[data-open-modal] { border-radius: var(--r); border-color: var(--line); background: var(--field); height: var(--control-h-dense); }
-.right-sidebar-panel h2 { font: 400 var(--t-xs) / 1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); }
+.right-sidebar-panel h2 { font: 500 var(--t-xs) / 1.4 var(--data); text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-3); }
 .right-sidebar-panel a { font-size: var(--t-sm); }
 
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }

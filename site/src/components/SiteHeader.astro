@@ -21,7 +21,7 @@ const here = current ?? (path.startsWith('/tracks') ? 'tracks' : path.startsWith
   .sm-bar { display: flex; align-items: center; gap: 16px; height: 100%; width: 100%; }
   .sm-nav { display: flex; align-items: center; gap: 4px; margin-left: auto; }
   .sm-nav a { display: inline-flex; align-items: center; height: var(--control-h-dense); padding: 0 12px; border-radius: var(--r); font: 500 var(--t-sm) / 1 var(--sans); color: var(--text-2); text-decoration: none; white-space: nowrap; transition-property: background-color, color; transition-duration: 120ms; transition-timing-function: ease-out; }
-  .sm-nav a[aria-current='page'] { background: var(--raise); color: var(--text); }
+  .sm-nav a[aria-current='page'] { background: var(--selected); color: var(--text); }
   @media (hover: hover) and (pointer: fine) { .sm-nav a:hover { color: var(--text); } }
   .sm-cta { flex: none; }
   @media (max-width: 420px) { .sm-bar { gap: 8px; } .sm-nav a { padding: 0 8px; } }

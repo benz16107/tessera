@@ -41,5 +41,7 @@ const { title, description = DESCRIPTION, current = 'home' } = Astro.props;
   .skip:focus { top: 8px; }
   .land-head { position: sticky; top: 0; z-index: 5; height: var(--header-h); padding: 0 8px 0 16px; background: var(--bg); border-bottom: 1px solid var(--line); }
   img { outline: 1px solid rgba(255, 255, 255, 0.1); outline-offset: -1px; }
+  main a:not(.btn) { text-decoration-color: var(--link-underline); text-underline-offset: 0.2em; }
+  main a:not(.btn):hover { text-decoration-color: currentColor; }
   :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 </style>

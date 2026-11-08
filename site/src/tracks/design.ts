@@ -67,7 +67,7 @@ export default {
       status: 'live',
       img: twoViews,
       alt: 'The same shoot in two interfaces: Simple on the left, with the photo and the answer card; Studio on the right, with the outliner, the view through Cam A and the camera inspector.',
-      detail: 'Darkroom became Studio because in a set editor the scene, the photo and the render must be the brightest things on screen, and dark chrome matches the tools creators already use (Blender, Capture One, Resolve). Amber marks one thing at a time: the selection, the shot camera or the main action. Viewfinder became Simple: calmer, phone first, closer to the iMessage side.',
+      detail: 'Darkroom became Studio because in a set editor the scene, the photo and the render must be the brightest things on screen, and dark chrome matches the tools creators already use (Blender, Capture One, Resolve). Since Ben\'s 4:15 AM note the chrome is neutral grey (a near-white primary button, edged secondaries); colour is kept for what means something, the sun, golden hour and warnings. Viewfinder became Simple: calmer, phone first, closer to the iMessage side.',
     },
     {
       name: 'The answer in plain words',
@@ -136,8 +136,8 @@ export default {
       where: 'site/src/pages/index.astro, site/src/components/frames/, site/src/scripts/landing.ts',
       status: 'live',
       img: site,
-      alt: 'This site\'s home page while scrolling: an iPhone frame showing Simple\'s Found it screen, with the step title 02 Found it and an amber progress rail.',
-      detail: 'The iPhone and browser frames are Magic UI\'s components (MIT), ported to Astro. Motion is GSAP with ScrollTrigger and Lenis. The home page has about 75 words of prose; every section is a picture first.',
+      alt: 'This site\'s home page while scrolling: an iPhone frame showing Simple\'s Found it screen, with the step title 02 Found it and a progress rail.',
+      detail: 'The iPhone and browser frames are Magic UI\'s components (MIT), ported to Astro. Motion is GSAP with ScrollTrigger and Lenis. Every section of the home page shows the real product first.',
     },
   ],
   proof: [

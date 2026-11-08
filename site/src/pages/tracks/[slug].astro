@@ -141,17 +141,17 @@ const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['
   @media (max-width: 420px) { .tk { padding-inline: 16px; } }
   .tk h1, .tk h2, .tk h3 { font-weight: 600; letter-spacing: -0.02em; text-wrap: balance; margin: 0; }
   .tk p { text-wrap: pretty; }
-  .tk .num { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-  .tk code { font-family: var(--mono); font-size: 0.8125em; color: var(--text-2); overflow-wrap: anywhere; }
+  .tk .num { font-family: var(--data); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .tk code { font-family: var(--data); font-size: 0.8125em; color: var(--text-2); overflow-wrap: anywhere; }
   .tk-head { padding-top: 64px; max-width: 860px; }
-  .crumbs { display: flex; gap: 8px; font: 400 var(--t-xs) / 1 var(--mono); color: var(--text-3); }
+  .crumbs { display: flex; gap: 8px; font: 400 var(--t-xs) / 1 var(--data); color: var(--text-3); }
   .crumbs a { color: var(--text-2); text-decoration: none; }
   .crumbs a:hover { color: var(--text); text-decoration: underline; }
-  .eyebrow { margin: 24px 0 0; font: 400 var(--t-xs) / 1.4 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
+  .eyebrow { margin: 24px 0 0; font: 400 var(--t-xs) / 1.4 var(--data); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
   .tk-head h1 { margin-top: 12px; font-size: var(--t-2xl); line-height: 1.15; }
   .tk-note { margin: 24px 0 0; padding: 12px 16px; border-radius: var(--r); background: var(--panel); box-shadow: 0 0 0 1px var(--line-2); color: var(--text-2); font-size: var(--t-sm); line-height: 1.55; }
   .tk-note .tag { margin-right: 8px; }
-  .tag { display: inline-block; vertical-align: 0.1em; font: 400 var(--t-xs) / 1 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; padding: 4px 6px; border-radius: var(--r); white-space: nowrap; }
+  .tag { display: inline-block; vertical-align: 0.1em; font: 400 var(--t-xs) / 1 var(--data); text-transform: uppercase; letter-spacing: 0.06em; padding: 4px 6px; border-radius: var(--r); white-space: nowrap; }
   .tag.small { margin-left: 8px; }
   .tag.live { color: #0b0b0a; background: var(--teal); }
   .tag.built { color: var(--text-2); box-shadow: inset 0 0 0 1px var(--line-2); }
@@ -180,7 +180,7 @@ const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['
   /* Columns pack cards of different heights (with or without a screenshot) without ragged gaps. */
   .uses { list-style: none; margin: 32px 0 0; padding: 0; columns: 3 300px; column-gap: 20px; }
   .uses > .use { break-inside: avoid; margin-bottom: 20px; }
-  .src-line { margin: 16px 0 0; color: var(--text-3); font: 400 var(--t-xs) / 1.5 var(--mono); }
+  .src-line { margin: 16px 0 0; color: var(--text-3); font: 400 var(--t-xs) / 1.5 var(--data); }
   .src-line .tag { margin-right: 8px; }
   .video-row { margin: 24px 0 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; padding: 16px 20px; border-radius: var(--r-panel); background: var(--panel); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--text-2); }
   .video-row strong { color: var(--text); }
@@ -222,7 +222,7 @@ const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['
   .tk-docs a { color: var(--text); text-underline-offset: 0.2em; text-decoration-color: var(--accent); }
   .tk-next { margin-top: 96px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .tk-next a { display: flex; flex-direction: column; gap: 4px; padding: 20px; border-radius: var(--r-panel); background: var(--panel); box-shadow: 0 0 0 1px var(--line); color: var(--text); text-decoration: none; font-weight: 600; font-size: var(--t-lg); transition: background-color 0.2s ease; }
-  .tk-next a span { font: 400 var(--t-xs) / 1 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
+  .tk-next a span { font: 400 var(--t-xs) / 1 var(--data); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-3); }
   .tk-next a.r { text-align: right; align-items: flex-end; }
   @media (hover: hover) and (pointer: fine) { .tk-next a:hover { background: var(--raise); } }
   @media (max-width: 760px) {

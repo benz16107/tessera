@@ -29,8 +29,8 @@ export default defineConfig({
       expressiveCode: {
         themes: ['github-dark'],
         styleOverrides: {
-          borderRadius: '10px', borderColor: '#22211e', codeBackground: '#111110', codeFontFamily: 'var(--mono)', codeFontSize: '0.8125rem', uiFontFamily: 'var(--sans)',
-          frames: { editorTabBarBackground: '#181816', editorActiveTabBackground: '#111110', editorActiveTabIndicatorTopColor: '#f2a33a', terminalTitlebarBackground: '#181816', terminalBackground: '#111110', frameBoxShadowCssValue: 'none', inlineButtonBackground: '#33312c' },
+          borderRadius: '10px', borderColor: '#262521', codeBackground: '#111110', codeFontFamily: 'var(--mono)', codeFontSize: '0.8125rem', uiFontFamily: 'var(--sans)',
+          frames: { editorTabBarBackground: '#181816', editorActiveTabBackground: '#111110', editorActiveTabIndicatorTopColor: '#ece9e2', terminalTitlebarBackground: '#181816', terminalBackground: '#111110', frameBoxShadowCssValue: 'none', inlineButtonBackground: '#33312c' },
         },
         defaultProps: { overridesByLang: { 'sh,bash,shell,zsh,console': { frame: 'code' } } },
       },
