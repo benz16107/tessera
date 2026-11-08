@@ -40,7 +40,7 @@ In this order, so the app is first:
 - https://app.tesseraphoto.com/p/A9TVAN (the app, opened on the Manhattan Bridge demo shoot)
 - https://tesseraphoto.com (the product, every track and the docs)
 - https://tesseraphoto.com/tracks/ (every track in detail)
-- https://github.com/benz16107/tessera (the code, public; one clean commit of the build repo)
+- https://github.com/benz16107/tessera (the code, public, with the full commit history of the build)
 - https://www.figma.com/design/QrpLuCwKGGFFBSDRMd7VqS (the design file; private: **TODO** Ben, share it as "anyone with the link can view" before pasting, or leave it out)
 
 ## Built with
