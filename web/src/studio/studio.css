@@ -61,7 +61,7 @@
 .studio[data-focus='true'] > .st-top, .studio[data-focus='true'] > .st-left, .studio[data-focus='true'] > .st-right, .studio[data-focus='true'] > .st-time { visibility: hidden; }
 .studio *, .studio *::before, .studio *::after { box-sizing: border-box; }
 .studio button:where(:not(.simple *)) { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; } /* Simple's clue panel (Change place) keeps its own buttons; :where keeps the specificity */
-.studio button:disabled { cursor: not-allowed; opacity: 0.4; }
+.studio button:disabled:where(:not(.simple *)) { cursor: not-allowed; opacity: 0.4; }
 .studio :focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .studio input, .studio select, .studio textarea { font: inherit; color: inherit; }
 .studio p { margin: 0; }
@@ -81,7 +81,7 @@
 .st-btn.wide { width: 100%; }
 .st-btn[aria-pressed='true'] { background: var(--ui-selected) !important; box-shadow: inset 0 0 0 1px var(--ui-edge-hover); }
 .st-btn:not(:disabled):active { scale: 0.96; }
-.st-viewswitch .st-btn:not(.primary), .st-btn.st-expose { background: var(--glass) !important; } /* secondary buttons straight on the 3D view or the photo need the glass to read; hover (0,4,0) still wins */
+.st-viewswitch .st-btn:not(.primary), .st-btn.st-expose, .st-btn.st-sharper { background: var(--glass) !important; } /* secondary buttons straight on the 3D view or the photo need the glass to read; hover (0,4,0) still wins */
 @media (hover: hover) { .st-btn:not(:disabled):not(.primary):hover { background: var(--ui-selected) !important; } .st-btn.primary:not(:disabled):hover { background: var(--ui-primary-hover) !important; } }
 .st-icon-btn { position: relative; width: 32px; height: 32px; display: grid; place-items: center; border-radius: var(--r-sm); color: var(--text-2); flex: none; }
 .st-icon-btn::after { content: ''; position: absolute; inset: -4px; }
@@ -480,6 +480,7 @@
 .st-date span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .st-track { padding-right: 40px; }
 .st-ol-row .st-meta, .st-ol-row .st-tag { flex-shrink: 8; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-ol-row .st-tag { flex: none; } /* "shot" is four letters: the name and sub-line give way first */
 .st-page h2 { font: 500 16px var(--sans); margin: 0; text-transform: none; letter-spacing: 0; }
 .st-page-note { margin: 4px 0 16px; font-size: 13px; color: var(--text-2); }
 .st-sec-head + .st-note { white-space: normal; font-family: var(--sans); }
