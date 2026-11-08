@@ -317,3 +317,4 @@ Cap: $50 total for the hackathon. One instance at most, deleted after judging Su
 | When (CT) | Event | Plan | $/h | Running total |
 |---|---|---|---|---|
 | Sat evening | Create refused: no account credit | A40 lax | 1.71 | $0 |
+| Sat ~8:20 PM | Added $25 credit on a card; MLH $100 code registered, email pending | n/a | n/a | $0 spent, $25 credit |
