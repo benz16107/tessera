@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSpacetimeDB, useTable, useReducer } from 'spacetimedb/react';
 import { Identity, Timestamp } from 'spacetimedb';
-import type { Viewer } from 'cesium';
 import { tables, reducers } from './module_bindings/index.ts';
 import type { Pose, Session } from './module_bindings/types.ts';
 import { useConfig, NAME_KEY } from './config.ts';
-import { navigate } from './App.tsx';
-import SceneView, { type PlaceMode } from './SceneView.tsx';
-import { readPose } from './cesium.ts';
+import { navigate, LoadBoundary } from './App.tsx';
+import type { PlaceMode } from './SceneView.tsx';
+
+// Cesium is ~4 MB, so the 3D view loads in its own chunk after the planner shell paints.
+const SceneView = lazy(() => import('./SceneView.tsx'));
 import { sunAt } from './geo.ts';
 import { AnswerCard, ConfidenceBadge, JobStatus, Trace, LensPanel, PeoplePanel, LightPanel, PreviewPanel, LivePanel, ShareDialog, Toasts, PhotoDrop, Footer, Presence } from './panels.tsx';
 
@@ -180,6 +181,7 @@ function SessionView({ session, myName }: { session: Session; myName: string }) 
   const setSessionSpot = useReducer(reducers.setSessionSpot);
   const setPlanTime = useReducer(reducers.setPlanTime);
   const placePerson = useReducer(reducers.placePerson);
+  const deletePhoto = useReducer(reducers.deletePhoto);
 
   const [tab, setTab] = useState<Tab>('shot');
   const [selected, setSelected] = useState<bigint | null>(null);
@@ -189,7 +191,7 @@ function SessionView({ session, myName }: { session: Session; myName: string }) 
   const [selPerson, setSelPerson] = useState<bigint | null>(null);
   const [shadows, setShadows] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const viewerRef = useRef<Viewer | null>(null);
+  const poseNow = useRef<((f35: number) => Pose) | null>(null);
 
   const sortedPhotos = useMemo(() => [...photos].sort((a, b) => Number(a.id - b.id)), [photos]);
   const photo = sortedPhotos.find(p => p.id === selected) ?? sortedPhotos[sortedPhotos.length - 1];
@@ -200,6 +202,11 @@ function SessionView({ session, myName }: { session: Session; myName: string }) 
   const spot = spots.find(s => s.id === spotId);
   const lens = lensOverride ?? solved?.f35 ?? photo?.exifF35 ?? 26;
   const camera = cams[0];
+
+  // A solve against a spot names the shoot's spot when it had none.
+  useEffect(() => {
+    if (!session.spotId && job?.spotId) setSessionSpot({ sessionId: sid, spotId: job.spotId }).catch(() => {});
+  }, [session.spotId, job?.spotId, sid, setSessionSpot]);
 
   // New photo or new result: lens back to the solved value.
   useEffect(() => { setLensOverride(null); }, [photo?.id, result?.jobId]);
@@ -219,8 +226,7 @@ function SessionView({ session, myName }: { session: Session; myName: string }) 
   const broadcast = useCallback((pose: Pose) => { moveCamera({ sessionId: sid, pose }).catch(() => {}); }, [moveCamera, sid]);
   const changeLens = (f: number) => {
     setLensOverride(f);
-    const v = viewerRef.current;
-    if (v && !v.isDestroyed()) broadcast(readPose(v, f));
+    if (poseNow.current) broadcast(poseNow.current(f));
   };
 
   const onPick = (lat: number, lon: number) => {
@@ -256,6 +262,8 @@ function SessionView({ session, myName }: { session: Session; myName: string }) 
       <div className="workspace">
         <section className="stage" aria-label="3D view">
           <PhotoDrop session={session} spotId={session.spotId} onUploaded={() => setSelected(null)} asStage>
+            <LoadBoundary label="The 3D view">
+            <Suspense fallback={<div className="scene-frame"><div className="scene"><div className="scene-skeleton" aria-label="Loading the 3D view" /></div></div>}>
             <SceneView
               mapsKey={cfg.mapsKey}
               spot={spot}
@@ -277,8 +285,16 @@ function SessionView({ session, myName }: { session: Session; myName: string }) 
               onSelectPerson={id => { setSelPerson(id); if (id) setTab('yours'); }}
               onBroadcast={broadcast}
               onRemoteLens={f => setLensOverride(f)}
-              onReady={v => { viewerRef.current = v; }}
+              onReady={fn => { poseNow.current = fn; }}
             />
+            </Suspense>
+            </LoadBoundary>
+            {photo && !solved && (
+              <figure className="stage-photo">
+                <img src={photo.thumb} alt="Your photo" />
+                <figcaption>{job && (job.state === 'queued' || job.state === 'running') ? 'Placing this photo' : result?.confidence === 'none' ? 'Not placed' : 'Your photo'}</figcaption>
+              </figure>
+            )}
           </PhotoDrop>
           <div className="stage-bar">
             {result && <ConfidenceBadge result={result} />}
@@ -312,7 +328,16 @@ function SessionView({ session, myName }: { session: Session; myName: string }) 
                 </section>
                 <section className="block">
                   <h2>Photo</h2>
-                  <PhotoDrop session={session} spotId={session.spotId} onUploaded={() => setSelected(null)} />
+                  <PhotoDrop session={session} spotId={session.spotId} onUploaded={() => setSelected(null)} compact={!!photo} />
+                  {photo && (
+                    <div className="photo-row">
+                      <img src={photo.thumb} alt="Selected photo" width={photo.width} height={photo.height} />
+                      <span className="small muted">{photo.width} x {photo.height}{photo.exifF35 ? `, EXIF ${Math.round(photo.exifF35)} mm` : ''}{photo.source !== 'web' ? `, from ${photo.source}` : ''}</span>
+                      {identity && photo.owner.isEqual(identity) && (
+                        <button className="btn small danger" onClick={() => { deletePhoto({ photoId: photo.id }).catch(console.error); setSelected(null); }}>Remove photo</button>
+                      )}
+                    </div>
+                  )}
                   {sortedPhotos.length > 1 && (
                     <ul className="contact" aria-label="Photos in this shoot">
                       {sortedPhotos.map((p, i) => (

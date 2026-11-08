@@ -20,7 +20,8 @@ export function Footer() {
 }
 
 export function Presence({ parts, me }: { parts: readonly Participant[]; me?: Identity }) {
-  const sorted = [...parts].sort((a, b) => Number(b.online) - Number(a.online));
+  // The top bar shows who is here now; the Live tab lists everyone.
+  const sorted = parts.filter(p => p.online);
   return (
     <ul className="presence" aria-label="People in this shoot">
       {sorted.slice(0, 6).map(p => (
@@ -85,8 +86,9 @@ export function Toasts({ sessionId }: { sessionId: bigint }) {
 
 interface Upload { url: string; width: number; height: number; thumb: string; exifF35: number | null; gpsLat: number | null; gpsLon: number | null; nearestSpot: string | null }
 
-export function PhotoDrop({ session, spotId, onUploaded, asStage, children }: { session: Session; spotId: string; onUploaded: () => void; asStage?: boolean; children?: React.ReactNode }) {
+export function PhotoDrop({ session, spotId, onUploaded, asStage, compact, children }: { session: Session; spotId: string; onUploaded: () => void; asStage?: boolean; compact?: boolean; children?: React.ReactNode }) {
   const addPhoto = useReducer(reducers.addPhoto);
+  const setSessionSpot = useReducer(reducers.setSessionSpot);
   const [over, setOver] = useState(false);
   const [state, setState] = useState<'idle' | 'uploading' | 'error'>('idle');
   const [err, setErr] = useState('');
@@ -104,6 +106,7 @@ export function PhotoDrop({ session, spotId, onUploaded, asStage, children }: { 
         sessionId: session.id, spotId: u.nearestSpot ?? spotId, url: u.url, thumb: u.thumb, width: u.width, height: u.height,
         pinLat: u.gpsLat ?? undefined, pinLon: u.gpsLon ?? undefined, exifF35: u.exifF35 ?? undefined, source: 'web',
       });
+      if (!spotId && u.nearestSpot) setSessionSpot({ sessionId: session.id, spotId: u.nearestSpot }).catch(() => {});
       setState('idle');
       onUploaded();
     } catch (e) {
@@ -119,11 +122,11 @@ export function PhotoDrop({ session, spotId, onUploaded, asStage, children }: { 
     return <div className="stage-drop" data-over={over} {...drop}>{children}{over && <p className="drop-veil">Drop to place this photo</p>}</div>;
   }
   return (
-    <div className="dropzone" data-over={over} {...drop}>
+    <div className="dropzone" data-over={over} data-compact={compact || undefined} {...drop}>
       <input ref={input} type="file" accept="image/*,.heic,.heif" className="sr-only" id="photo-input" onChange={e => { const f = e.target.files?.[0]; if (f) void send(f); e.target.value = ''; }} />
-      <label htmlFor="photo-input" className="btn primary">{state === 'uploading' ? 'Uploading' : 'Choose a photo'}</label>
-      <p>or drop one anywhere on the 3D view. JPEG, PNG or HEIC.</p>
-      {!spotId && <p className="muted">No spot picked: the photo's GPS chooses one, or pick a spot above.</p>}
+      <label htmlFor="photo-input" className={compact ? 'btn' : 'btn primary'}>{state === 'uploading' ? 'Uploading' : compact ? 'Add another photo' : 'Choose a photo'}</label>
+      {!compact && <p>or drop one anywhere on the 3D view. JPEG, PNG or HEIC.</p>}
+      {!spotId && !compact && <p className="muted">No spot picked: the photo's GPS chooses one, or pick a spot above.</p>}
       {state === 'error' && <p className="error" role="alert">{err}</p>}
     </div>
   );
@@ -133,36 +136,52 @@ const STATE_TEXT: Record<string, string> = { queued: 'Queued', running: 'Solving
 
 export function JobStatus({ job, result, photo, spots, compact }: { job?: SolveJob; result?: SolveResult; photo?: Photo; spots?: readonly Spot[]; compact?: boolean }) {
   const enqueue = useReducer(reducers.enqueueSolve);
-  const [spotId, setSpotId] = useState(job?.spotId ?? '');
-  useEffect(() => { setSpotId(job?.spotId ?? ''); }, [job?.spotId]);
+  const fallbackSpot = spots?.length === 1 ? spots[0].id : '';
+  const [spotId, setSpotId] = useState(job?.spotId || fallbackSpot);
+  const [hint, setHint] = useState('');
+  useEffect(() => { setSpotId(job?.spotId || fallbackSpot); }, [job?.spotId, fallbackSpot]);
   if (compact && job) {
-    return <p className="job compact" data-state={job.state}><span className="led" aria-hidden="true" />{STATE_TEXT[job.state] ?? job.state}: {job.progress}</p>;
+    return <p className="job compact" data-state={job.state}><span className="led" aria-hidden="true" />{STATE_TEXT[job.state] ?? job.state}{job.progress !== job.state ? `: ${job.progress}` : ''}</p>;
   }
   const active = job && (job.state === 'queued' || job.state === 'running');
-  const needsRetry = !job || job.state === 'failed' || (result && result.confidence !== 'solid');
+  const unsure = !job || job.state === 'failed' || (result && result.confidence !== 'solid');
+  const retry = photo && spots && !active && (
+    <form className="retry" onSubmit={e => {
+      e.preventDefault();
+      const f = parseFloat(hint);
+      if (spotId) enqueue({ photoId: photo.id, spotId, lensHintF35: f >= 8 && f <= 1200 ? f : undefined }).catch(console.error);
+    }}>
+      <label className="field"><span>Spot</span>
+        <select value={spotId} onChange={e => setSpotId(e.target.value)}>
+          <option value="">Pick a spot</option>
+          {spots.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+      </label>
+      <label className="field"><span>Lens, mm (optional)</span>
+        <input type="number" inputMode="decimal" min={8} max={1200} step={1} value={hint} onChange={e => setHint(e.target.value)} placeholder={job?.lensHintF35 ? String(Math.round(job.lensHintF35)) : '50'} />
+      </label>
+      <button className="btn" disabled={!spotId}>Solve again</button>
+    </form>
+  );
   return (
     <div className="stack">
       {job ? (
         <p className="job" data-state={job.state} aria-live="polite">
           <span className="led" aria-hidden="true" />
-          <strong>{STATE_TEXT[job.state] ?? job.state}</strong> <span>{job.progress}</span>
+          <strong>{STATE_TEXT[job.state] ?? job.state}</strong> {job.progress !== job.state && <span>{job.progress}</span>}
           {job.state === 'queued' && job.attempts === 0 && <span className="muted"> The solver picks it up when it is running.</span>}
           {job.attempts > 1 && <span className="muted"> Attempt {job.attempts}.</span>}
+          {job.lensHintF35 !== undefined && <span className="muted"> Lens hint {Math.round(job.lensHintF35)} mm.</span>}
         </p>
-      ) : <p className="muted">No solve queued for this photo. Pick its spot and run one.</p>}
+      ) : <p className="muted">This photo had no GPS, so ShotMatch needs to know which spot it shows.</p>}
       {job?.state === 'failed' && job.error && <p className="error">{job.error}</p>}
       {result && <ConfidenceBadge result={result} detail />}
-      {needsRetry && photo && spots && !active && (
-        <form className="retry" onSubmit={e => { e.preventDefault(); if (spotId) enqueue({ photoId: photo.id, spotId }).catch(console.error); }}>
-          <label className="field"><span>Try another spot</span>
-            <select value={spotId} onChange={e => setSpotId(e.target.value)}>
-              <option value="">Pick a spot</option>
-              {spots.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </label>
-          <button className="btn" disabled={!spotId}>Run the solve again</button>
-        </form>
-      )}
+      {retry && (unsure ? (
+        <>
+          <p className="small">Know roughly which lens took it? A hint narrows the search and often fixes a far, flat scene.</p>
+          {retry}
+        </>
+      ) : <details className="resolve"><summary>Re-solve with a lens hint</summary>{retry}</details>)}
     </div>
   );
 }
@@ -173,7 +192,7 @@ export function ConfidenceBadge({ result, detail }: { result: SolveResult; detai
     <div className="conf" data-c={result.confidence}>
       <span className="conf-tag">{CONF[result.confidence] ?? result.confidence}</span>
       <span className="conf-reason">{result.reason || `${result.inliers} matches`}</span>
-      {detail && <span className="mono muted">{result.inliers} matches, {result.secs.toFixed(1)} s</span>}
+      {detail && <span className="mono muted small">solved in {result.secs.toFixed(1)} s</span>}
     </div>
   );
 }

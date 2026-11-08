@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Entity, Cartesian3, Color, HeightReference, VerticalOrigin, ScreenSpaceEventType, PolygonHierarchy,
-  ClassificationType, JulianDate, LabelStyle, Cartesian2, defined, type Viewer,
+  ClassificationType, JulianDate, LabelStyle, Cartesian2, defined,
 } from 'cesium';
 import type { Identity } from 'spacetimedb';
 import type { Camera, DevicePose, Participant, Person, Photo, Pose } from './module_bindings/types.ts';
@@ -31,13 +31,14 @@ interface Props {
   onSelectPerson: (id: bigint | null) => void;
   onBroadcast: (pose: Pose) => void;
   onRemoteLens: (f35: number) => void;
-  onReady: (v: Viewer) => void;
+  onReady: (poseNow: ((f35: number) => Pose) | null) => void; // reads the live camera; null after unmount
 }
 
+// A plain 1.7 m standing figure; viewBox ratio matches the 0.5 x 1.7 m billboard.
 const PERSON_SVG = (fill: string) =>
   'data:image/svg+xml;utf8,' + encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 100"><g fill="${fill}" stroke="#1c1a17" stroke-width="1.2">` +
-    `<circle cx="15" cy="9" r="7.5"/><path d="M6 21h18q3 0 3 3v30h-5v44h-6V62h-2v36H8V54H3V24q0-3 3-3z"/></g></svg>`
+    `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="272" viewBox="0 0 40 136"><g fill="${fill}" stroke="#1c1a17" stroke-width="1.5" stroke-linejoin="round">` +
+    `<circle cx="20" cy="11" r="8.5"/><path d="M9 25 Q20 21 31 25 L35 70 Q35 74 31 74 L29 74 L27.5 132 Q27.5 135 24.5 135 L22.5 135 L20 86 L17.5 135 L15.5 135 Q12.5 135 12.5 132 L11 74 L9 74 Q5 74 5 70 Z"/></g></svg>`
   );
 const PERSON_IMG = PERSON_SVG('#f2ebdc');
 const PERSON_SEL = PERSON_SVG('#e8a33d');
@@ -61,7 +62,7 @@ export default function SceneView(p: Props) {
     s.tileset.then(t => { if (dead) return; if (t) setTilesReady(true); else setFailed(true); });
     const v = s.viewer;
     v.clock.shouldAnimate = false;
-    p.onReady(v);
+    p.onReady(f35 => readPose(v, f35));
 
     const el = v.canvas;
     const busy = () => { interacting.current = performance.now() + 600; };
@@ -104,6 +105,7 @@ export default function SceneView(p: Props) {
       el.removeEventListener('pointerup', busy);
       el.removeEventListener('pointercancel', busy);
       el.removeEventListener('wheel', busy);
+      p.onReady(null);
       v.destroy();
       sceneRef.current = null;
     };
@@ -226,7 +228,7 @@ export default function SceneView(p: Props) {
           </div>
         )}
         {!tilesReady && !failed && <div className="scene-skeleton" aria-label="Loading 3D tiles" />}
-        {failed && <p className="scene-note">Google 3D tiles did not load. Check the maps key the crew serves.</p>}
+        {failed && <p className="scene-note">Google 3D tiles did not load after four tries. Check the connection and reload.</p>}
       </div>
     </div>
   );

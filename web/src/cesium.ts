@@ -1,7 +1,7 @@
 // Cesium helpers: viewer setup with Google Photorealistic 3D Tiles, and pose <-> camera per CONTRACTS.md.
 import {
   Viewer, Cartographic, Cartesian3, Cartesian2, Math as CMath, PerspectiveFrustum, Ion,
-  createGooglePhotorealistic3DTileset, Cesium3DTileset, ShadowMode, Color,
+  createGooglePhotorealistic3DTileset, Cesium3DTileset, Color,
 } from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import type { Pose } from './module_bindings/types.ts';
@@ -31,14 +31,23 @@ export function createScene(el: HTMLElement, mapsKey: string): Scene {
   viewer.scene.backgroundColor = Color.fromCssColorString('#b4c2cf'); // flat sky: the atmosphere does not draw without a globe
   viewer.scene.screenSpaceCameraController.enableCollisionDetection = false;
   viewer.camera.percentageChanged = 0.002;
-  const tileset = createGooglePhotorealistic3DTileset({ key: mapsKey }, { showCreditsOnScreen: true, maximumScreenSpaceError: 16 })
-    .then(t => {
-      if (viewer.isDestroyed()) return null;
-      t.shadows = ShadowMode.RECEIVE_ONLY;
-      viewer.scene.primitives.add(t);
-      return t;
-    })
-    .catch(e => { console.error('Google 3D tiles failed', e); return null; });
+  // A dropped request on a flaky network should not leave the view blank, so retry the tileset a few times.
+  const load = async (): Promise<Cesium3DTileset | null> => {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        const t = await createGooglePhotorealistic3DTileset({ key: mapsKey, onlyUsingWithGoogleGeocoder: true }, { showCreditsOnScreen: true, maximumScreenSpaceError: 16 });
+        if (viewer.isDestroyed()) return null;
+        viewer.scene.primitives.add(t);
+        return t;
+      } catch (e) {
+        console.error('Google 3D tiles failed', e);
+        if (viewer.isDestroyed()) return null;
+        await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
+      }
+    }
+    return null;
+  };
+  const tileset = load();
   return { viewer, tileset };
 }
 

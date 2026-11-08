@@ -135,7 +135,7 @@ function ScoutLive({ session }: { session: Session }) {
               : there ? <p className="there">You're there. {turn !== null ? (Math.abs(turn) < 8 ? `Facing ${compassWord(target.heading)}, shoot.` : `Turn ${turn > 0 ? 'right' : 'left'} ${Math.round(Math.abs(turn))}°.`) : `Face ${Math.round(target.heading)}° ${compassWord(target.heading)}.`}</p>
               : dist !== null ? <p><span className="big mono">{dist < 1000 ? `${Math.round(dist)} m` : `${(dist / 1000).toFixed(2)} km`}</span> to the mark{fix ? <span className="mono muted"> GPS ±{Math.round(fix.acc)} m</span> : null}</p>
               : <p>{geoErr || 'Waiting for a GPS fix.'}</p>}
-            {camErr && <p className="error">Camera: {camErr}</p>}
+            {camErr && <p className="error">No camera ({camErr}). Distance and the arrow still work.</p>}
           </div>
           {turn !== null && (
             <div className="arrow" style={{ transform: `rotate(${turn}deg)` }} role="img" aria-label={`Turn ${turn > 0 ? 'right' : 'left'} ${Math.round(Math.abs(turn))} degrees`}>

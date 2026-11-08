@@ -26,7 +26,9 @@ function Boot() {
 
   const builder = useMemo(() => {
     if (!cfg) return null;
-    const key = `${cfg.spacetimeHost}/${cfg.dbName}/auth_token`;
+    // The scout page keeps its own identity so one browser can plan and scout as two people.
+    const role = location.pathname.startsWith('/s/') ? '/scout' : '';
+    const key = `${cfg.spacetimeHost}/${cfg.dbName}/auth_token${role}`;
     return DbConnection.builder()
       .withUri(cfg.spacetimeHost)
       .withDatabaseName(cfg.dbName)
