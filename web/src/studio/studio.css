@@ -60,7 +60,7 @@
 .studio[data-focus='true'] { grid-template-columns: 0 minmax(0, 1fr) 0; grid-template-rows: 0 minmax(0, 1fr) 0; }
 .studio[data-focus='true'] > .st-top, .studio[data-focus='true'] > .st-left, .studio[data-focus='true'] > .st-right, .studio[data-focus='true'] > .st-time { visibility: hidden; }
 .studio *, .studio *::before, .studio *::after { box-sizing: border-box; }
-.studio button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.studio button:where(:not(.simple *)) { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; } /* Simple's clue panel (Change place) keeps its own buttons; :where keeps the specificity */
 .studio button:disabled { cursor: not-allowed; opacity: 0.4; }
 .studio :focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .studio input, .studio select, .studio textarea { font: inherit; color: inherit; }

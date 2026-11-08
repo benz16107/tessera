@@ -176,7 +176,7 @@ export function CameraGizmo({ o, selected, isShot, focusM }: { o: Optics; select
   const tx = Math.tan((o.hfovDeg * Math.PI) / 360), ty = Math.tan((o.vfovDeg * Math.PI) / 360);
   const rect = (d: number): [number, number, number][] => [[-tx * d, -ty * d, -d], [tx * d, -ty * d, -d], [tx * d, ty * d, -d], [-tx * d, ty * d, -d], [-tx * d, -ty * d, -d]];
   const L = 3;
-  const c = selected ? ACCENT : isShot ? '#e9e2d3' : '#8f877a';
+  const c = selected ? ACCENT : isShot ? '#b5afa4' : '#8f877a';
   const near = Math.min(o.dof.nearM, 80), far = Math.min(o.dof.farM, 80), focus = Math.min(focusM, 80);
   return (
     <group userData={{ helper: true }}>
