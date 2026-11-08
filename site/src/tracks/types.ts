@@ -34,6 +34,15 @@ export interface Thread {
   live?: { shots: { img: ImageMetadata; alt: string }[]; when: string }; // screenshots of the real round trip replace the mock
 }
 
+// Charts, stat blocks, tables and diagrams for the "In numbers" section (components/Visual.astro). Every number comes
+// from the repo and every visual names its source. ours: the bar that is Tessera's, drawn in the warm accent and labelled.
+export type Visual =
+  | { kind: 'bars'; title: string; rows: { label: string; value: number; display: string; ours?: boolean }[]; log?: boolean; note?: string; source: string }
+  | { kind: 'stats'; title: string; items: { value: string; label: string }[]; note?: string; source: string }
+  | { kind: 'table'; title: string; head: string[]; rows: string[][]; note?: string; source: string }
+  | { kind: 'flow'; title: string; steps: { label: string; detail?: string }[]; note?: string; source: string }
+  | { kind: 'hub'; title: string; center: string; spokes: { label: string; detail?: string }[]; note?: string; source: string };
+
 export interface Track {
   slug: string;
   sponsor: string; // "NVIDIA"
@@ -57,5 +66,6 @@ export interface Track {
   whyTitle?: string; // heading overrides for tracks without a product sponsor (Best Design)
   theirsTitle?: string;
   splitTitle?: string;
+  visuals?: Visual[];
   notEntered?: boolean; // a page we keep (Best Design) for a track we did not enter: left out of the track lists
 }

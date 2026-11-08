@@ -23,6 +23,30 @@ export default {
     { value: '0 rows', label: 'of a private shoot reach an outsider subscribed to every table, until they join by code', check: 'cd module && node scripts/proof.ts shotmatch' },
     { value: '38 of 38', label: 'feature checks pass on the scratch database (19 of 19 on production)', check: 'cd module && node scripts/proof.ts shotmatch-scratch' },
   ],
+  visuals: [
+    { kind: 'stats', title: 'Load test: 3 clients dragging at 10 Hz for 30 s, against production', items: [
+      { value: '900 of 900', label: 'edits committed, in every run' },
+      { value: '42 to 50 ms', label: 'median round trip (3 runs)' },
+      { value: '144 to 409 ms', label: 'p95 round trip' },
+      { value: '27.3', label: 'committed transactions a second' },
+    ], source: 'docs/SPACETIME.md; cd module && node scripts/loadtest.ts shotmatch 3 10 30' },
+    { kind: 'stats', title: 'Proof against the live module', items: [
+      { value: '38 of 38', label: 'checks on the scratch database' },
+      { value: '19 of 19', label: 'checks on production' },
+      { value: '0 rows', label: 'an outsider subscribed to every table sees of a shoot until joining by code' },
+    ], source: 'docs/SPACETIME.md; cd module && node scripts/proof.ts' },
+    { kind: 'table', title: 'The three load-test runs', head: ['Run from', 'Network', 'Committed', 'Round trip p50 / p95 / p99'], rows: [
+      ['linuxbox, home Wi-Fi, run 1', 'about 45 ms', '900 of 900', '42 / 409 / 638 ms'],
+      ['linuxbox, home Wi-Fi, run 2', 'about 45 ms', '900 of 900', '44 / 144 / 341 ms'],
+      ['Vultr VM, Dallas', '30 to 60 ms', '900 of 900', '50 / 199 / 750 ms'],
+    ], note: 'The median round trip equals one network round trip, so the database adds little per edit.', source: 'docs/SPACETIME.md, load test table' },
+    { kind: 'hub', title: 'No server of ours between the people on a shoot', center: 'SpacetimeDB module on Maincloud: every object, person, light and camera is a row', spokes: [
+      { label: 'Browsers', detail: 'Simple and Studio subscribe and call reducers directly' },
+      { label: 'Phone at the mark', detail: 'the scout page writes its position as a row' },
+      { label: 'GPU worker (the crew)', detail: 'claims render jobs by lease, writes results back' },
+      { label: 'Chat bridge', detail: 'Telegram through Photon edits the same rows' },
+    ], source: 'docs/SPACETIME.md' },
+  ],
   why: [
     { title: 'It is the primary function', body: 'Tessera is a shared set. Every object in it is a row in one TypeScript module on Maincloud. There is no API server, websocket layer, queue or cron of ours in between. Without SpacetimeDB there is no set.' },
     { title: 'Many kinds of clients, one truth', body: 'The planner\'s browser, the scout\'s phone, the GPU worker, the phone agent and the iMessage bridge all read and write the same rows, and a subscription delivers every committed change in order.' },

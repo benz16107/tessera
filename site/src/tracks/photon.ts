@@ -32,6 +32,25 @@ export default {
     { value: '29 of 29', label: 'end-to-end checks across all five mechanisms', check: 'cd crew && npx tsx scripts/photon-e2e.ts', standIn: true },
     { value: '6', label: 'channels, each in its own form: iMessage, Telegram, SMS, WhatsApp Business, email, phone', check: 'crew/src/channels/format.ts' },
   ],
+  visuals: [
+    { kind: 'table', title: 'The 9 live round trips on Telegram, Sunday Nov 8', head: ['Time (CT)', 'Round trip'], rows: [
+      ['12:42 to 12:43 AM', 'hello: /start and a reply'],
+      ['12:51 AM', 'locate: a photo in, where to stand out'],
+      ['12:52 to 12:57 AM', 'v1, fork to v1.1, versions (3 round trips)'],
+      ['12:58 AM', 'check-in from the spot'],
+      ['12:59 to 1:02 AM', 'a prop added by text'],
+      ['about 1:03 AM', 'fan-out of a studio render to the chat'],
+      ['1:24 AM', 'golden-hour alert with conditions'],
+    ], source: 'the live threads below (screenshots in web/screenshots); photon.ts thread times' },
+    { kind: 'table', title: 'Channels', head: ['Channel', 'Status', 'Proof'], rows: [
+      ['Telegram', 'live', '9 round trips through Photon\'s live API, Nov 8'],
+      ['iMessage', 'stand-in', 'end-to-end run, 29 of 29 checks'],
+      ['SMS', 'stand-in', 'end-to-end run, 29 of 29 checks'],
+      ['Voice call', 'stand-in', 'end-to-end run, 29 of 29 checks'],
+      ['Email', 'stand-in', 'end-to-end run, 29 of 29 checks'],
+      ['WhatsApp Business', 'stand-in', 'end-to-end run, 29 of 29 checks'],
+    ], note: 'Stand-in: the real crew, database and models against a stand-in for the Photon Beta API, because these lines need numbers, DNS or Meta signup in Photon\'s dashboard.', source: 'docs/PHOTON.md; crew/scripts/photon-e2e.ts' },
+  ],
   why: [
     { title: 'Most of the crew will never open a 3D editor', body: 'A shoot has a photographer, friends in the frame, someone holding a reflector, a parent driving. They already have iMessage, Telegram, WhatsApp, SMS or email. Photon lets the set come to each of them there.' },
     { title: 'The person at the spot has their hands full', body: 'A scout outdoors can call or snap one photo, not drive an editor. Calling the set and texting a photo are the two things a person can do while walking, and both run on Photon.' },

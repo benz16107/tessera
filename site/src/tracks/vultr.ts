@@ -23,6 +23,22 @@ export default {
     { value: '30.8 s', label: 'a full set command with no hosted model, on the VM\'s CPU', check: 'Studio command bar: tick Offline (Bolt), then send "add a park bench on the right and one person sitting on it"' },
     { value: '900 of 900', label: 'live edits committed in the load test run from the VM', check: 'node module/scripts/loadtest.ts shotmatch 3 10 30 on the VM; table in docs/SPACETIME.md' },
   ],
+  visuals: [
+    { kind: 'hub', title: 'Tessera on Vultr', center: 'One Vultr VM in Dallas: 12 vCPU, 24 GB, Ubuntu 24.04.5', spokes: [
+      { label: 'Caddy', detail: 'HTTPS for tesseraphoto.com, www and app, certificates fetched and renewed by itself' },
+      { label: 'The crew', detail: 'Node service: serves the app, claims jobs, calls the models, bridges messages' },
+      { label: 'The solver', detail: 'Python FastAPI on 127.0.0.1:8791, never public' },
+      { label: 'Ollama with Nemotron 3.5 Bolt', detail: 'the offline command path on the CPU' },
+      { label: 'Vultr Object Storage', detail: 'photos, previews and generated props' },
+      { label: 'Vultr Serverless Inference', detail: 'Content Safety, Nano Omni (speech), Qwen-Image 2.1, Whisper' },
+    ], source: 'docs/story.md; vultr.ts; ops/Caddyfile' },
+    { kind: 'stats', title: 'Measured on Vultr', items: [
+      { value: '0.51 s', label: 'Content Safety on text (1.9 s with an image)' },
+      { value: '30.8 s', label: 'a whole offline command on the VM CPU, no hosted model' },
+      { value: '29 s', label: 'a physics-checked render with Qwen-Image 2.1 as the generator' },
+      { value: '$0', label: 'GPU spend on Vultr: the GPU was refused, the fine-tune ran on Brev' },
+    ], source: 'docs/NVIDIA.md; lens/COST.md' },
+  ],
   why: [
     { title: 'One public box with HTTPS', body: 'Phones need HTTPS before the scout page can use the camera and motion sensors. Caddy on the Vultr VM gets certificates automatically for the app and for this site, from one machine with one IP.' },
     { title: 'The hosted models that keep the pipeline running', body: 'Nemotron Content Safety answers for our key on Vultr while the same id returns 404 on NVIDIA\'s catalog, so Vultr is our primary safety path. Qwen-Image on Vultr keeps the render pass working while NVIDIA\'s FLUX endpoint fails.' },

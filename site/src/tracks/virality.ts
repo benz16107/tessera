@@ -25,6 +25,32 @@ export default {
     { value: '79', label: 'of those 103 asked for the exact spot', check: 'docs/RESEARCH.md' },
     { value: '858 points', label: 'on the top post, a husband looking for the spot of a 1998 photo', check: 'https://www.reddit.com/r/whereisthis/comments/1wx1wae/' },
   ],
+  visuals: [
+    { kind: 'bars', title: 'From posts read to the exact-spot question', rows: [
+      { label: 'Reddit posts read', value: 1949, display: '1,949' },
+      { label: 'asked where, which lens or how to recreate', value: 103, display: '103' },
+      { label: 'asked for the exact spot', value: 79, display: '79' },
+    ], note: '22 asked about the lens and 28 how to recreate a shot; a post can ask more than one.', source: 'docs/RESEARCH.md' },
+    { kind: 'bars', title: 'Where the 103 came from', rows: [
+      { label: 'r/whereisthis', value: 68, display: '68' },
+      { label: 'r/AskPhotography', value: 18, display: '18' },
+      { label: 'r/photography', value: 6, display: '6' },
+      { label: 'r/AskNYC', value: 6, display: '6' },
+      { label: 'r/OldPhotosInRealLife', value: 2, display: '2' },
+      { label: 'r/photocritique', value: 2, display: '2' },
+      { label: 'r/WeddingPhotography', value: 1, display: '1' },
+    ], source: 'docs/RESEARCH.md' },
+    { kind: 'bars', log: true, title: 'The 8 posts on /docs/research/, by points', rows: [
+      { label: 'Spot: a 1998 photo, r/whereisthis', value: 858, display: '858' },
+      { label: 'Spot, recreate: early 90s Manhattan, r/whereisthis', value: 590, display: '590' },
+      { label: 'Spot, recreate: a graduation photo, r/AskNYC', value: 37, display: '37' },
+      { label: 'Spot: a wedding location, r/WeddingPhotography', value: 21, display: '21' },
+      { label: 'Spot, recreate: GPS and angle, r/photography', value: 6, display: '6' },
+      { label: 'Lens, recreate: Rockefeller Center, r/AskNYC', value: 6, display: '6' },
+      { label: 'Recreate, light: Jay St in DUMBO, r/AskPhotography', value: 4, display: '4' },
+      { label: 'Lens: iPhone compression, r/AskPhotography', value: 2, display: '2' },
+    ], note: 'Log scale. Points as old.reddit.com showed them at about 4 AM CT on Nov 8; they drift.', source: 'docs/RESEARCH.md' },
+  ],
   why: [
     { title: 'The question is already viral', body: 'People post a photo and ask where it was taken, then wait for strangers and AI place-finders to guess. Recreating an old photo is its own genre.' },
     { title: 'Every answer is shareable', body: 'A shoot is one link that opens on any phone, the recreation sits beside the original, and the set answers in the group chat.' },

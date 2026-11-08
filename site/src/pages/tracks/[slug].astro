@@ -19,7 +19,8 @@ const STATUS: Record<Status, string> = { live: 'Live', built: 'Built', 'stand-in
 const ytId = t.video?.url && /(?:youtu\.be\/|[?&]v=)([\w-]{11})/.exec(t.video.url)?.[1];
 const youtube = ytId ? `https://www.youtube-nocookie.com/embed/${ytId}` : null;
 const mp4 = !!t.video?.url && /\.mp4$/.test(t.video.url);
-const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['threads', 'The threads']] : []), ['where', "Where it's used"], ['proof', 'Proof'], ['split', 'Ours vs theirs'], ['limits', 'Limits'], ...(t.video ? [['video', 'Video']] : [])];
+const sections = [...(t.video ? [['video', 'Video']] : []), ['numbers', 'In numbers'], ['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['threads', 'The threads']] : []), ['where', "Where it's used"], ['proof', 'Proof'], ['split', 'Ours vs theirs'], ['limits', 'Limits']];
+import Visual from '../../components/Visual.astro';
 ---
 <Landing title={t.notEntered ? `${t.prize}: Tessera` : `${t.sponsor === 'HackUTD' ? t.prize : t.sponsor} track: Tessera`} description={t.oneLine} current="tracks">
   <article class="tk">
@@ -29,6 +30,15 @@ const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['
       <h1>{t.oneLine}</h1>
       {t.note && <p class="tk-note">{t.noteTag && <span class="tag live">{t.noteTag}</span>}{t.note}</p>}
     </header>
+
+    {t.video && (
+    <section id="video" class="tk-video">
+      {youtube ? <iframe class="video-embed" src={youtube} title={t.video.title} allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        : mp4 ? <video class="video-embed" src={t.video.url} controls preload="metadata" playsinline></video>
+        : t.video.url ? <a class="video-slot has-url" href={t.video.url}>Watch "{t.video.title}" ({t.video.length})</a>
+        : <p class="video-row"><strong>{t.video.title}</strong><span class="num">{t.video.length}</span><span>A screen recording of the live app, made after the build.</span></p>}
+      {t.video.url && <p class="video-meta"><strong>{t.video.title}</strong> <span class="num">{t.video.length}</span>{(youtube || mp4) && <> · <a href={t.video.url}>Open the video</a></>}{t.video.also && <> · <a href={t.video.also.url}>{t.video.also.label}</a></>}</p>}
+    </section>)}
 
     <figure class="tk-hero">
       {t.hero.frame === 'browser' && <Browser url={t.hero.url}><Image src={t.hero.img} alt={t.hero.alt} widths={[800, 1200, 1600]} sizes="(max-width: 1100px) 100vw, 1040px" loading="eager" /></Browser>}
@@ -47,6 +57,14 @@ const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['
     </dl>
 
     <nav class="tk-toc" aria-label="On this page">{sections.map(([id, label]) => <a href={`#${id}`}>{label}</a>)}</nav>
+
+    <section id="numbers" class="tk-sec">
+      <h2>In numbers</h2>
+      <div class="viz-grid">
+        {(t.visuals ?? []).map((v) => <Visual v={v} />)}
+        <Visual v={{ kind: 'table', title: `Every use at a glance (${t.uses.length})`, head: ['Use', 'Where', 'Status'], rows: t.uses.map((u) => [u.name, u.where, u.status === 'stand-in' ? 'stand-in' : u.status]), source: 'the cards under "Where it\'s used" below' }} />
+      </div>
+    </section>
 
     <section id="why" class="tk-sec">
       <h2>{t.whyTitle ?? `Why ${t.sponsor}`}</h2>
@@ -112,22 +130,16 @@ const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['
       <ul class="limits">{t.limits.map((x) => <li>{x}</li>)}</ul>
     </section>
 
-    {t.video && (
-    <section id="video" class="tk-sec">
-      <h2>Video</h2>
-      {youtube ? <iframe class="video-embed" src={youtube} title={t.video.title} loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-        : mp4 ? <video class="video-embed" src={t.video.url} poster={t.video.url.replace(/^\/videos\/(.+)\.mp4$/, '/videos/thumbs/poster-$1.jpg')} controls preload="metadata" playsinline></video>
-        : t.video.url ? <a class="video-slot has-url" href={t.video.url}>Watch "{t.video.title}" ({t.video.length})</a>
-        : <p class="video-row"><strong>{t.video.title}</strong><span class="num">{t.video.length}</span><span>A screen recording of the live app, made after the build. It follows this shot list.</span></p>}
-      {(youtube || mp4) && <p class="video-meta"><strong>{t.video.title}</strong> <span class="num">{t.video.length}</span>{t.video.url && <> · <a href={t.video.url}>Open the video</a></>}{t.video.also && <> · <a href={t.video.also.url}>{t.video.also.label}</a></>}</p>}
-      {t.video.shots.length > 0 && <details class="shots">
-        <summary>{t.video.url ? 'The plan it was recorded from' : 'Shot list'}: {t.video.summary}</summary>
+    {t.video && t.video.shots.length > 0 && (
+    <section id="plan" class="tk-sec">
+      <details class="shots">
+        <summary>{t.video.url ? 'The plan it was recorded from' : 'Video shot list'}: {t.video.summary}</summary>
         <table>
           <thead><tr><th>Time</th><th>On screen</th><th>Narration</th><th>Shows</th></tr></thead>
           <tbody>{t.video.shots.map((s) => <tr><td class="num">{s.t}</td><td>{s.screen}</td><td>{s.say}</td><td>{s.criterion}</td></tr>)}</tbody>
         </table>
         <p class="rec-notes"><strong>Recording notes.</strong> {t.video.notes}</p>
-      </details>}
+      </details>
     </section>)}
 
     <section class="tk-sec tk-docs">
@@ -218,7 +230,10 @@ const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['
   .video-slot .num { margin: 0; font-size: var(--t-xl); color: var(--text); }
   .video-slot p { margin: 0; max-width: 46ch; }
   .video-slot.has-url { color: var(--text); font-weight: 600; text-decoration: none; }
-  .video-embed { display: block; width: 100%; max-width: 960px; aspect-ratio: 16 / 9; margin-top: 24px; border: 0; border-radius: var(--r-panel); background: #000; }
+  .tk-video { margin-top: 32px; }
+  .viz-grid { margin-top: 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 760px) { .viz-grid { grid-template-columns: 1fr; } }
+  .video-embed { display: block; width: 100%; max-width: 960px; aspect-ratio: 16 / 9; margin-top: 0; border: 0; border-radius: var(--r-panel); background: #000; }
   .video-meta { margin: 12px 0 0; color: var(--text-2); font-size: var(--t-sm); }
   .video-meta strong { color: var(--text); font-weight: 600; }
   .shots { margin-top: 16px; }

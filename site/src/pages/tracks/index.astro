@@ -12,6 +12,11 @@ import { APP_URL, DEMO_CODE } from '../../site.ts';
       <h1>Every track runs on one shared 3D set.</h1>
       <p class="tx-lede">Tessera finds where a photo was taken and rebuilds the place as a set your group plans in. Each sponsor's product does a real job inside it.</p>
     </header>
+    <dl class="tx-strip" aria-label="One number per track">
+      {TRACKS.filter((t) => !t.notEntered && t.headline[0]).map((t) => (
+        <div><dt class="num">{t.headline[0].value}</dt><dd><strong>{t.sponsor === 'HackUTD' ? t.prize : t.sponsor}</strong> {t.headline[0].label}</dd></div>
+      ))}
+    </dl>
     <ul class="tx-grid">
       {TRACKS.filter((t) => !t.notEntered).map((t) => (
         <li>
@@ -44,6 +49,11 @@ import { APP_URL, DEMO_CODE } from '../../site.ts';
   .tx .eyebrow { margin: 0; font: 400 var(--t-xs) / 1.4 var(--data); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
   .tx h1 { margin: 12px 0 0; font-size: var(--t-2xl); line-height: 1.15; font-weight: 600; letter-spacing: -0.02em; text-wrap: balance; }
   .tx-lede { margin: 16px 0 0; color: var(--text-2); font-size: var(--t-lg); line-height: 1.6; text-wrap: pretty; }
+  .tx-strip { margin: 40px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+  .tx-strip div { border-top: 1px solid var(--line-2); padding-top: 12px; }
+  .tx-strip dt { font-size: var(--t-xl); line-height: 1.1; color: var(--text); }
+  .tx-strip dd { margin: 6px 0 0; font-size: var(--t-sm); color: var(--text-2); line-height: 1.45; }
+  .tx-strip dd strong { color: var(--text); font-weight: 600; }
   .tx-grid { list-style: none; margin: 48px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
   .tx-card { display: flex; flex-direction: column; height: 100%; border-radius: var(--r-panel); overflow: hidden; background: var(--panel); box-shadow: 0 0 0 1px var(--line); color: var(--text); text-decoration: none; transition: box-shadow 0.2s ease; }
   @media (hover: hover) and (pointer: fine) { .tx-card:hover { box-shadow: 0 0 0 1px var(--accent-line); } }
