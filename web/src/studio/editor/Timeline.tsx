@@ -109,7 +109,7 @@ export default function Timeline({ at, lat, lon, zone, camHeading, camName, onCh
           </label>
         </div>
         <div className="st-time-more" aria-hidden={!open}>
-          <Seg label="Window" value={win} onChange={setWin} flat options={[{ value: 'morning', label: 'Dawn' }, { value: 'evening', label: 'Dusk' }, { value: 'day', label: 'Day' }]} />
+          <Seg label="Window" value={win} onChange={w => { setWin(w); const mid = (x: Date, y: Date) => new Date((x.getTime() + y.getTime()) / 2); const t = w === 'day' ? times.solarNoon : w === 'morning' ? mid(times.sunrise, times.goldenHourEnd) : mid(times.goldenHour, times.sunset); if (!isNaN(t.getTime())) onChange(t); }} flat options={[{ value: 'morning', label: 'Dawn' }, { value: 'evening', label: 'Dusk' }, { value: 'day', label: 'Day' }]} />
           {sunControl}
           <label className="st-doy">
             <span className="rowlab">Date</span>

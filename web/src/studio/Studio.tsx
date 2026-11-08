@@ -187,7 +187,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
       return Math.abs(Math.log(x / y / r)) < Math.abs(Math.log(bx / by / r)) ? a : b;
     }, '3:2');
     return { ...d, aspect };
-  }, [solved?.pose.f35, !!geoSpot, photo?.exifF35, Math.round(sceneEv * 3), photoAspect]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [solved?.pose.f35, !!geoSpot, photo?.exifF35, photoAspect]); // eslint-disable-line react-hooks/exhaustive-deps -- metered once: a time change shows in the meter instead of re-exposing
   const { shot, set: setShot, error: shotError } = useShotSettings(sid, defaults);
   const frame = useMemo(() => frameFromPhoto(photo), [photo?.width, photo?.height]); // eslint-disable-line react-hooks/exhaustive-deps
   const o = useMemo(() => opticsOf(shot, frame), [shot, frame]);
@@ -748,7 +748,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const day = daylight(sun.altitude);
   const lvl = day.level;
   const skyLit: [number, number, number] = [day.tint[0] * lvl, day.tint[1] * lvl, day.tint[2] * lvl];
-  TILE_LIGHT.tileSky.value.setRGB(0.35 * skyLit[0], 0.35 * skyLit[1], 0.35 * skyLit[2]);
+  const skyK = 0.35 + 0.27 * day.stars; // a low floor by day so the sun shows; the old 0.62 after dark so buildings stay readable
+  TILE_LIGHT.tileSky.value.setRGB(skyK * skyLit[0], skyK * skyLit[1], skyK * skyLit[2]);
   const grade = previewGrade(sun.altitude);
   // Takram's atmosphere (world/Atmosphere.tsx): switched off until it beats the interim relight; ?atmosphere=1 tries it.
   const takram = useMemo(() => new URLSearchParams(location.search).has('atmosphere'), []);
@@ -910,7 +911,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
           );
         })()}
         {view !== 'shot' && photo && shotRow && <img className="st-backplate" src={photo.thumb} alt="" style={{ left: pip.x, top: pip.y, width: pip.w, height: pip.h, borderRadius: 4 }} />}
-        <div className="st-canvas">
+        <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true"><filter id="st-daygrade"><feColorMatrix type="matrix" values={`${grade.rgb[0]} 0 0 0 0  0 ${grade.rgb[1]} 0 0 0  0 0 ${grade.rgb[2]} 0 0  0 0 0 1 0`} /><feColorMatrix type="saturate" values={String(1 - grade.desat)} /></filter></svg>
+        <div className="st-canvas" style={view !== 'shot' && view !== 'map' && graded ? { filter: 'url(#st-daygrade)' } : undefined}>
           <Canvas shadows="percentage" gl={{ antialias: true, alpha: true }} frameloop={view === 'map' ? 'never' : 'always'} camera={{ fov: 50, near: 0.1, far: 20000, position: enuToThree(startCam.pos).toArray() }}
             onPointerMissed={e => {
               if (e.type !== 'click' || gizmoBusy.current || tool === 'measure' || document.pointerLockElement) return;
