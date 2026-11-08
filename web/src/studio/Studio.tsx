@@ -32,7 +32,7 @@ import PlaceSearch, { type Place } from './editor/PlaceSearch.tsx';
 import Splat, { useSplatUrl, sparkRef } from './world/Splat.tsx';
 import Catchers from './world/Catchers.tsx';
 import { geometryFor, groundZ, onStreet, SPLATS } from './world/geometry.ts';
-import { ObjectNode, SelectionBox, objectSizes } from './world/SceneObjects.tsx';
+import { ObjectNode, SelectionBox, accent, objectSizes } from './world/SceneObjects.tsx';
 import LookThrough from './post/LookThrough.tsx';
 import Overlays from './editor/Overlays.tsx';
 import Timeline from './editor/Timeline.tsx';
@@ -777,7 +777,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     latestCam.current?.setShotPhysical({ lensId: 'sony-fe-85-f14-gm', focalMm: 85, aperture: 1.4, iso: 100, shutterS: shutterForScene(sceneEv, 1.4, 100) }, true);
   };
   latestCam.current = { setShotPhysical };
-  if (import.meta.env.DEV) (window as unknown as { __cam: unknown }).__cam = { set: setShotPhysical, lock: setSubjectLock, shot, preset: comparePreset, endCompare, // test hook
+  if (import.meta.env.DEV) (window as unknown as { __cam: unknown }).__cam = { api: scene, set: setShotPhysical, lock: setSubjectLock, shot, preset: comparePreset, endCompare, // test hook
     time: (iso: string | null) => setPlanLocal(iso ? new Date(iso) : null), planTime: planTime.toISOString(), shared: session.planTime?.toDate().toISOString() ?? null, // local only: never commits
     restorePose: () => {
       if (!shotRow || !solved || !origin) return 'no camera';
@@ -1491,10 +1491,10 @@ function Picker({ pickRef }: { pickRef: React.MutableRefObject<((cx: number, cy:
 function Measure({ pts }: { pts: Vector3[] }) {
   return (
     <group userData={{ helper: true }}>
-      {pts.map((p, i) => <mesh key={i} position={[p.x, p.y, p.z + 0.03]}><sphereGeometry args={[0.08, 12, 8]} /><meshBasicMaterial color="#f2a33a" toneMapped={false} /></mesh>)}
+      {pts.map((p, i) => <mesh key={i} position={[p.x, p.y, p.z + 0.03]}><sphereGeometry args={[0.08, 12, 8]} /><meshBasicMaterial color={accent()} toneMapped={false} /></mesh>)}
       {pts.length === 2 && (
         <>
-          <Line points={pts.map(p => [p.x, p.y, p.z + 0.05] as [number, number, number])} color="#f2a33a" lineWidth={2} />
+          <Line points={pts.map(p => [p.x, p.y, p.z + 0.05] as [number, number, number])} color={accent()} lineWidth={2} />
           <Html position={[(pts[0].x + pts[1].x) / 2, (pts[0].y + pts[1].y) / 2, (pts[0].z + pts[1].z) / 2 + 0.4]} center>
             <span className="st-obj-label cam">{pts[0].distanceTo(pts[1]).toFixed(2)} m</span>
           </Html>

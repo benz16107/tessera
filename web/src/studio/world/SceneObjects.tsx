@@ -11,6 +11,9 @@ import type { SceneObject } from '../../module_bindings/types.ts';
 import { GLTF_UPRIGHT } from '../frame.ts';
 import { propById } from '../catalog/props.ts';
 import { kelvinToRgb } from '../optics.ts';
+
+/** The highlight colour token, for three.js materials that can't read CSS. Selection and the measure tool follow it. */
+export const accent = () => getComputedStyle(document.documentElement).getPropertyValue('--amber').trim() || '#e8a33d';
 import { parseParams, num } from '../scene/objects.ts';
 import type { Optics } from '../camera/shot.ts';
 
@@ -150,7 +153,7 @@ function Light({ row, expo, selected }: { row: SceneObject; expo: number; select
   const size = num(p, 'size', 0.3), shadows = p.shadows === '1';
   const target = useMemo(() => { const o = new Object3D(); o.position.set(0, 10, 0); return o; }, []);
   const i = row.intensity * expo;
-  const helperMat = <meshBasicMaterial color={selected ? '#e8a33d' : color} toneMapped={false} />;
+  const helperMat = <meshBasicMaterial color={selected ? accent() : color} toneMapped={false} />;
   return (
     <>
       <primitive object={target} />
@@ -162,7 +165,7 @@ function Light({ row, expo, selected }: { row: SceneObject; expo: number; select
         {row.lightType === 'area'
           ? <mesh rotation={[Math.PI / 2, 0, 0]}><planeGeometry args={[size, size]} />{helperMat}</mesh>
           : <mesh><sphereGeometry args={[0.12, 16, 12]} />{helperMat}</mesh>}
-        {row.lightType !== 'point' && <Line points={[[0, 0, 0], [0, 1.2, 0]]} color={selected ? '#e8a33d' : '#d8cdb4'} lineWidth={1.5} />}
+        {row.lightType !== 'point' && <Line points={[[0, 0, 0], [0, 1.2, 0]]} color={selected ? accent() : '#d8cdb4'} lineWidth={1.5} />}
       </group>
     </>
   );
@@ -173,7 +176,7 @@ export function CameraGizmo({ o, selected, isShot, focusM }: { o: Optics; select
   const tx = Math.tan((o.hfovDeg * Math.PI) / 360), ty = Math.tan((o.vfovDeg * Math.PI) / 360);
   const rect = (d: number): [number, number, number][] => [[-tx * d, -ty * d, -d], [tx * d, -ty * d, -d], [tx * d, ty * d, -d], [-tx * d, ty * d, -d], [-tx * d, -ty * d, -d]];
   const L = 3;
-  const c = selected ? '#f2a33a' : isShot ? '#e9e2d3' : '#8f877a';
+  const c = selected ? accent() : isShot ? '#e9e2d3' : '#8f877a';
   const near = Math.min(o.dof.nearM, 80), far = Math.min(o.dof.farM, 80), focus = Math.min(focusM, 80);
   return (
     <group userData={{ helper: true }}>
@@ -252,7 +255,7 @@ export function ObjectNode(p: NodeProps) {
   else if (row.kind === 'camera') body = p.isShot && p.lookingThrough ? null : <CameraGizmo o={p.optics} selected={p.selected} isShot={p.isShot} focusM={p.focusM} />;
   else body = <Html center className="studio-text-obj">{row.name}</Html>;
   const label = row.kind === 'light' ? `${row.name.split(' ')[0]} · ${num(prm, 'k', 5500)} K`
-    : row.kind === 'camera' && !(p.isShot && p.lookingThrough) ? `${p.camName} · ${Math.round(p.optics.f35)} mm` : null;
+    : row.kind === 'camera' && !(p.isShot && p.lookingThrough) ? `${p.camName} · ${prm.approx === '1' ? 'Approximate, drag to aim' : `${Math.round(p.optics.f35)} mm`}` : null;
 
   return (
     <group ref={ref} visible={row.visible} userData={{ objectId: row.id }}
@@ -287,7 +290,7 @@ export function SelectionBox({ target }: { target: Object3D<Object3DEventMap> | 
   return (
     <group ref={ref} userData={{ helper: true }}>
       <lineSegments geometry={edges} raycast={() => null}>
-        <lineBasicMaterial color="#e8a33d" />
+        <lineBasicMaterial color={accent()} />
       </lineSegments>
     </group>
   );
