@@ -1,17 +1,19 @@
 // A-4 Take me there: the scout camera (web/src/Scout.tsx) in the stage, and the walk in words beside it: distance from
-// this person's shared device position, walking directions, and a QR code to open the camera on a phone.
-import { useEffect, useState } from 'react';
+// this person's shared device position, walking directions, the geo thread's compact map of the shot (web/src/layers),
+// and a QR code to open the camera on a phone.
+import { Suspense, useEffect, useState } from 'react';
 import { useSpacetimeDB, useTable } from 'spacetimedb/react';
 import QRCode from 'qrcode';
 import { tables } from '../module_bindings/index.ts';
-import type { Photo, Session, SolveResult } from '../module_bindings/types.ts';
+import type { Photo, Session, SolveResult, Spot } from '../module_bindings/types.ts';
+import { useGeoLayers, GeoMapView } from '../layers/index.ts';
 import { useConfig, shareBase } from '../config.ts';
 import { bearing, compassWord, metersBetween } from '../geo.ts';
 import { ScoutView } from '../Scout.tsx';
 import { fmtDistance } from './lib.ts';
 import { Arrow } from './icons.tsx';
 
-function There({ session, result }: { session: Session; result: SolveResult; photo: Photo; zone: string }) {
+function There({ session, result, spot, zone }: { session: Session; result: SolveResult; photo: Photo; zone: string; spot?: Spot }) {
   const { identity } = useSpacetimeDB();
   const [parts] = useTable(tables.participant.where(r => r.sessionId.eq(session.id)));
   const [poses] = useTable(tables.devicePose.where(r => r.sessionId.eq(session.id)));
@@ -19,6 +21,8 @@ function There({ session, result }: { session: Session; result: SolveResult; pho
   const scoutUrl = `${shareBase(useConfig())}/s/${session.code}`;
   useEffect(() => { QRCode.toDataURL(scoutUrl, { margin: 1, width: 320, color: { dark: '#1d1d1f', light: '#ffffff' } }).then(setQr).catch(() => {}); }, [scoutUrl]);
   const pose = result.pose;
+  const planTime = session.planTime?.toDate() ?? new Date(); // useGeoLayers rounds to half-hour slots, so a fresh Date is fine
+  const geo = useGeoLayers(session.id, session.spotId, planTime);
   const walk = `https://www.google.com/maps/dir/?api=1&destination=${pose.lat},${pose.lon}&travelmode=walking`;
   const face = `${Math.round(pose.heading)}° ${compassWord(pose.heading)}`;
   // Everyone walking: this person and any scout, from the shared device_pose rows.
@@ -39,6 +43,13 @@ function There({ session, result }: { session: Session; result: SolveResult; pho
         <li>Turn until the street lines up with the ghost, then take the photo.</li>
       </ol>
       <a className="s-btn primary big" href={walk} target="_blank" rel="noreferrer"><Arrow width={18} height={18} /> Walking directions</a>
+      {spot && (
+        <div className="s-map" aria-label="Map of the shot: the camera and its view, the sun, and anyone walking">
+          <Suspense fallback={<span className="s-sk s-sk-fill" />}>
+            <GeoMapView compact geo={geo} sessionId={session.id} origin={{ lat: spot.lat, lon: spot.lon, height: 0 }} at={planTime} zone={zone} />
+          </Suspense>
+        </div>
+      )}
       {walkers.length > 0 && (
         <>
           <hr />

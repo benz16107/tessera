@@ -62,6 +62,14 @@ export default function Map2D({ geo, center, camera, height = 320, zoom = 16.2, 
     const m = new MlMap({ container: el.current, style: dark ? MAP_STYLE : MAP_STYLE_LIGHT, center: [center.lon, center.lat], zoom, attributionControl: false, interactive, maxPitch: 60 });
     // OpenFreeMap's TileJSON carries its attribution ("OpenFreeMap © OpenMapTiles Data from OpenStreetMap"); the control shows it.
     m.addControl(new AttributionControl({ compact: true }), 'bottom-right');
+    // MapLibre opens compact attribution until the first drag; on a phone-width map that covers the bottom of the view.
+    // Start it collapsed there: the (i) button keeps the OpenStreetMap credit one tap away, as ODbL requires.
+    m.once('idle', () => {
+      if (m.getContainer().clientWidth > 640) return;
+      const a = m.getContainer().querySelector('.maplibregl-ctrl-attrib');
+      a?.removeAttribute('open');
+      a?.classList.remove('maplibregl-compact-show');
+    });
     if (interactive) m.addControl(new NavigationControl({ visualizePitch: true }), 'top-right');
     m.on('load', () => {
       // The dark style is near black; lift roads, buildings and labels a step so the base map reads under the layers.

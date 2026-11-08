@@ -209,6 +209,7 @@
 .s-walkers { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
 .s-walkers li { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; }
 .s-walkers span { color: var(--text-2); }
+.s-map { position: relative; height: 320px; margin-top: 24px; border-radius: 12px; overflow: hidden; background: var(--fill); }
 .s-phoneqr { display: flex; align-items: center; gap: 20px; }
 .s-phoneqr img { border-radius: 12px; border: 1px solid var(--line); background: #fff; }
 
@@ -370,6 +371,7 @@
   .s-invite-row .s-field:first-child { flex: 1 1 100%; }
   .s-sharelink img { width: 104px; height: 104px; }
   .sc-dist { font-size: 40px; }
+  .s-map { height: 300px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

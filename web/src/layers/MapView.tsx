@@ -123,7 +123,7 @@ export default function MapView({ geo, sessionId, origin, at, zone, theme, compa
   const [card, setCard] = useState<{ p: Record<string, any>; lngLat: [number, number] } | null>(null);
   const [, setTick] = useState(0);
   const drag = useRef<{ id: string; moved: boolean } | null>(null);
-  const armed = useRef(true);
+  const armed = useRef(true), applied = useRef('');
   const latest = useRef({ shots, cones, byId, onCamera, onEnter3D, enter3DZoom, compact });
   latest.current = { shots, cones, byId, onCamera, onEnter3D, enter3DZoom, compact };
 
@@ -217,6 +217,16 @@ export default function MapView({ geo, sessionId, origin, at, zone, theme, compa
     setReady(true);
   };
 
+  // Simple mode: frame the shot camera's cone instead of the spot's centre, once, when the camera first appears.
+  const framed = useRef(false);
+  useEffect(() => {
+    const m = map.current, cam = shots.features.find(f => f.properties.kind === 'camera' && f.properties.isShot);
+    if (!compact || !ready || !m || framed.current || cam?.geometry?.type !== 'Point') return;
+    framed.current = true;
+    const [lon, lat] = cam.geometry.coordinates;
+    m.jumpTo({ center: offset(lat, lon, Number(cam.properties.heading) || 0, 45) });
+  }, [compact, ready, shots]);
+
   useEffect(() => {
     const m = map.current;
     if (!m || !ready) return;
@@ -228,6 +238,10 @@ export default function MapView({ geo, sessionId, origin, at, zone, theme, compa
 
   useEffect(() => {
     if (!camera || !map.current) return;
+    // Compare by value: a parent that passes a fresh object each render must not keep re-jumping (and disarming 3D).
+    const key = [camera.lat, camera.lon, camera.zoom, camera.bearing, camera.pitch].map(v => v.toFixed(6)).join();
+    if (key === applied.current) return;
+    applied.current = key;
     armed.current = camera.zoom < enter3DZoom - 0.6; // arriving from 3D: don't bounce straight back in
     map.current.jumpTo({ center: [camera.lon, camera.lat], zoom: camera.zoom, bearing: camera.bearing, pitch: camera.pitch });
   }, [camera, ready]); // eslint-disable-line react-hooks/exhaustive-deps

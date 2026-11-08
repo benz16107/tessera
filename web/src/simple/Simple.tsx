@@ -201,7 +201,7 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
     <Yours sessionId={sid} photo={photo} spotId={spotId} solved={result} shot={shot} setShot={setShot} o={o} planTime={planTime} zone={zone}
       changeTime={changeTime} people={scene.rows.filter(r => r.kind === 'person').length} capture={capture} sun={sun} credit={owner} />
   );
-  else panel = <There session={session} result={result} photo={photo} zone={zone} />;
+  else panel = <There session={session} result={result} photo={photo} zone={zone} spot={spot} />;
 
   return (
     <div className="simple s-app" data-step={stageReady ? step : 'solving'}>
