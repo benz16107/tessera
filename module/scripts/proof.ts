@@ -73,6 +73,22 @@ check('layer_toggle: Maya\'s weather layer reaches Jun once he joins; layer_snap
 check('RLS: after joining, Jun sees the session and its objects', !!junSees && [...jun.db.session.iter()].some(x => x.id === s.id),
   `${[...jun.db.participant.iter()].filter(p => p.sessionId === s.id).length} participants visible`);
 
+// 2a. Naming an untitled shoot: any member while it is untitled, then only the owner.
+await jun.reducers.renameSession({ sessionId: s.id, title: 'Palace of Fine Arts, San Francisco' });
+const renamed = await until(() => maya.db.session.id.find(s.id)?.title === 'Palace of Fine Arts, San Francisco' || undefined);
+let renameErr = '';
+await jun.reducers.renameSession({ sessionId: s.id, title: 'Something else' }).catch(e => { renameErr = String(e?.message ?? e); });
+check('renameSession: a member names an untitled shoot, then only the owner can rename it', !!renamed && /only the owner/.test(renameErr), renameErr);
+await maya.reducers.renameSession({ sessionId: s.id, title: 'New shoot' }); // back to a default so the Nemotron title check below still runs
+
+// 2b. A scout never heartbeats: joining and pushing poses keep them in presence.
+const scout = await connect('Theo (scout)');
+await scout.reducers.joinSession({ code: s.code, name: 'Theo', role: 'scout' });
+await scout.reducers.pushDevicePose({ sessionId: s.id, lat: 40.7033, lon: -73.9894, accuracyM: 5, heading: 10 });
+const scoutPres = await until(() => [...jun.db.presence.iter()].find(p => p.sessionId === s.id && p.name === 'Theo'));
+check('a scout appears in presence from joining and pushing poses (no heartbeat)', scoutPres?.status === 'active', scoutPres ? `${scoutPres.name} ${scoutPres.status}` : 'missing');
+scout.disconnect();
+
 // 3. Presence and set events.
 await maya.reducers.heartbeat({ sessionId: s.id, focusObjectId: obj!.id });
 const pres = await until(() => [...jun.db.presence.iter()].find(p => p.name === 'Maya'));
@@ -125,6 +141,19 @@ await sleep(800);
 check('restore to the start keeps the shot camera', cams().length === 1 && ![...maya.db.sceneObject.iter()].some(o => o.id === obj!.id), `${cams().length} camera(s), bike ${maya.db.sceneObject.id.find(obj!.id) ? 'still there' : 'gone'}`);
 await maya.reducers.restoreSceneTo({ sessionId: s.id, changeId: addId });
 await until(() => maya.db.sceneObject.id.find(obj!.id));
+
+// 4c. An automatic place title can be renamed by any member; a typed one stays the owner's.
+const cam = cams()[0];
+await maya.reducers.updateSceneObject({ id: cam.id, sessionId: s.id, ...CAM, params: `${cam.params};placed=search;place=Eiffel Tower, Paris` });
+await maya.reducers.renameSession({ sessionId: s.id, title: 'Eiffel Tower, Paris' });
+let autoErr = '';
+await jun.reducers.renameSession({ sessionId: s.id, title: 'Arc de Triomphe, Paris' }).catch(e => { autoErr = String(e?.message ?? e); });
+const moved = await until(() => maya.db.session.id.find(s.id)?.title === 'Arc de Triomphe, Paris' || undefined, 5000);
+await maya.reducers.renameSession({ sessionId: s.id, title: 'Our anniversary shoot' });
+let typedErr = '';
+await jun.reducers.renameSession({ sessionId: s.id, title: 'Somewhere else' }).catch(e => { typedErr = String(e?.message ?? e); });
+check('renameSession: a member may replace the automatic place title, not a typed one', !!moved && !autoErr && /only the owner/.test(typedErr), autoErr || typedErr);
+await maya.reducers.renameSession({ sessionId: s.id, title: 'New shoot' }); // back to a default for the Nemotron check
 
 // 5. Live sun: a per-session schedule moves session.planTime.
 await maya.reducers.setSunClock({ sessionId: s.id, rate: 600 });

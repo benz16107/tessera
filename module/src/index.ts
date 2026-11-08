@@ -511,6 +511,13 @@ const trace = (ctx: Ctx, sessionId: bigint, reducer: string, detail = '') => tra
 const COLORS = ['#E4572E', '#3A86FF', '#F3A712', '#2EC4B6', '#9B5DE5', '#F15BB5', '#8AC926', '#FF924C'];
 const colorFor = (participantId: bigint) => COLORS[Number(participantId % BigInt(COLORS.length))];
 
+/** Marks a participant active in presence; `focusObjectId` undefined keeps what their row says. */
+const touchPresence = (ctx: Ctx, me: { id: bigint; sessionId: bigint; name: string }, focusObjectId?: bigint) => {
+  const old = ctx.db.presence.participantId.find(me.id);
+  const row = { participantId: me.id, sessionId: me.sessionId, identity: ctx.sender, name: me.name, color: colorFor(me.id), status: 'active', focusObjectId: focusObjectId ?? old?.focusObjectId ?? 0n, at: ctx.timestamp };
+  if (old) ctx.db.presence.participantId.update(row); else ctx.db.presence.insert(row);
+};
+
 const DEFAULT_PUBLIC_URL = 'https://app.tesseraphoto.com';
 const absUrl = (ctx: Ctx, u: string) =>
   /^https?:\/\//.test(u) ? u : `${(ctx.env.PUBLIC_URL ?? DEFAULT_PUBLIC_URL).replace(/\/$/, '')}${u.startsWith('/') ? '' : '/'}${u}`;
@@ -655,9 +662,25 @@ export const joinSession = spacetimedb.reducer(
     if (!s) throw new SenderError('no session with that code');
     if (role !== 'planner' && role !== 'scout') throw new SenderError('role must be planner or scout');
     addParticipant(ctx, s.id, text(name, 40), role);
+    touchPresence(ctx, member(ctx, s.id)!); // listed at once; scouts never heartbeat, so pushDevicePose keeps them listed
     trace(ctx, s.id, 'joinSession', role);
   }
 );
+
+// Members may name a shoot while it still has a default title or the last automatic place name (the place= on the shot
+// camera; Simple renames before it moves the camera); a title someone typed is the owner's or the crew's to change. Photon thread sessions keep their title: the crew finds them by it.
+export const renameSession = spacetimedb.reducer({ sessionId: t.u64(), title: t.string() }, (ctx, { sessionId, title }) => {
+  requireMember(ctx, sessionId);
+  const s = ctx.db.session.id.find(sessionId)!;
+  const next = text(title.trim(), 120);
+  if (!next) throw new SenderError('title required');
+  if (s.title.startsWith('photon:')) throw new SenderError('this shoot is named by its text thread');
+  const autoPlace = shotCams(ctx, sessionId).map(c => /(?:^|;)place=([^;]*)/.exec(c.params)?.[1]).find(Boolean);
+  if (!UNTITLED.has(s.title) && s.title !== autoPlace && !s.owner.equals(ctx.sender) && !isCrew(ctx))
+    throw new SenderError('only the owner can rename this shoot');
+  ctx.db.session.id.update({ ...s, title: next });
+  trace(ctx, sessionId, 'renameSession', next);
+});
 
 export const setSessionSpot = spacetimedb.reducer({ sessionId: t.u64(), spotId: t.string() }, (ctx, { sessionId, spotId }) => {
   requireMember(ctx, sessionId);
@@ -1109,6 +1132,9 @@ export const pushDevicePose = spacetimedb.reducer(
     const me = member(ctx, a.sessionId);
     if (!me) throw new SenderError('join the session first');
     finite(a.lat, a.lon, a.accuracyM);
+    // The scout page sends ~5 poses a second; refreshing presence every 5 s keeps the scout listed without flooding.
+    const seen = ctx.db.presence.participantId.find(me.id);
+    if (!seen || seen.status !== 'active' || ctx.timestamp.microsSinceUnixEpoch - seen.at.microsSinceUnixEpoch > 5_000_000n) touchPresence(ctx, me);
     const prev = ctx.db.devicePose.participantId.find(me.id);
     const row = { participantId: me.id, sessionId: a.sessionId, lat: a.lat, lon: a.lon, accuracyM: a.accuracyM, heading: a.heading, at: ctx.timestamp };
     if (prev) ctx.db.devicePose.participantId.update(row); else ctx.db.devicePose.insert(row);
@@ -1304,8 +1330,7 @@ export const sweep = spacetimedb.reducer({ onSchedule: sweepTimer }, { timer: sw
 export const heartbeat = spacetimedb.reducer({ sessionId: t.u64(), focusObjectId: t.u64() }, (ctx, { sessionId, focusObjectId }) => {
   const me = member(ctx, sessionId);
   if (!me) throw new SenderError('join the session first');
-  const row = { participantId: me.id, sessionId, identity: ctx.sender, name: me.name, color: colorFor(me.id), status: 'active', focusObjectId, at: ctx.timestamp };
-  if (ctx.db.presence.participantId.find(me.id)) ctx.db.presence.participantId.update(row); else ctx.db.presence.insert(row);
+  touchPresence(ctx, me, focusObjectId);
 });
 
 const IDLE_US = 30_000_000n, GONE_US = 120_000_000n;
