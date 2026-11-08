@@ -117,6 +117,7 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
   const [parts] = useTable(tables.participant.where(r => r.sessionId.eq(sid)));
   const setPlanTime = useReducer(reducers.setPlanTime);
   const setSessionSpot = useReducer(reducers.setSessionSpot);
+  const renameSession = useReducer(reducers.renameSession);
   const scene = useScene(sid);
 
   // The newest photo is the one this shoot is about; its newest job and its result drive the screen.
@@ -203,6 +204,10 @@ function SimpleSession({ session, myName, active }: { session: Session; myName: 
     // The label and name go first, the pin second, so no screen pairs the new mark with the old place's name.
     placedNext.current = { by, radiusM, name: place };
     const patch = { placed: by, area: by === 'area' && radiusM ? Math.round(radiusM) : '', approx: 1, place: place ?? '' };
+    // The title follows the place while it is untitled or still the last placement's name; a title someone typed stays.
+    const prev = shotRow ? parseParams(shotRow.params).place : undefined;
+    if (place && place !== session.title && (['', 'Untitled shoot', 'New shoot'].includes(session.title) || (prev && session.title === prev)))
+      renameSession({ sessionId: sid, title: place }).catch(() => {}); // the module refuses non-owners once the shoot is named
     if (shotRow) scene.setObject(shotRow, withParams({ ...stateOf(shotRow), x: 0, y: 0, z: 1.6 }, patch));
     await setSessionSpot({ sessionId: sid, spotId: geoSpotId(lat, lon, await groundHeight(lat, lon)) });
   };
