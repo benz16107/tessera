@@ -1,4 +1,4 @@
-// HackUTD Best Design. Facts from design/REPORT.md (directions, round 3, derived and invented values), web/src/simple and
+// Design notes: how Tessera was designed. We did not enter HackUTD Best Design (our HackUTD track is Virality). Facts from design/REPORT.md (directions, round 3, derived and invented values), web/src/simple and
 // web/src/studio (labels, states, shortcuts), and the site itself. Figma frames are labelled as mockups; every other image
 // is a screenshot of the live app on shoot A9TVAN.
 import type { Track } from './types.ts';
@@ -16,13 +16,14 @@ import site from '../assets/cards/design-site.png';
 export default {
   slug: 'design',
   sponsor: 'HackUTD',
-  prize: 'Best Design',
+  prize: 'Design notes',
+  notEntered: true,
   whyTitle: 'Why it is designed this way',
   splitTitle: 'What we made, what we built on',
   theirsTitle: 'Tools and libraries we built on',
-  order: 4,
+  order: 6,
   oneLine: 'We designed Tessera in Figma before writing code, then built two interfaces from it, Simple for anyone and Studio for photographers, over one live set.',
-  note: 'The Figma images on this page are design mockups and are labelled as such. Every other image is a screenshot of the live app.',
+  note: 'How Tessera was designed. We did not enter Best Design: our HackUTD track is Virality. The Figma images on this page are design mockups and are labelled as such; every other image is a screenshot of the live app.',
   hero: {
     img: hero,
     alt: 'Tessera Studio in World view on the demo shoot: the Google Photorealistic 3D Tiles of DUMBO from above, Cam A and its frustum on Washington St under the Manhattan Bridge, the photo in the corner, and the camera inspector with a Tamron 28-75mm lens at 42 mm, f/2.8.',
@@ -168,20 +169,6 @@ export default {
     'Studio\'s exposure uses a sunny-16 sky model, not a measurement, and the render layers are not lens-distorted.',
     'Accessibility was checked against the brief in screenshots. No screen-reader audit was run.',
   ],
-  video: {
-    title: 'From Figma to two interfaces',
-    length: 'about 2:00',
-    summary: 'A screen recording that walks the Figma directions, then the same screens in the live app: Simple in plain words, Studio with the real camera, and the honest states.',
-    shots: [
-      { t: '0:00 to 0:15', screen: 'Simple in a phone-sized window: drop the DUMBO photo, the solving steps', say: 'You saw a photo and want your own. The answer is technical, so we designed how to say it before writing code.', criterion: 'Problem first' },
-      { t: '0:15 to 0:40', screen: 'Figma cover: pan across A Viewfinder, B Darkroom, C Call sheet', say: 'Three directions for the same four screens: a light viewfinder, a dark set of camera instruments, and a film crew\'s call sheet.', criterion: 'Process' },
-      { t: '0:40 to 1:00', screen: 'Figma round 3: the set editor in B, then in A', say: 'Then the virtual set. Dark won for the editor: the scene, the photo and the render are the brightest things on screen.', criterion: 'Rationale' },
-      { t: '1:00 to 1:25', screen: 'Live Simple /p/A9TVAN: Found it; drag the 3D to Photo slider; tap Make it yours', say: 'Simple says it in plain words: face 4 degrees north, 2.2x on your iPhone. Slide to check the match yourself.', criterion: 'Usability' },
-      { t: '1:25 to 1:45', screen: 'Tap Studio in the toggle: Through Cam A, turn the lens ring, the depth of field updates', say: 'Studio gives a photographer the real camera: lens, aperture, depth of field, the light. Same set, same moment.', criterion: 'Two views, one set' },
-      { t: '1:45 to 2:00', screen: 'The "Couldn\'t place" screen for the 75-match photo, then a render labelled AI interpretation', say: 'And it is honest: it says when it can\'t place a photo, and labels every AI image.', criterion: 'Trust' },
-    ],
-    notes: 'Figma in presentation mode on the cover page, then the round 3 page. Simple at 393 x 852 for the phone beats, Studio at 1512 x 982. The "Couldn\'t place" beat needs the held-out photo d0473.jpg from spots/nyc_dumbo/test/ dropped into a test session, not A9TVAN.',
-  },
   docs: [
     { label: 'Get started', href: '/docs/get-started/' },
     { label: 'The virtual set', href: '/docs/how-it-works/virtual-set/' },

@@ -216,5 +216,5 @@ joins, the scout walks, Nemotron edits from a sentence, the render lands in the 
 | NVIDIA | decided | nothing |
 | SpacetimeDB | decided | nothing (repo public since Sunday morning) |
 | Photon | decided | Photon dashboard lines (Ben, `crew/PHOTON.md`) |
-| HackUTD Best Design | decided | nothing |
+| HackUTD Virality | decided | nothing (Best Design not entered; its story above is kept as design notes) |
 | MLH Vultr | decided | nothing |

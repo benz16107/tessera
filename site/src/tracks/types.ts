@@ -49,11 +49,13 @@ export interface Track {
   ours: string[]; // what Tessera built
   theirs: string[]; // what the sponsor's product does
   limits: string[];
-  video: { title: string; length: string; summary: string; shots: Shot[]; notes: string; url?: string };
+  // url: a YouTube link or a self-hosted .mp4 (both embed) or any page (a link). also: a second cut of the same video.
+  video?: { title: string; length: string; summary: string; shots: Shot[]; notes: string; url?: string; also?: { label: string; url: string } };
   docs: { label: string; href: string }[];
   note?: string; // one honest status line shown near the top, e.g. stand-in proof
   noteTag?: string; // optional tag before the note, e.g. "Live on Telegram"
   whyTitle?: string; // heading overrides for tracks without a product sponsor (Best Design)
   theirsTitle?: string;
   splitTitle?: string;
+  notEntered?: boolean; // a page we keep (Best Design) for a track we did not enter: left out of the track lists
 }

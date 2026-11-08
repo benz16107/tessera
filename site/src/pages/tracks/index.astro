@@ -13,13 +13,13 @@ import { APP_URL, DEMO_CODE } from '../../site.ts';
       <p class="tx-lede">Tessera finds where a photo was taken and rebuilds the place as a set your group plans in. Each sponsor's product does a real job inside it.</p>
     </header>
     <ul class="tx-grid">
-      {TRACKS.map((t) => (
+      {TRACKS.filter((t) => !t.notEntered).map((t) => (
         <li>
           <a class="tx-card" href={`/tracks/${t.slug}/`}>
             <Image class="tx-img" src={t.hero.img} alt="" widths={[480, 800]} sizes="(max-width: 760px) 100vw, 520px" />
             <div class="tx-body">
               <p class="tx-prize">{t.prize}</p>
-              <h2>{t.slug === 'design' ? t.prize : t.sponsor}</h2>
+              <h2>{t.sponsor === 'HackUTD' ? t.prize : t.sponsor}</h2>
               <p class="tx-line">{t.oneLine}</p>
               {t.headline[0] && <p class="tx-num"><span class="num">{t.headline[0].value}</span> {t.headline[0].label}</p>}
             </div>
@@ -28,7 +28,7 @@ import { APP_URL, DEMO_CODE } from '../../site.ts';
       ))}
     </ul>
     <section class="tx-foot">
-      <p>The overall prizes are judged on the whole project. Try it on the demo shoot, or read how it works.</p>
+      <p>The overall prizes are judged on the whole project. Try it on the demo shoot, or read how it works. Also kept: <a href="/tracks/design/">how we designed Tessera</a> (not a track we entered).</p>
       <div class="tx-links">
         <a class="btn primary" href={`${APP_URL}/p/${DEMO_CODE}`}>Open the demo shoot</a>
         <a class="btn secondary" href="/docs/get-started/">Read the docs</a>

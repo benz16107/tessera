@@ -4,9 +4,9 @@ Field ids from the Devpost MCP's get_submission_requirements. The lead submits t
 
 | Field | Required | Answer |
 |---|---|---|
-| 29865 Public GitHub repository link | yes | https://github.com/benz16107/shotmatch (**open: Ben makes it public**) |
+| 29865 Public GitHub repository link | yes | https://github.com/benz16107/tessera (public, full history) |
 | 29405 Technology experience and feedback | yes | see below |
-| 29406 Schools of every team member | yes | University of Toronto (**open: Ben confirms teammates and their schools**) |
+| 29406 Schools of every team member | yes | University of Toronto (Ben Zhou and Estella Zhang) |
 | 29407 Domains registered with GoDaddy this hackathon | no | tesseraphoto.com (registered through GoDaddy on Nov 8; a .com, so not a GoDaddy Registry domain) |
 | 29408 Track limit confirmation | yes | true (sponsor tracks: NVIDIA, Spacetime, Photon; HackUTD: Virality; MLH: Best Use of Vultr) |
 | 29409 GenAI tools used this weekend | no | Claude, Codex |

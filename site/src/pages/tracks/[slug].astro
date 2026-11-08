@@ -15,9 +15,13 @@ export function getStaticPaths() {
 interface Props { t: Track; prev?: Track; next?: Track }
 const { t, prev, next } = Astro.props;
 const STATUS: Record<Status, string> = { live: 'Live', built: 'Built', 'stand-in': 'Stand-in proof', blocked: 'Blocked' };
-const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['threads', 'The threads']] : []), ['where', "Where it's used"], ['proof', 'Proof'], ['split', 'Ours vs theirs'], ['limits', 'Limits'], ['video', 'Video']];
+// A YouTube link embeds through youtube-nocookie; a self-hosted .mp4 (/videos/, outside the build) plays in place.
+const ytId = t.video?.url && /(?:youtu\.be\/|[?&]v=)([\w-]{11})/.exec(t.video.url)?.[1];
+const youtube = ytId ? `https://www.youtube-nocookie.com/embed/${ytId}` : null;
+const mp4 = !!t.video?.url && /\.mp4$/.test(t.video.url);
+const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['threads', 'The threads']] : []), ['where', "Where it's used"], ['proof', 'Proof'], ['split', 'Ours vs theirs'], ['limits', 'Limits'], ...(t.video ? [['video', 'Video']] : [])];
 ---
-<Landing title={`${t.sponsor} track: Tessera`} description={t.oneLine} current="tracks">
+<Landing title={t.notEntered ? `${t.prize}: Tessera` : `${t.sponsor === 'HackUTD' ? t.prize : t.sponsor} track: Tessera`} description={t.oneLine} current="tracks">
   <article class="tk">
     <header class="tk-head">
       <nav class="crumbs" aria-label="Breadcrumb"><a href="/tracks/">Tracks</a><span aria-hidden="true">/</span>{t.sponsor}</nav>
@@ -108,20 +112,23 @@ const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['
       <ul class="limits">{t.limits.map((x) => <li>{x}</li>)}</ul>
     </section>
 
+    {t.video && (
     <section id="video" class="tk-sec">
       <h2>Video</h2>
-      {t.video.url
-        ? <a class="video-slot has-url" href={t.video.url}>Watch "{t.video.title}" ({t.video.length})</a>
+      {youtube ? <iframe class="video-embed" src={youtube} title={t.video.title} loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        : mp4 ? <video class="video-embed" src={t.video.url} controls preload="metadata" playsinline></video>
+        : t.video.url ? <a class="video-slot has-url" href={t.video.url}>Watch "{t.video.title}" ({t.video.length})</a>
         : <p class="video-row"><strong>{t.video.title}</strong><span class="num">{t.video.length}</span><span>A screen recording of the live app, made after the build. It follows this shot list.</span></p>}
-      <details class="shots">
-        <summary>Shot list: {t.video.summary}</summary>
+      {(youtube || mp4) && <p class="video-meta"><strong>{t.video.title}</strong> <span class="num">{t.video.length}</span>{t.video.url && <> · <a href={t.video.url}>Open the video</a></>}{t.video.also && <> · <a href={t.video.also.url}>{t.video.also.label}</a></>}</p>}
+      {t.video.shots.length > 0 && <details class="shots">
+        <summary>{t.video.url ? 'The plan it was recorded from' : 'Shot list'}: {t.video.summary}</summary>
         <table>
           <thead><tr><th>Time</th><th>On screen</th><th>Narration</th><th>Shows</th></tr></thead>
           <tbody>{t.video.shots.map((s) => <tr><td class="num">{s.t}</td><td>{s.screen}</td><td>{s.say}</td><td>{s.criterion}</td></tr>)}</tbody>
         </table>
         <p class="rec-notes"><strong>Recording notes.</strong> {t.video.notes}</p>
-      </details>
-    </section>
+      </details>}
+    </section>)}
 
     <section class="tk-sec tk-docs">
       <h2>In the docs</h2>
@@ -211,6 +218,9 @@ const sections = [['why', t.whyTitle ?? `Why ${t.sponsor}`], ...(t.threads ? [['
   .video-slot .num { margin: 0; font-size: var(--t-xl); color: var(--text); }
   .video-slot p { margin: 0; max-width: 46ch; }
   .video-slot.has-url { color: var(--text); font-weight: 600; text-decoration: none; }
+  .video-embed { display: block; width: 100%; max-width: 960px; aspect-ratio: 16 / 9; margin-top: 24px; border: 0; border-radius: var(--r-panel); background: #000; }
+  .video-meta { margin: 12px 0 0; color: var(--text-2); font-size: var(--t-sm); }
+  .video-meta strong { color: var(--text); font-weight: 600; }
   .shots { margin-top: 16px; }
   .shots summary { line-height: 1.5; }
   .shots table { margin-top: 16px; width: 100%; border-collapse: collapse; font-size: var(--t-sm); line-height: 1.45; display: block; overflow-x: auto; }

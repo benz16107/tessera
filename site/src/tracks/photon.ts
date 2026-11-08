@@ -177,7 +177,8 @@ export default {
   ],
   video: {
     title: 'The set in your texts',
-    length: 'about 2:45',
+    length: '1:09',
+    url: '/videos/tessera-photon.mp4',
     summary: 'A screen recording of the studio beside the message threads. Beats that need a live Photon line say so; until a line is live, the recording shows the stand-in run and says so on screen.',
     shots: [
       { t: '0:00 to 0:15', screen: 'Simple /p/A9TVAN, then Share: the invite sheet', say: 'Most people on a shoot will never open a 3D editor. So the set comes to their texts.', criterion: 'Problem first' },

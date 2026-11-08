@@ -68,6 +68,7 @@ const demo = `${APP_URL}/p/${DEMO_CODE}`;
         <a class="btn primary" href={demo}>Try the demo shoot</a>
         <a class="btn ghost" href="#steps">How it works</a>
       </div>
+      <p class="hero-watch"><a href="https://youtu.be/TBKutDiVhSI">Watch the 1:35 video</a> · <a href="/reels/">10 reels</a></p>
     </div>
     <figure class="hero-stage">
       <Browser url={`app.tesseraphoto.com/studio/${DEMO_CODE}`} class="hero-window">
@@ -183,10 +184,10 @@ const demo = `${APP_URL}/p/${DEMO_CODE}`;
   <section class="tracks" aria-labelledby="tracks-h">
     <p class="label" id="tracks-h">HackUTD 2026 tracks</p>
     <ul>
-      {TRACKS.map((t) => (
+      {TRACKS.filter((t) => !t.notEntered).map((t) => (
         <li>
           <a href={`/tracks/${t.slug}/`}>
-            <span class="t-name">{t.slug === 'design' ? t.prize : t.sponsor}</span>
+            <span class="t-name">{t.sponsor === 'HackUTD' ? t.prize : t.sponsor}</span>
             <span class="t-line">{t.oneLine}</span>
           </a>
         </li>
@@ -288,6 +289,9 @@ const demo = `${APP_URL}/p/${DEMO_CODE}`;
   .tracks li { border-bottom: 1px solid var(--line); }
   .tracks a { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 24px; align-items: baseline; padding: 16px 8px; margin-inline: -8px; border-radius: var(--r); color: var(--text-2); text-decoration: none; transition: background-color 120ms ease-out; }
   .tracks a:hover { background: var(--panel); }
+  .hero-watch { margin: 16px 0 0; color: var(--text-3); font-size: var(--t-sm); }
+  .hero-watch a { color: var(--text-2); }
+  .hero-watch a:hover { color: var(--text); }
   .t-name { color: var(--text); font-size: var(--t-lg); font-weight: 600; letter-spacing: -0.01em; }
   .t-line { font-size: var(--t-sm); line-height: 1.5; }
 

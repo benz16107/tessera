@@ -6,7 +6,16 @@ Stand where the photo was taken, then make the shot yours. Drop a photo of a pla
 
 - **Try it:** the demo shoot at the Manhattan Bridge view in DUMBO, in [Simple](https://app.tesseraphoto.com/p/A9TVAN) or in [Studio](https://app.tesseraphoto.com/studio/A9TVAN)
 - **Site and docs:** https://tesseraphoto.com
-- **Track pages:** [NVIDIA](https://tesseraphoto.com/tracks/nvidia/), [SpacetimeDB](https://tesseraphoto.com/tracks/spacetime/), [Photon](https://tesseraphoto.com/tracks/photon/), [Best Design](https://tesseraphoto.com/tracks/design/), [Vultr](https://tesseraphoto.com/tracks/vultr/)
+- **Track pages:** [NVIDIA](https://tesseraphoto.com/tracks/nvidia/), [SpacetimeDB](https://tesseraphoto.com/tracks/spacetime/), [Photon](https://tesseraphoto.com/tracks/photon/), [Vultr](https://tesseraphoto.com/tracks/vultr/), [Virality](https://tesseraphoto.com/tracks/virality/) (our HackUTD track)
+
+## Videos
+
+- Main video (1:35): https://youtu.be/TBKutDiVhSI
+- NVIDIA (2:38, every Nemotron use): https://tesseraphoto.com/videos/tessera-nvidia.mp4, and a 1:14 cut: https://youtu.be/-thSL8iYLlU
+- SpacetimeDB (1:10): https://youtu.be/CyivsP2lXpc
+- Photon (1:09): https://tesseraphoto.com/videos/tessera-photon.mp4
+- Vultr (0:59): https://youtu.be/fsq3ry87EZ8
+- Ten vertical reels for the Virality track: https://tesseraphoto.com/reels/
 
 ## The problem
 

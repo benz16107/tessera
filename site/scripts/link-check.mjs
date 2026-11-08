@@ -25,6 +25,7 @@ for (const f of files) {
     if (/^(mailto:|tel:|data:|javascript:|#)/.test(url)) continue;
     if (/^https?:\/\//.test(url)) { if (!ext.has(url)) ext.set(url, f); continue; }
     if (url.startsWith('//')) continue;
+    if (/^\/(videos|reels)\//.test(url)) continue; // uploaded to the server outside the build (ops/deploy-site.sh keeps them)
     if (!resolves(url, f)) bad.push(`${f.slice(root.length)} -> ${url}`);
   }
 }

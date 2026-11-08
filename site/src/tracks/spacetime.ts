@@ -179,7 +179,8 @@ export default {
   ],
   video: {
     title: 'The set is the database',
-    length: 'about 2:30',
+    length: '1:10',
+    url: 'https://youtu.be/CyivsP2lXpc',
     summary: 'A screen recording of two browsers and a phone-sized window on one set, with the Live data panel showing every change as it arrives.',
     shots: [
       { t: '0:00 to 0:15', screen: 'Simple /p/A9TVAN: the photo snapped onto the 3D view', say: 'You found where the photo was taken. Now your whole group builds the shot in one live set.', criterion: 'Problem first' },

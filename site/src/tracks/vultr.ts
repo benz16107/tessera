@@ -130,7 +130,8 @@ export default {
   ],
   video: {
     title: 'Tessera on Vultr',
-    length: 'about 1:30',
+    length: '0:59',
+    url: 'https://youtu.be/fsq3ry87EZ8',
     summary: 'A screen recording of the live app, then a real terminal session on the VM showing its services, then the Vultr-hosted models at work.',
     shots: [
       { t: '0:00 to 0:15', screen: 'Simple /p/A9TVAN on the production URL: the answer for the DUMBO photo', say: 'Tessera tells you where to stand for a photo you saw. All of it runs on Vultr.', criterion: 'Problem first' },

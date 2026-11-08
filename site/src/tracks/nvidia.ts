@@ -191,7 +191,9 @@ export default {
   ],
   video: {
     title: 'Nemotron runs the set',
-    length: 'about 2:30',
+    length: '2:38',
+    url: '/videos/tessera-nvidia.mp4',
+    also: { label: 'A 1:14 cut on YouTube', url: 'https://youtu.be/-thSL8iYLlU' },
     summary: 'A screen recording of Studio on the live app: one sentence becomes a staged shot, Nemotron checks its own render, and the fine-tuned lens reader explains what the photo was shot with.',
     shots: [
       { t: '0:00 to 0:15', screen: 'Simple /p/A9TVAN: the DUMBO photo over the 3D view, "Solid match", facing 4 degrees N, 2.2x', say: 'You saw this shot online. Tessera found where the photographer stood. Now make it yours.', criterion: 'Problem first' },
