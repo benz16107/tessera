@@ -24,7 +24,8 @@ import { useScene } from './state/useScene.ts';
 import { useShotSettings, defaultShot } from './state/useShotSettings.ts';
 import { makeObject, newUid, parseParams, stateOf, withParams, fmtParams, type AddItem, type ObjState } from './scene/objects.ts';
 import { optics as opticsOf, frameFromPhoto, fitFrame, type Fit } from './camera/shot.ts';
-import { bodyById, lensById } from './catalog/index.ts';
+import { bodyById, lensById, lensesFor, pickLens } from './catalog/index.ts';
+import { maxApertureAt } from './catalog/lenses.ts';
 import Tiles, { tilesRef, tileGroundAt, TILE_LIGHT } from './world/Tiles.tsx';
 import Atmosphere, { POST_LIT_LAYER, atmosphereRender } from './world/Atmosphere.tsx';
 import PlaceSearch, { type Place } from './editor/PlaceSearch.tsx';
@@ -131,7 +132,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   // A free location (Earth: "Plan here" or "New shoot here"): spot id 'geo:<lat>,<lon>,<ground height above the ellipsoid>'.
   const geoSpot = useMemo(() => {
     const m = session.spotId.match(/^geo:(-?[\d.]+),(-?[\d.]+),(-?[\d.]+)$/);
-    return m ? { lat: +m[1], lon: +m[2], height: +m[3] } : null;
+    // A ground height outside -500 m to 9 km is a bad tile probe (one shoot saved -27.5 km): treat it as 0.
+    return m ? { lat: +m[1], lon: +m[2], height: +m[3] > -500 && +m[3] < 9000 ? +m[3] : 0 } : null;
   }, [session.spotId]);
   const origin: Origin | null = spot ? { lat: spot.lat, lon: spot.lon, height: 0 } : geoSpot ?? (solved ? { lat: solved.pose.lat, lon: solved.pose.lon, height: 0 } : null);
   // Exploring: the World view is flown to a searched place. The frame moves there (tiles only); the set stays home, hidden.
@@ -194,6 +196,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     return r.name && !/^(Shot camera|Camera)$/.test(r.name) ? r.name : camLetter(Math.max(0, i));
   };
   const shotName = camName(shotRow);
+  const approx = !!shotRow && parseParams(shotRow.params).approx === '1'; // Simple's Cam A at a free-location pin
   const isMe = (id?: { isEqual(x: unknown): boolean }) => !!(identity && id?.isEqual(identity));
   const colorOf = useCallback((idHex: string) => presence.find(p => p.identity.toHexString() === idHex)?.color, [presence]);
   const lockOwner = useCallback((r: SceneObject) => {
@@ -571,7 +574,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const setSessionSpot = useReducer(reducers.setSessionSpot);
   const createSession = useReducer(reducers.createSession);
   const [pendingSpot, setPendingSpot] = useState('');
-  const geoId = () => explore && groundOffset !== null ? `geo:${explore.lat.toFixed(6)},${explore.lon.toFixed(6)},${groundOffset.toFixed(1)}` : '';
+  const groundOk = groundOffset !== null && groundOffset > -500 && groundOffset < 9000;
+  const geoId = () => explore && groundOk ? `geo:${explore.lat.toFixed(6)},${explore.lon.toFixed(6)},${groundOffset.toFixed(1)}` : '';
   const planHere = async () => {
     const id = geoId();
     if (!id) return;
@@ -634,17 +638,34 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   // Subject-locked zoom: as the focal length changes, Cam A walks along its view axis so the subject keeps its size
   // (optics.ts subjectLockedDistance), and the background really grows behind it.
   const [subjectLock, setSubjectLock] = useState(false);
-  const setShotPhysical = (pt: Partial<typeof shot>, lock = subjectLock) => {
+  // Subject-locked zoom can step faster than Cam A's row and the shot settings come back from the database, so each step
+  // builds on the last one this client sent (for 1.5 s) rather than on lagging values.
+  const lockStep = useRef<{ f: number; d: number; pos: Vector3; t: number } | null>(null);
+  const setShotPhysical = (ptIn: Partial<typeof shot>, lock = subjectLock) => {
+    let pt = { ...ptIn };
+    // A new body keeps the lens only if it mounts on it; otherwise the closest lens for the same field of view.
+    if (pt.bodyId && pt.bodyId !== shot.bodyId) {
+      const body = bodyById(pt.bodyId), lensId = pt.lensId ?? shot.lensId;
+      if (body && !lensesFor(body).some(l => l.id === lensId)) {
+        const { lens, focal } = pickLens(body, o.f35);
+        pt = { ...pt, lensId: lens.id, focalMm: focal, aperture: Math.max(pt.aperture ?? shot.aperture, maxApertureAt(lens, focal)) };
+      }
+    }
     if (pt.focusM !== undefined) setFocusFollow(null);
-    if (lock && pt.focalMm !== undefined && shotRow && shotPose && focusTarget && Math.abs(pt.focalMm - shot.focalMm) > 0.01) {
-      const d1 = focusTarget.distance, d2 = subjectLockedDistance(d1, shot.focalMm, pt.focalMm);
-      const flat = new Vector3(shotPose.fwd.x, shotPose.fwd.y, 0).normalize();
-      const pos = shotPose.pos.clone().addScaledVector(flat, -(d2 - d1));
-      pos.z = gz(pos.x, pos.y) + (shotPose.pos.z - gz(shotPose.pos.x, shotPose.pos.y));
-      editRow(shotRow, { ...stateOf(shotRow), x: pos.x, y: pos.y, z: pos.z }, 'subject-locked zoom');
-      setShot({ ...pt, focusM: +d2.toFixed(2) });
-      setToast(`${shotName} ${d2 > d1 ? 'stepped back' : 'stepped in'} ${Math.abs(d2 - d1).toFixed(1)} m: ${focusTarget.name} stays the same size`);
-      return;
+    if (lock && pt.focalMm !== undefined && shotRow && shotPose && focusTarget) {
+      const now = performance.now();
+      const base = lockStep.current && now - lockStep.current.t < 1500 ? lockStep.current : { f: shot.focalMm, d: focusTarget.distance, pos: shotPose.pos.clone(), t: now };
+      if (Math.abs(pt.focalMm - base.f) > 0.01) {
+        const d2 = subjectLockedDistance(base.d, base.f, pt.focalMm);
+        const flat = new Vector3(shotPose.fwd.x, shotPose.fwd.y, 0).normalize();
+        const pos = base.pos.clone().addScaledVector(flat, -(d2 - base.d));
+        pos.z = gz(pos.x, pos.y) + (base.pos.z - gz(base.pos.x, base.pos.y));
+        editRow(shotRow, { ...stateOf(shotRow), x: pos.x, y: pos.y, z: pos.z }, 'subject-locked zoom');
+        setShot({ ...pt, focusM: +d2.toFixed(2) });
+        lockStep.current = { f: pt.focalMm, d: d2, pos, t: now };
+        setToast(`${shotName} ${d2 > base.d ? 'stepped back' : 'stepped in'} to ${d2.toFixed(1)} m: ${focusTarget.name} stays the same size`);
+        return;
+      }
     }
     setShot(pt);
   };
@@ -785,7 +806,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const camSub = (r: SceneObject) => {
     const b = bodyById(shot.bodyId), l = lensById(shot.lensId);
     void b; void l;
-    return { name: camName(r), sub: `${Math.round(shot.focalMm)} mm · f/${shot.aperture}` };
+    return { name: camName(r), sub: parseParams(r.params).approx === '1' ? 'Approximate, drag to aim' : `${Math.round(shot.focalMm)} mm · f/${shot.aperture}` };
   };
   const keyframes = versions.flatMap(v => {
     const m = v.label.match(/(\d{1,2}):(\d{2})\s*([AP]M)/i);
@@ -877,7 +898,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               {!photoBack && !atmo && <group userData={{ helper: true }}><Sky sunPosition={enuToThree({ x: sunDir[0], y: sunDir[1], z: sunDir[2] }).multiplyScalar(1000).toArray()} distance={4500} /></group>}
               {!atmo && <hemisphereLight args={['#bcd3ff', '#3b342b', (photo ? 0.45 : 0.9) * lvl]} />}
               {atmo && here && <Atmosphere date={planTime} origin={here} groundOffset={groundOffset}
-                nightFill={[day.tint[0] * 0.02 * day.stars, day.tint[1] * 0.02 * day.stars, day.tint[2] * 0.02 * day.stars]} />}
+                nightFill={day.tint.map(t => t * (0.009 * day.stars + 0.004 * (1 - day.stars))) as [number, number, number]} />}
               {photo && !atmo && <PhotoEnv url={photo.url || photo.thumb} intensity={0.55 * lvl} />}
               {!photoBack && !atmo && day.stars > 0.05 && <group userData={{ helper: true }}><Stars radius={3000} depth={400} count={4000} factor={60 * day.stars} saturation={0} fade /></group>}
               {!atmo && <SunLight dir={sunDir} color={sunColor} strength={sunStrength(sun.altitude) * 3} />}
@@ -896,7 +917,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                 {origin && photoBack && projector && <PlateFootprint camera={shotCam} projector={projector} onChange={setFootprint} />}
                 {origin && showClay && <Clay buildings={layers.data?.layers.buildings ?? null} geo={geo} origin={origin} gz={gz} projector={world === 'clayPhoto' ? projector : null} level={lvl} sky={skyLit} skyDim={day.skyDim} />}
                 {origin && <GeoScene geo={layers} origin={origin} groundAt={gz} labels={geoOpen && view !== 'shot'} overlays={!photoBack} />}
-                <Catchers geo={geo} occlude={view === 'shot'} shadowOpacity={showClay || (showTiles && lightMode === 'live') ? 0 : 0.5} onTeleport={p => setVrOrigin(p)}
+                <Catchers geo={geo} occlude={view === 'shot'} shadowOpacity={showClay || (showTiles && lightMode === 'live') ? 0 : 0.5} ghost={atmo} onTeleport={p => setVrOrigin(p)}
                   onPointerMove={e => { if (ev) { const p = threeToEnu(e.point); ev.cursor({ x: p.x, y: p.y, z: p.z }); } }}
                   onClick={e => { e.stopPropagation(); pick(null, e.point, e.nativeEvent.altKey); }} />
                 {shownRows.map(r => {
@@ -1058,8 +1079,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
             {explore && !focus && (
               <div className="st-explore st-float" role="status">
                 <span title={explore.name}>{explore.name.split(',')[0]}</span>
-                {!solved && <button className="st-btn small primary" disabled={groundOffset === null} onClick={() => void planHere()} title="Move this set here: plan with the real sun at this place">Plan here</button>}
-                <button className="st-btn small" disabled={groundOffset === null || !!pendingSpot} onClick={() => void newShootHere()}>{pendingSpot ? 'Creating' : 'New shoot here'}</button>
+                {!solved && <button className="st-btn small primary" disabled={!groundOk} onClick={() => void planHere()} title="Move this set here: plan with the real sun at this place">Plan here</button>}
+                <button className="st-btn small" disabled={!groundOk || !!pendingSpot} onClick={() => void newShootHere()}>{pendingSpot ? 'Creating' : groundOk ? 'New shoot here' : 'Finding the ground'}</button>
                 <button className="st-btn small ghost" onClick={() => setExplore(null)}>Back to the set</button>
               </div>
             )}
@@ -1142,6 +1163,19 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               title="Live sun relights Google's 3D tiles for the time on the timeline. Their photos were taken in daylight, so faint shadows from the capture still show.">
               <button aria-pressed={lightMode === 'live'} onClick={() => setLightMode('live')}>Live sun</button>
               <button aria-pressed={lightMode === 'captured'} onClick={() => setLightMode('captured')}>As captured</button>
+            </div>
+          )}
+          {view === 'map' && approx && shotRow && shotPose && (
+            // Simple makes Cam A at the pin with no heading (approx=1); the Map drags pins but can't turn them, so turn it here.
+            <div className="st-seg st-float st-lightsw" role="group" aria-label={`Aim ${shotName}`}>
+              <span className="st-chip">{shotName} is approximate: drag its pin, then turn it</span>
+              {[-15, 15].map(d => (
+                <button key={d} title={`Turn ${shotName} ${Math.abs(d)}° ${d < 0 ? 'left' : 'right'}`} aria-label={`Turn ${d < 0 ? 'left' : 'right'}`}
+                  onClick={() => { const { heading, pitch, roll } = shotPose.hpr, q = cameraQuat(heading + d, pitch, roll); editRow(shotRow, { ...stateOf(shotRow), qx: q.x, qy: q.y, qz: q.z, qw: q.w }, 'rot'); }}>
+                  {d < 0 ? '⟲ 15°' : '15° ⟳'}
+                </button>
+              ))}
+              <span className="st-chip">{Math.round(((shotPose.hpr.heading % 360) + 360) % 360)}°</span>
             </div>
           )}
           {ghost && <span className="st-chip">Previewing the set at that point. Read-only: Restore makes it real.</span>}

@@ -14,13 +14,16 @@ interface Props {
   onTeleport: (p: Vector3) => void;
   onPointerMove?: (e: ThreeEvent<PointerEvent>) => void;
   onClick?: (e: ThreeEvent<MouseEvent>) => void;
+  /** Still raycast for placement and teleport, but draw nothing (no colour, no depth): under post-process lighting
+   *  (world/Atmosphere.tsx) an invisible catcher's depth would be lit as a surface. */
+  ghost?: boolean;
 }
 
-export default function Catchers({ geo, occlude, shadowOpacity, onTeleport, onPointerMove, onClick }: Props) {
+export default function Catchers({ geo, occlude, shadowOpacity, onTeleport, onPointerMove, onClick, ghost = false }: Props) {
   const ground = useMemo(() => (geo ? groundGeometry(geo) : null), [geo]);
   const walls = useMemo(() => (geo ? facadeGeometry(geo) : null), [geo]);
   const occ = useMemo(() => (geo ? occluderGeometry(geo) : null), [geo]);
-  const mat = <shadowMaterial transparent opacity={shadowOpacity} polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-2} side={2} />;
+  const mat = <shadowMaterial transparent opacity={shadowOpacity} colorWrite={!ghost} depthWrite={!ghost} polygonOffset polygonOffsetFactor={-2} polygonOffsetUnits={-2} side={2} />;
   return (
     <>
       <TeleportTarget onTeleport={p => onTeleport(p.clone())}>

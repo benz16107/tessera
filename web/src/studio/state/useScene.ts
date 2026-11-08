@@ -52,10 +52,19 @@ export function useScene(sessionId: bigint) {
     if (key) record({ key, before: null, after: s, tag: '' });
   }, [add, sessionId, fail]);
 
+  /** updateSceneObject replaces the whole row, so send only what this edit changed (against `base`, the state it started
+   *  from) on top of the freshest copy of the row: two people renaming and moving one object both keep their edit. */
+  const onLatest = (id: bigint, base: ObjState, s: ObjState): ObjState => {
+    const latest = rowsRef.current.find(r => r.id === id);
+    if (!latest) return s;
+    const out = stateOf(latest) as unknown as Record<string, unknown>;
+    for (const k of Object.keys(s) as (keyof ObjState)[]) if (s[k] !== base[k]) out[k] = s[k];
+    return out as unknown as ObjState;
+  };
   const setObject = useCallback((row: SceneObject, s: ObjState, tag = '') => {
     record({ key: keyOf(row), before: stateOf(row), after: s, tag });
-    update({ id: row.id, sessionId, ...s }).catch(fail);
-  }, [update, sessionId, fail]);
+    update({ id: row.id, sessionId, ...onLatest(row.id, stateOf(row), s) }).catch(fail);
+  }, [update, sessionId, fail]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const deleteObject = useCallback((row: SceneObject) => {
     record({ key: keyOf(row), before: stateOf(row), after: null, tag: '' });
@@ -88,8 +97,8 @@ export function useScene(sessionId: bigint) {
     if (!d?.pending) return;
     const s = d.pending;
     d.pending = null; d.last = performance.now();
-    update({ id: d.row.id, sessionId, ...s }).catch(fail);
-  }, [update, sessionId, fail]);
+    update({ id: d.row.id, sessionId, ...onLatest(d.row.id, d.before, s) }).catch(fail);
+  }, [update, sessionId, fail]); // eslint-disable-line react-hooks/exhaustive-deps
   const moveDrag = useCallback((s: ObjState) => {
     const d = drag.current;
     if (!d) return;
@@ -104,9 +113,9 @@ export function useScene(sessionId: bigint) {
     clearTimeout(d.timer);
     drag.current = null;
     record({ key: keyOf(d.row), before: d.before, after: s, tag: '' });
-    update({ id: d.row.id, sessionId, ...s }).catch(fail)
+    update({ id: d.row.id, sessionId, ...onLatest(d.row.id, d.before, s) }).catch(fail)
       .finally(() => lock({ id: d.row.id, lock: false }).catch(fail));
-  }, [update, lock, sessionId, fail]);
+  }, [update, lock, sessionId, fail]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     rows: sorted, ready, error, clearError: () => setError(''),

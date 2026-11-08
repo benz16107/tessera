@@ -150,9 +150,11 @@ export default function Tiles({ apiKey, origin, probes, visible, extraCamera, on
         const from = new Vector3(p.x, p.y, 400).applyMatrix4(enu.matrixWorld);
         const down = new Vector3(0, 0, -1).transformDirection(enu.matrixWorld);
         ray.set(from, down);
+        ray.far = 2000; // the street, never the far side of a coarse globe tile while the city is still loading
         const hits = ray.intersectObject(tiles.group, true);
         if (!hits.length) continue;
         const z = hits[hits.length - 1].point.clone().applyMatrix4(enu.matrixWorld.clone().invert()).z - (groundAt?.(p.x, p.y) ?? 0);
+        if (Math.abs(z) > 1500) continue; // a probe through a half-loaded tile
         best = best === null ? z : Math.min(best, z);
       }
       if (best === null) return;
