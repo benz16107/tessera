@@ -8,12 +8,12 @@ Field ids from the Devpost MCP's get_submission_requirements. The lead submits t
 | 29405 Technology experience and feedback | yes | see below |
 | 29406 Schools of every team member | yes | University of Toronto (**open: Ben confirms teammates and their schools**) |
 | 29407 Domains registered with GoDaddy this hackathon | no | tesseraphoto.com (registered through GoDaddy on Nov 8; a .com, so not a GoDaddy Registry domain) |
-| 29408 Track limit confirmation | yes | true (sponsor tracks: NVIDIA, Spacetime, Photon; HackUTD: Best Design; MLH: Best Use of Vultr) |
+| 29408 Track limit confirmation | yes | true (sponsor tracks: NVIDIA, Spacetime, Photon; HackUTD: Virality; MLH: Best Use of Vultr) |
 | 29409 GenAI tools used this weekend | no | Claude, Codex |
 | 29410 How and why we used them | no | see below |
 | 29840 AI tools used this weekend | yes | Anthropic, OpenAI, Hugging Face, ElevenLabs, Vultr, Other (NVIDIA Nemotron and NIM) |
 | 29841 Did you implement a generative AI model or API? | yes | see below |
-| 29882 HackUTD track | yes | Best Design |
+| 29882 HackUTD track | yes | Virality |
 
 ## 29405 Technology experience and feedback
 
