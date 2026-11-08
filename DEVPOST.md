@@ -75,9 +75,25 @@ General Track is automatic.
 
 Drop a photo of a place. Tessera finds where the photographer stood, which way they faced and what lens they used, then rebuilds the place as a live 3D set your group plans in.
 
-### In 30 seconds
+### The problem
 
-You saw a great shot of a place and want your own version of it. Today that takes Google Maps, Street View, a lens calculator and a group chat full of screenshots, and none of them know where the photographer stood. Tessera solves it from the photo: the standing spot, the heading and the lens, checked against our own 3D model of the place. Then your crew plans the shot together in a 3D set with real cameras, people, props and light, renders it into your photo, and walks to the mark with the original as a ghost over the camera. It works from a browser, a phone, or a Telegram chat.
+You see a great photo of a place and want your own version. **Google Lens names the place, but not where the photographer stood, which way they faced or which lens they used.** So people post the photo and ask strangers: a student recreating a late grandmother's graduation photo in New York had been **searching for a year** before someone recognized the corner. Even at the right corner, **a phone on 1x gets a different picture** when the original was shot from farther back with a longer lens.
+
+### What people ask, in their own words
+
+**We read 1,949 Reddit posts across 15 subreddits. 103 asked where a photo was taken from, which lens made it, or how to recreate it; 79 of them asked for the exact spot.**
+
+- **"I really want to find this spot so I can return to it, sit exactly there"**, a grieving husband with a 1998 photo. r/whereisthis, 858 points: https://www.reddit.com/r/whereisthis/comments/1wx1wae/
+- **"We would like to re-create it as adults."** A family photo from early-90s Manhattan. r/whereisthis, 590 points: https://www.reddit.com/r/whereisthis/comments/1wbtjkw/
+- **"I can't nail the cross streets"**, the student with the grandmother's photo. r/AskNYC, 37 points: https://www.reddit.com/r/AskNYC/comments/18mo1uc/
+- **"I don't think so because the compression won't be the same."** A parent asking whether a wide-angle shot can match a Rockefeller Center photo. r/AskNYC, 6 points: https://www.reddit.com/r/AskNYC/comments/qdh8gc/
+- **"Golden hour is ideal but will the sun even hit this spot at that time?"** A photographer at Jay St in DUMBO, a few blocks from our demo spot. r/AskPhotography, 4 points: https://www.reddit.com/r/AskPhotography/comments/1u386p6/
+
+![r/whereisthis: a grieving husband asks for the exact spot of a 1998 photo](https://tesseraphoto.com/research/1-whereisthis.png)
+
+![r/AskPhotography: will the sun hit this spot in DUMBO at golden hour?](https://tesseraphoto.com/research/8-askphotography.png)
+
+The tools in these threads (Google Earth, Street View, spot guides, sun apps) each help once you know where to stand. **Tessera starts from the photo itself: it solves the standing spot, the heading and the lens, then plans the light and the people.** Method, counts and all eight posts: https://tesseraphoto.com/docs/research/
 
 ![Studio, looking through the solved camera at the Manhattan Bridge](https://tesseraphoto.com/devpost/1-studio-camera.jpg)
 
