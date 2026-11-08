@@ -11,6 +11,7 @@ import { tables, reducers } from '../module_bindings/index.ts';
 import type { SceneObject } from '../module_bindings/types.ts';
 import { enuToLlh, llhToEnu, cameraHpr, type Origin } from '../studio/frame.ts';
 import { bodyById } from '../studio/catalog/index.ts';
+import { defaultShot } from '../studio/state/useShotSettings.ts';
 import { sunAt, sunRelation, hfovDeg, fmtTime, compassWord } from '../geo.ts';
 import { shadowPolygons } from '../../../crew/src/layers/buildings.ts';
 import { toXY, type LonLat } from '../../../crew/src/layers/geom.ts';
@@ -54,13 +55,19 @@ export default function MapView({ geo, sessionId, origin, at, zone, theme, compa
   const [photos] = useTable(tables.photo.where(r => r.sessionId.eq(sessionId)));
   const [results] = useTable(tables.solveResult.where(r => r.sessionId.eq(sessionId)));
   const [settings] = useTable(tables.shotSettings.where(r => r.sessionId.eq(sessionId)));
+  const [sessions] = useTable(tables.session.where(r => r.id.eq(sessionId)));
   const [library] = useTable(tables.shotLibrary);
   const updateObject = useReducer(reducers.updateSceneObject);
 
   const solved = [...results].filter(r => r.confidence !== 'none').sort((a, b) => Number(b.photoId - a.photoId))[0];
-  const photo = photos.find(p => p.id === solved?.photoId);
+  const photo = photos.find(p => p.id === solved?.photoId) ?? [...photos].sort((a, b) => Number(b.id - a.id))[0]; // as Studio picks it
   const frame = { w: photo?.width || 3, h: photo?.height || 2 };
-  const shotSettings = settings[0];
+  // Before anyone edits the lens there is no shot_settings row: use the Inspector's own default, so the label matches it
+  // (Studio.tsx: solved f35, else a free-location shoot's EXIF f35 or 26, else 35). Exposure fields are unused here.
+  const geoSpot = (sessions[0]?.spotId ?? '').startsWith('geo:');
+  const defaultF35 = solved?.pose.f35 ?? (geoSpot && photo ? photo.exifF35 ?? 26 : 35);
+  const fallback = useMemo(() => defaultShot(defaultF35, 8, 12), [defaultF35]); // stable, so pins don't rebuild on every map move
+  const shotSettings = settings[0] ?? fallback;
   const sun = sunAt(at, origin.lat, origin.lon);
 
   // Every shot of the session as pins and cones, in WGS84.
@@ -74,9 +81,9 @@ export default function MapView({ geo, sessionId, origin, at, zone, theme, compa
       if (o.kind === 'camera') {
         const hpr = cameraHpr(new Quaternion(o.qx, o.qy, o.qz, o.qw).normalize());
         const isShot = o.id === shotCam?.id;
-        const crop = shotSettings ? bodyById(shotSettings.bodyId)?.crop ?? 1 : 1;
-        const mm = isShot && shotSettings ? shotSettings.focalMm : Number(params(o.params).f35) || solved?.pose.f35 || 35;
-        const f35 = isShot && shotSettings ? shotSettings.focalMm * crop : mm;
+        const crop = bodyById(shotSettings.bodyId)?.crop ?? 1;
+        const mm = isShot ? shotSettings.focalMm : Number(params(o.params).f35) || solved?.pose.f35 || 35;
+        const f35 = isShot ? shotSettings.focalMm * crop : mm;
         const hfov = hfovDeg(f35, frame.w, frame.h);
         byId.set(String(o.id), o);
         feats.push(point(c, { kind: 'camera', id: String(o.id), label: `${o.name || 'Camera'} · ${Math.round(mm)} mm`, name: o.name || 'Camera', heading: Math.round(hpr.heading), pitch: Math.round(hpr.pitch), mm: Math.round(mm), f35: Math.round(f35), hfov, isShot, locked: !!o.lockedBy }));
