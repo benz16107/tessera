@@ -1113,7 +1113,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               <div className={`st-cmd${vp.w < 900 && !cmdOpen ? ' compact' : ''}`}>
                 <div className={`st-float${cmdOpen ? ' st-cmd-open' : ''}`} data-opts={cmdOpts}>
                   {!cmdOpen && (
-                    <button className="st-cmd-pill" onClick={() => setCmdOpen(true)}><span className="st-cmd-text">Describe a change</span><span className="st-meta st-cmd-who">Nemotron</span><span className="st-meta">⌘K</span></button>
+                    <button className="st-cmd-pill" onClick={() => setCmdOpen(true)}><span className="st-cmd-text">Describe a change</span>{vp.w < 900 && <span>Describe</span>}<span className="st-meta st-cmd-who">Nemotron</span><span className="st-meta">⌘K</span></button>
                   )}
                   <div style={{ display: cmdOpen ? 'block' : 'none' }}>
                     <NvidiaSlot name="CommandBar" props={{ sessionId: sid, photoId: photo?.id }} fallbackText="" />
