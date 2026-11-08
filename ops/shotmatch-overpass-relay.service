@@ -1,0 +1,17 @@
+# Tessera Overpass relay: the Vultr VM's 127.0.0.1:18443 -> overpass-api.de:443, carried through linuxbox.
+# Overpass times out for the VM's datacenter address but answers linuxbox, so the crew (crew/src/layers/osm.ts) tries
+# this port first, speaking TLS to overpass-api.de end to end (the certificate is still checked), then the mirrors.
+# Runs on linuxbox: ln -sf ~/Code/hackathons/shotmatch/ops/shotmatch-overpass-relay.service ~/.config/systemd/user/
+#                   systemctl --user daemon-reload && systemctl --user enable --now shotmatch-overpass-relay
+# Undo: systemctl --user disable --now shotmatch-overpass-relay (the crew falls back to the public mirrors).
+[Unit]
+Description=Tessera Overpass relay for the Vultr VM
+After=network-online.target
+
+[Service]
+ExecStart=/usr/bin/ssh -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o BatchMode=yes -R 127.0.0.1:18443:overpass-api.de:443 ben@104.238.146.229
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

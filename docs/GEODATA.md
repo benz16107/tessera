@@ -125,4 +125,8 @@ procedure writes a new snapshot. Without them it falls back to per-browser switc
   as the Roebling Rink load-in on Water Street.
 - The public Overpass servers were at capacity on Nov 7 and 8. The crew tries three mirrors and keeps a 24 h cache. NYC
   buildings and streets come from NYC Open Data, so NYC does not depend on Overpass.
+- Overpass times out for the Vultr VM's datacenter address. linuxbox runs `ops/shotmatch-overpass-relay.service`, a
+  reverse ssh tunnel that gives the VM's 127.0.0.1:18443 a raw path to overpass-api.de:443. The crew tries it first,
+  speaking TLS to overpass-api.de with the certificate checked, then the public mirrors. If linuxbox is down, new pins
+  outside NYC get no buildings, shadows or places until it's back; areas already cached keep their last copy.
 - Crime data is left out on purpose. It stigmatises neighbourhoods and adds nothing to a photo.

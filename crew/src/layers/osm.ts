@@ -1,6 +1,7 @@
 // OpenStreetMap through Overpass (ODbL 1.0, "© OpenStreetMap contributors"): building footprints with heights as shadow
 // casters, a quiet layer of useful places, and named streets for mapping permits outside NYC.
-import { cached, getJson, TTL, at4 } from './cache.ts';
+import { request } from 'node:https';
+import { cached, getJson, TTL, at4, UA } from './cache.ts';
 import { metres, streetKey, type LonLat } from './geom.ts';
 import type { Street, Footprint } from './nyc.ts';
 import type { Feature, Place, Source } from './types.ts';
@@ -10,8 +11,34 @@ const MIRRORS = ['https://overpass-api.de/api/interpreter', 'https://overpass.pr
 
 export const OSM_LICENSE = 'ODbL 1.0, © OpenStreetMap contributors';
 
+/** Overpass through linuxbox (ops/shotmatch-overpass-relay.service): the VM's 127.0.0.1:18443 is a raw tunnel to
+ *  overpass-api.de:443, so this speaks TLS to overpass-api.de and checks its certificate. Fails at once when no tunnel. */
+export function viaRelay(q: string, port = Number(process.env.OVERPASS_RELAY_PORT ?? 18443)): Promise<any> {
+  const body = new URLSearchParams({ data: q }).toString();
+  return new Promise((ok, no) => {
+    const r = request({ host: '127.0.0.1', port, servername: 'overpass-api.de', path: '/api/interpreter', method: 'POST', timeout: 90_000,
+      headers: { host: 'overpass-api.de', 'user-agent': UA, accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded', 'content-length': Buffer.byteLength(body) } }, res => {
+      let t = '';
+      res.setEncoding('utf8');
+      res.on('data', c => { t += c; });
+      res.on('end', () => {
+        if (res.statusCode !== 200) return no(new Error(`relay HTTP ${res.statusCode}`));
+        try { ok(JSON.parse(t)); } catch { no(new Error('relay returned non-JSON')); }
+      });
+    });
+    r.on('timeout', () => r.destroy(new Error('relay timed out')));
+    r.on('error', no);
+    r.end(body);
+  });
+}
+
 async function overpass(q: string) {
   const errs: string[] = [];
+  try {
+    const j = await viaRelay(q);
+    if (Array.isArray(j.elements)) return j;
+    errs.push('relay: no elements');
+  } catch (e) { errs.push(`relay: ${(e as Error).message.slice(0, 60)}`); }
   for (const m of MIRRORS) {
     try {
       const j = await getJson(m, { form: { data: q }, timeoutMs: 60_000 });
