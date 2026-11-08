@@ -303,9 +303,17 @@ What the NVIDIA key showed:
 - No hosted NVIDIA image-edit model accepts a user's photo (FLUX.1 Kontext and flux.2-klein want an `example_id`, qwen-image-edit is 404). Previews use OpenAI `gpt-image-2` until that changes. Booth question.
 - The base VL lens read is poor on telephoto (read a 287 mm photo as 28 mm), so only the fine-tuned model or a user hint narrows the solver's focal search.
 
+Update, 7:25 PM CT:
+- **Steps 1 to 5 done and checked on the public URL.** Demo session `A9TVAN` (https://linuxbox.<tailnet>.ts.net:10000/p/A9TVAN): d0481 Solid, 1690 matches, 53 mm, facing 4 degrees N, preview made, scout walked to the mark in a phone-sized browser. d0473 correctly "Couldn't place" (73 matches), also after a lens-hint re-run.
+- **Step 6 (Photon)** built from the docs, off until `photon_api_key` and `photon_project_id` exist. Steps for Ben in `crew/PHOTON.md`.
+- **Step 7 (fine-tune)** blocked: Vultr refused the instance for lack of credit. Hosted Nemotron 3.5 Super VL zero-shot scored 54.8% bin accuracy, below always-wide (57.5%) and OpenAI (68.3%).
+- **Step 8 (voice):** ElevenLabs agent "ShotMatch guide" (`agent_9201m6wab2eje2eb6x2gg17mnbz8`) with three tools behind a secret; needs a Photon SMS or dedicated number to dial.
+- **Step 9:** golden-hour reminders (module schedule plus outbox) work, delivery waits on Photon. Similar-photo search with `llama-nemotron-embed-vl-1b-v2` works. cuOpt shoot-day route works (hosted cuOpt, one call took 58 s). Cosmos Reason is wired but returns 404 on our key. Cosmos Transfer is end of life (410). The Ollama offline lens guess is dropped: the small Nemotron is text-only.
+
 ## GPU cost log
 
 Cap: $50 total for the hackathon. One instance at most, deleted after judging Sunday. Details in `lens/COST.md`.
 
 | When (CT) | Event | Plan | $/h | Running total |
 |---|---|---|---|---|
+| Sat 7:05 PM | Create refused: no account credit | A40 lax | 1.71 | $0 |
