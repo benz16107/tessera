@@ -14,7 +14,7 @@ import { kelvinToRgb } from '../optics.ts';
 
 /** Selection and measure colour in 3D: the studio's --accent (three.js materials can't read CSS). */
 export const ACCENT = '#f2efe8';
-import { parseParams, num } from '../scene/objects.ts';
+import { approxLabel, parseParams, num } from '../scene/objects.ts';
 import type { Optics } from '../camera/shot.ts';
 
 RectAreaLightUniformsLib.init();
@@ -255,7 +255,7 @@ export function ObjectNode(p: NodeProps) {
   else if (row.kind === 'camera') body = p.isShot && p.lookingThrough ? null : <CameraGizmo o={p.optics} selected={p.selected} isShot={p.isShot} focusM={p.focusM} />;
   else body = <Html center className="studio-text-obj">{row.name}</Html>;
   const label = row.kind === 'light' ? `${row.name.split(' ')[0]} · ${num(prm, 'k', 5500)} K`
-    : row.kind === 'camera' && !(p.isShot && p.lookingThrough) ? `${p.camName} · ${prm.approx === '1' ? 'Approximate, drag to aim' : `${Math.round(p.optics.f35)} mm`}` : null;
+    : row.kind === 'camera' && !(p.isShot && p.lookingThrough) ? `${p.camName} · ${approxLabel(prm) ?? `${Math.round(p.optics.f35)} mm`}` : null;
 
   return (
     <group ref={ref} visible={row.visible} userData={{ objectId: row.id }}

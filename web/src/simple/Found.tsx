@@ -1,6 +1,8 @@
 // A-2 Found it: the answer in plain words. Where to stand, which way to face, the lens as an iPhone zoom, the next good
 // light and "Take me there".
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useReducer } from 'spacetimedb/react';
+import { reducers } from '../module_bindings/index.ts';
 import type { Photo, SolveResult, Spot } from '../module_bindings/types.ts';
 import { angleDiff, compassWord, fmtTime, hfovDeg, lightWindows, metersBetween } from '../geo.ts';
 import { CONFIDENCE, iphoneZoom, locate, photoCredit, resultLine, type PlacedBy } from './lib.ts';
@@ -109,11 +111,14 @@ export default function Found({ result, photo, spot, zone, credit, onGo }: {
 
 /** Found it for a free-location shoot (anywhere.md, anywhere2.md): planned at a pin from the photo's GPS, Nemotron's guess, a
  *  searched place, an exact spot someone set, or the centre of an area. Only an exact spot drops the "Approximate" label. */
-export function PinFound({ photo, geo, title, zone, placed, areaM, placeName, credit, onPlace, onGo }: {
-  photo: Photo; geo: { lat: number; lon: number }; title: string; zone: string; placed?: PlacedBy; areaM?: number; placeName?: string;
-  credit?: string; onPlace: OnPlace; onGo: () => void;
+const UNTITLED = new Set(['', 'Untitled shoot', 'New shoot']); // the module's own list: these may be renamed by any member
+
+export function PinFound({ sessionId, photo, geo, title, zone, placed, areaM, placeName, credit, onPlace, onGo }: {
+  sessionId: bigint; photo: Photo; geo: { lat: number; lon: number }; title: string; zone: string; placed?: PlacedBy; areaM?: number;
+  placeName?: string; credit?: string; onPlace: OnPlace; onGo: () => void;
 }) {
-  const [place, setPlace] = useState(placeName || (title === 'Untitled shoot' ? '' : title));
+  const rename = useReducer(reducers.renameSession);
+  const [place, setPlace] = useState(placeName || (UNTITLED.has(title) ? '' : title));
   useEffect(() => { if (placeName) setPlace(placeName); }, [placeName]);
   const [clue, setClue] = useState(false);
   const moved = photo.pinLat == null || photo.pinLon == null || metersBetween(photo.pinLat, photo.pinLon, geo.lat, geo.lon) > 50;
@@ -123,9 +128,18 @@ export function PinFound({ photo, geo, title, zone, placed, areaM, placeName, cr
     if (placeName || (!moved && place)) return;
     let live = true;
     const guess = placed === 'guess' || (!placed && photo.source === 'locate');
-    locate(photo.url, guess ? undefined : geo).then(r => { if (live && r?.place) setPlace(r.place.split(',').slice(0, 2).join(',').trim()); });
+    // A reread that times out falls back to the place name at the pin, so the screen never stays nameless.
+    (guess ? locate(photo.url).then(r => (r?.place ? r : locate(photo.url, geo))) : locate(photo.url, geo))
+      .then(r => { if (live && r?.place) setPlace(r.place.split(',').slice(0, 2).join(',').trim()); });
     return () => { live = false; };
   }, [photo.url, geo.lat, geo.lon, moved, placeName, placed]); // eslint-disable-line react-hooks/exhaustive-deps
+  // An untitled shoot takes its place's name, once, so invites, Share and the session card stop saying "Untitled shoot".
+  const renamed = useRef(false);
+  useEffect(() => {
+    if (!place || !UNTITLED.has(title) || renamed.current) return;
+    renamed.current = true;
+    rename({ sessionId, title: place.slice(0, 120) }).catch(() => { renamed.current = false; });
+  }, [place, title, sessionId, rename]);
   const by: PlacedBy = placed ?? (photo.source === 'locate' ? 'guess' : moved ? 'search' : 'gps');
   const name = place || 'this place';
   const km = areaM ? (areaM >= 1000 ? `${(areaM / 1000).toFixed(1)} km` : `${Math.round(areaM)} m`) : '';

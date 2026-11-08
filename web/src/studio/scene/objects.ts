@@ -22,6 +22,10 @@ export const stateOf = (r: SceneObject): ObjState => ({
   scale: r.scale, color: r.color, intensity: r.intensity, lightType: r.lightType, params: r.params, visible: r.visible,
 });
 
+/** Simple's stand-in Cam A at a free-location pin (approx=1), labelled by how the pin was placed (anywhere2.md); else null. */
+export const approxLabel = (prm: Record<string, string>) =>
+  prm.approx !== '1' ? null : prm.placed === 'pin' ? 'Placed by you, drag to aim' : 'Approximate, drag to aim';
+
 export function parseParams(s: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const kv of s.split(';')) {

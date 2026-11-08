@@ -22,7 +22,10 @@ import type { Histogram, PointLight, Walker } from './post/LookThrough.tsx';
 import { daylight, lightColorK, previewGrade, sunPath, sunStrength, sunVector } from './light/sun.ts';
 import { useScene } from './state/useScene.ts';
 import { useShotSettings, defaultShot } from './state/useShotSettings.ts';
-import { makeObject, newUid, parseParams, stateOf, withParams, fmtParams, type AddItem, type ObjState } from './scene/objects.ts';
+import { CluePanel, type OnPlace } from '../simple/clue.tsx';
+import { geoSpotId, groundHeight } from '../simple/lib.ts';
+import '../simple/simple.css'; // the clue panel's styles, scoped under .simple
+import { approxLabel, makeObject, newUid, parseParams, stateOf, withParams, fmtParams, type AddItem, type ObjState } from './scene/objects.ts';
 import { optics as opticsOf, frameFromPhoto, fitFrame, type Fit } from './camera/shot.ts';
 import { bodyById, lensById, lensesFor, pickLens } from './catalog/index.ts';
 import { maxApertureAt } from './catalog/lenses.ts';
@@ -197,7 +200,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     return r.name && !/^(Shot camera|Camera)$/.test(r.name) ? r.name : camLetter(Math.max(0, i));
   };
   const shotName = camName(shotRow);
-  const approx = !!shotRow && parseParams(shotRow.params).approx === '1'; // Simple's Cam A at a free-location pin
+  const approxText = shotRow ? approxLabel(parseParams(shotRow.params)) : null; // Simple's Cam A at a free-location pin
+  const approx = !!approxText;
   const isMe = (id?: { isEqual(x: unknown): boolean }) => !!(identity && id?.isEqual(identity));
   const colorOf = useCallback((idHex: string) => presence.find(p => p.identity.toHexString() === idHex)?.color, [presence]);
   const lockOwner = useCallback((r: SceneObject) => {
@@ -584,6 +588,15 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
     setExplore(null);
     setToast('This set is here now. Add a camera and people from the + menu; the sun is this place\'s sun.');
   };
+  // Change place on a free-location shoot (anywhere2.md): Simple's clue panel, written the way Simple's placeAt writes it:
+  // Cam A back to the pin, 1.6 m up, labelled by how it was placed, then the session's spot moves for everyone.
+  const [clueOpen, setClueOpen] = useState(false);
+  const placeAt: OnPlace = async (lat, lon, by, radiusM, name) => {
+    const place = name ? name.split(',').slice(0, 2).join(',').replace(/[;=]/g, ' ').trim().slice(0, 80) : '';
+    if (shotRow) scene.setObject(shotRow, withParams({ ...stateOf(shotRow), x: 0, y: 0, z: 1.6 }, { placed: by, area: by === 'area' && radiusM ? Math.round(radiusM) : '', approx: 1, place }));
+    await setSessionSpot({ sessionId: sid, spotId: geoSpotId(lat, lon, await groundHeight(lat, lon)) });
+    setClueOpen(false);
+  };
   const newShootHere = async () => {
     const id = geoId();
     if (!id || !explore) return;
@@ -807,7 +820,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const camSub = (r: SceneObject) => {
     const b = bodyById(shot.bodyId), l = lensById(shot.lensId);
     void b; void l;
-    return { name: camName(r), sub: parseParams(r.params).approx === '1' ? 'Approximate, drag to aim' : `${Math.round(shot.focalMm)} mm · f/${shot.aperture}` };
+    return { name: camName(r), sub: approxLabel(parseParams(r.params)) ?? `${Math.round(shot.focalMm)} mm · f/${shot.aperture}` };
   };
   const keyframes = versions.flatMap(v => {
     const m = v.label.match(/(\d{1,2}):(\d{2})\s*([AP]M)/i);
@@ -1166,17 +1179,18 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               <button aria-pressed={lightMode === 'captured'} onClick={() => setLightMode('captured')}>As captured</button>
             </div>
           )}
-          {view === 'map' && approx && shotRow && shotPose && (
+          {(view === 'map' || view === 'persp') && approx && shotRow && shotPose && (
             // Simple makes Cam A at the pin with no heading (approx=1); the Map drags pins but can't turn them, so turn it here.
             <div className="st-seg st-float st-lightsw" role="group" aria-label={`Aim ${shotName}`}>
-              <span className="st-chip">{shotName} is approximate: drag its pin, then turn it</span>
-              {[-15, 15].map(d => (
+              <span className="st-chip">{view === 'map' ? `${shotName}: ${approxText?.split(',')[0]}. Drag its pin, then turn it` : `${shotName}: ${approxText?.split(',')[0]}`}</span>
+              {view === 'map' && [-15, 15].map(d => (
                 <button key={d} title={`Turn ${shotName} ${Math.abs(d)}° ${d < 0 ? 'left' : 'right'}`} aria-label={`Turn ${d < 0 ? 'left' : 'right'}`}
                   onClick={() => { const { heading, pitch, roll } = shotPose.hpr, q = cameraQuat(heading + d, pitch, roll); editRow(shotRow, { ...stateOf(shotRow), qx: q.x, qy: q.y, qz: q.z, qw: q.w }, 'rot'); }}>
                   {d < 0 ? '⟲ 15°' : '15° ⟳'}
                 </button>
               ))}
-              <span className="st-chip">{Math.round(((shotPose.hpr.heading % 360) + 360) % 360)}°</span>
+              {view === 'map' && <span className="st-chip">{Math.round(((shotPose.hpr.heading % 360) + 360) % 360)}°</span>}
+              {photo && <button aria-expanded={clueOpen} onClick={() => setClueOpen(v => !v)}>Change place</button>}
             </div>
           )}
           {ghost && <span className="st-chip">Previewing the set at that point. Read-only: Restore makes it real.</span>}
@@ -1193,6 +1207,12 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
             worldNote={world === 'clay' || world === 'clayPhoto' ? `Clay massing from ${layers.data?.layers.buildings?.features.length ?? 'the'} building footprints${world === 'clayPhoto' ? ', your photo projected on it' : ''}` : undefined}
             splat={world === 'splat' && !!splatUrl} progress={splatState.progress} />}
         </div>
+        {clueOpen && photo && origin && (
+          <div className="simple st-float" role="dialog" aria-label="Change place"
+            style={{ position: 'absolute', zIndex: 30, top: 56, right: 16, width: 380, maxWidth: 'calc(100% - 32px)', maxHeight: 'calc(100% - 72px)', overflow: 'auto', padding: 16, borderRadius: 'var(--radius-panel, 10px)' }}>
+            <CluePanel photo={photo} near={{ lat: origin.lat, lon: origin.lon }} onPlace={placeAt} onClose={() => setClueOpen(false)} />
+          </div>
+        )}
         {view !== 'map' && <div className="st-credits">{credits}{photo && <span className="right">Photo: {nameOf(photo.owner)}'s upload</span>}</div>}
         {dragOver && <div className="st-dropzone-hint">Drop the image where it should go</div>}
         {dropAsk && (
@@ -1252,7 +1272,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
             <div className="st-div" />
           </div>
         )}
-        <Inspector row={selRow} isShot={!selRow || selRow.id === shotRow?.id} camName={shotName} approx={approx} lockedBy={selRow ? lockOwner(selRow)?.name ?? null : null}
+        <Inspector row={selRow} isShot={!selRow || selRow.id === shotRow?.id} camName={shotName} approx={approxText} lockedBy={selRow ? lockOwner(selRow)?.name ?? null : null}
           placedBy={selRow ? (isMe(selRow.updatedBy) ? 'you' : nameOf(selRow.updatedBy)) : ''}
           shot={shot} setShot={setShotPhysical} shotError={shotError} optics={o} sceneEv={meterEv} vignette={vignette} setVignette={setVignette}
           subjectLock={subjectLock} onSubjectLock={setSubjectLock} tint={tint} onTint={setTint} cropNote={view === 'shot' ? cropNote : null} shakePx={shakePx}

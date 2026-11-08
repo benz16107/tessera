@@ -9,7 +9,7 @@ import { maxApertureAt, minFocusAt, THIRD_STOPS } from '../catalog/lenses.ts';
 import { profileFor } from '../catalog/profiles.ts';
 import { SHUTTERS, ISOS, fmtShutter, handheld, diffraction, meterStops, settingsEv100, frameFraction } from '../optics.ts';
 import { cameraHpr, cameraQuat, toEulerDeg, fromEulerDeg, yawQuat } from '../frame.ts';
-import { parseParams, num, stateOf, withParams, POSES, type ObjState } from '../scene/objects.ts';
+import { approxLabel, parseParams, num, stateOf, withParams, POSES, type ObjState } from '../scene/objects.ts';
 import type { Shot } from '../state/useShotSettings.ts';
 import { kelvinHex } from '../world/SceneObjects.tsx';
 import type { Optics } from '../camera/shot.ts';
@@ -26,8 +26,8 @@ export interface InspectorProps {
   row: SceneObject | undefined;
   isShot: boolean;
   camName: string;
-  /** The shot camera is Simple's stand-in at a free-location pin (approx=1); shown when no row is selected. */
-  approx?: boolean;
+  /** The shot camera's approxLabel (Simple's stand-in at a free-location pin), shown when no row is selected. */
+  approx?: string | null;
   lockedBy: string | null;
   placedBy: string;
   shot: Shot; setShot: (p: Partial<Shot>) => void; shotError: string;
@@ -319,7 +319,7 @@ function CameraPage(p: InspectorProps) {
   );
   return (
     <div className="st-insp">
-      <Header icon="camera" name={row?.name ?? p.camName} sub={(row ? parseParams(row.params).approx === '1' : p.approx) ? 'Approximate, drag to aim' : `${p.isShot || !row ? 'Shot camera' : 'Camera'} · ${Math.round(shot.focalMm)} mm · f/${shot.aperture}`}
+      <Header icon="camera" name={row?.name ?? p.camName} sub={(row ? approxLabel(parseParams(row.params)) : p.approx) ?? `${p.isShot || !row ? 'Shot camera' : 'Camera'} · ${Math.round(shot.focalMm)} mm · f/${shot.aperture}`}
         onName={v => { if (row && s) p.onChange(row, { ...s, name: v }, 'name'); }} visible={row?.visible ?? true}
         onVisible={() => { if (row && s) p.onChange(row, { ...s, visible: !row.visible }, ''); }} locked={p.lockedBy} />
       {row && !p.isShot && <button className="st-btn small" onClick={() => p.onMakeShot(row)}>Make this the shot camera</button>}
