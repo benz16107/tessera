@@ -62,7 +62,6 @@ export default function SceneView(p: Props) {
     const v = s.viewer;
     v.clock.shouldAnimate = false;
     p.onReady(v);
-    if (import.meta.env.DEV) Object.assign(window, { __viewer: v, __applyPose: applyPose }); // test hook for Playwright
 
     const el = v.canvas;
     const busy = () => { interacting.current = performance.now() + 600; };

@@ -289,9 +289,9 @@ Photo credits: every Creative Commons photo used for a 3D model or training is o
 
 ## Build log
 
-Ben said go at 5:20 PM CT Saturday ("just build everything"). Status as of 7:55 PM CT:
+Ben said go at 5:20 PM CT Saturday ("just build everything"). Status as of 6:50 PM CT:
 
-- **Module** live on Maincloud as `shotmatch`. Data cleared at 7:50 PM to drop test rows.
+- **Module** live on Maincloud as `shotmatch`. Data cleared at 6:48 PM CT to drop test rows.
 - **Solver** runs on linuxbox as `shotmatch-solver.service`. DUMBO rebuilt in this repo: 127 of 155 images registered, 11 dropped by the mirror filter. Held-out: 10 of 11 placed, 9 within 25 m (T2, a telephoto, at 32 m), T3 flagged "Couldn't place" at 75 inliers, median focal error 3%, 11 to 18 s a photo. Table in `spots/nyc_dumbo/eval.md`.
 - **Crew** runs as `shotmatch-crew.service`. Safety, lens read, solve, sun and preview steps work. Killing it mid-solve requeues the job and a restart finishes it.
 - **Web** served by the crew at https://linuxbox.<tailnet>.ts.net:10000 (Tailscale funnel, port 10000).

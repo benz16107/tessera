@@ -8,7 +8,6 @@ import { useConfig, NAME_KEY } from './config.ts';
 import { navigate } from './App.tsx';
 import SceneView, { type PlaceMode } from './SceneView.tsx';
 import { readPose } from './cesium.ts';
-import { fixtureOn, fixtureRows } from './fixture.ts';
 import { sunAt } from './geo.ts';
 import { AnswerCard, ConfidenceBadge, JobStatus, Trace, LensPanel, PeoplePanel, LightPanel, PreviewPanel, LivePanel, ShareDialog, Toasts, PhotoDrop, Footer, Presence } from './panels.tsx';
 
@@ -165,10 +164,10 @@ function SessionView({ session, myName }: { session: Session; myName: string }) 
   const cfg = useConfig();
   const { identity } = useSpacetimeDB();
   const sid = session.id;
-  const [spotsDb] = useTable(tables.spot);
-  const [photosDb] = useTable(tables.photo.where(r => r.sessionId.eq(sid)));
-  const [jobsDb] = useTable(tables.solveJob.where(r => r.sessionId.eq(sid)));
-  const [resultsDb] = useTable(tables.solveResult.where(r => r.sessionId.eq(sid)));
+  const [spots] = useTable(tables.spot);
+  const [photos] = useTable(tables.photo.where(r => r.sessionId.eq(sid)));
+  const [jobs] = useTable(tables.solveJob.where(r => r.sessionId.eq(sid)));
+  const [results] = useTable(tables.solveResult.where(r => r.sessionId.eq(sid)));
   const [cams] = useTable(tables.camera.where(r => r.sessionId.eq(sid)));
   const [people] = useTable(tables.person.where(r => r.sessionId.eq(sid)));
   const [scouts] = useTable(tables.devicePose.where(r => r.sessionId.eq(sid)));
@@ -176,13 +175,6 @@ function SessionView({ session, myName }: { session: Session; myName: string }) 
   const [previews] = useTable(tables.previewJob.where(r => r.sessionId.eq(sid)));
   const [messages, messagesReady] = useTable(tables.message.where(r => r.sessionId.eq(sid)));
   const [steps] = useTable(tables.agentStep.where(r => r.sessionId.eq(sid)));
-
-  // Dev-only screenshot fixture; fixtureOn() is false in production builds.
-  const fx = useMemo(() => (fixtureOn() ? fixtureRows(sid) : null), [sid]);
-  const spots = useMemo(() => (fx ? [...spotsDb, fx.spot] : spotsDb), [fx, spotsDb]);
-  const photos = useMemo(() => (fx ? [...photosDb, fx.photo] : photosDb), [fx, photosDb]);
-  const jobs = useMemo(() => (fx ? [...jobsDb, fx.job] : jobsDb), [fx, jobsDb]);
-  const results = useMemo(() => (fx ? [...resultsDb, fx.result] : resultsDb), [fx, resultsDb]);
 
   const moveCamera = useReducer(reducers.moveCamera);
   const setSessionSpot = useReducer(reducers.setSessionSpot);

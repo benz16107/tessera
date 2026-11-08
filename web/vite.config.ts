@@ -1,4 +1,3 @@
-import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
@@ -14,10 +13,7 @@ export default defineConfig({
       targets: ['Workers', 'ThirdParty', 'Assets', 'Widgets'].map(d => ({ src: `${cesiumBuild}/${d}`, dest: 'cesium' })),
     }),
   ],
-  define: {
-    CESIUM_BASE_URL: JSON.stringify('/cesium/'),
-    __REPO_ROOT__: JSON.stringify(fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '')), // dev fixture only
-  },
+  define: { CESIUM_BASE_URL: JSON.stringify('/cesium/') },
   server: {
     port: 5173,
     host: true,
