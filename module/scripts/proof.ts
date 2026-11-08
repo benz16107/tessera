@@ -114,6 +114,18 @@ await maya.reducers.restoreSceneTo({ sessionId: s.id, changeId: addId });
 const back = await until(() => maya.db.sceneObject.id.find(obj!.id));
 check('restoreSceneTo: empty set at change 0, bike back at its add', !!empty && !!back, `${changes().length} history rows, last: ${changes().at(-1)?.action}`);
 
+// 4b. One shot camera per session, even when every tab races to make it, and restore leaves it alone.
+const CAM = { ...OBJ, kind: 'camera', assetId: '', name: 'Cam A', x: 0, y: -10, z: 1.6 };
+await Promise.all([maya, jun].flatMap((c, i) => [0, 1].map(k => c.reducers.addSceneObject({ sessionId: s.id, ...CAM, params: `uid=race${i}${k};shot=1` }))));
+await sleep(800);
+const cams = () => [...maya.db.sceneObject.iter()].filter(o => o.sessionId === s.id && o.kind === 'camera');
+check('four racing "Cam A" adds from two people make one shot camera', cams().length === 1, `${cams().length} camera(s)`);
+await maya.reducers.restoreSceneTo({ sessionId: s.id, changeId: 0n });
+await sleep(800);
+check('restore to the start keeps the shot camera', cams().length === 1 && ![...maya.db.sceneObject.iter()].some(o => o.id === obj!.id), `${cams().length} camera(s), bike ${maya.db.sceneObject.id.find(obj!.id) ? 'still there' : 'gone'}`);
+await maya.reducers.restoreSceneTo({ sessionId: s.id, changeId: addId });
+await until(() => maya.db.sceneObject.id.find(obj!.id));
+
 // 5. Live sun: a per-session schedule moves session.planTime.
 await maya.reducers.setSunClock({ sessionId: s.id, rate: 600 });
 const t0 = maya.db.session.id.find(s.id)?.planTime?.microsSinceUnixEpoch ?? 0n;

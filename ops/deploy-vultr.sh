@@ -11,7 +11,8 @@ echo "$out" | grep -v '^\.d' || echo "nothing changed"
 if echo "$out" | grep -q 'crew/package-lock.json'; then
   ssh "$HOST" 'cd ~/Code/hackathons/shotmatch/crew && PATH=$HOME/.nvm/default-node/bin:$PATH npm ci --no-audit --no-fund'
 fi
-if echo "$out" | grep -qE 'solver/.*\.py|spots/[^/]+/model/'; then ssh "$HOST" 'systemctl --user restart shotmatch-solver'; echo "solver restarted"; fi
+# Only a new file or a size change restarts the solver: a deploy from a fresh checkout changes every mtime.
+if echo "$out" | grep -qE '^<f(\+|.s).* (solver/.*\.py|spots/[^/]+/model/)'; then ssh "$HOST" 'systemctl --user restart shotmatch-solver'; echo "solver restarted"; fi
 if echo "$out" | grep -q 'ops/shotmatch-crew.service'; then ssh "$HOST" 'systemctl --user daemon-reload'; fi
 # The crew drains before it restarts (renders and generations in flight finish, up to 150 s); show the wait.
 ssh "$HOST" 'since=$(date "+%Y-%m-%d %H:%M:%S"); systemctl --user restart shotmatch-crew & pid=$!

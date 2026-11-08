@@ -573,6 +573,11 @@ export const init = spacetimedb.init(ctx => {
 export const upgrade = spacetimedb.reducer(ctx => {
   if (!isOwner(ctx)) throw new SenderError('owner only');
   ensureSetup(ctx);
+  // Remove exact duplicate shot cameras left by the old client race (same name and position as the first one).
+  for (const s of [...ctx.db.session.iter()]) {
+    const [first, ...rest] = shotCams(ctx, s.id).sort((a, b) => Number(a.id - b.id));
+    for (const c of rest) if (c.name === first.name && c.x === first.x && c.y === first.y && c.z === first.z) ctx.db.sceneObject.id.delete(c.id);
+  }
   // Backfill: placed shoots still on a default title get a Nemotron title (drop-page shoots made before 'New shoot' counted).
   for (const s of [...ctx.db.session.iter()])
     if (UNTITLED.has(s.title) && [...ctx.db.solveResult.sessionId.filter(s.id)].some(r => r.confidence !== 'none'))
@@ -865,8 +870,14 @@ const sharePropToLibrary = (ctx: Ctx, sessionId: bigint, o: { kind: string; asse
   ctx.db.publishPropOutbox.insert({ msgId: 0n, target: link.db, assetUrl, name: o.name.slice(0, 80), prompt: prompt.slice(0, 500), sessionId });
 };
 
+// The shot camera ("Cam A") is the camera whose params say shot=1. One per session.
+const isShotCam = (o: { kind: string; params: string }) => o.kind === 'camera' && /(?:^|;)shot=1(?:;|$)/.test(o.params);
+const shotCams = (ctx: Ctx, sessionId: bigint) => [...ctx.db.sceneObject.sessionId.filter(sessionId)].filter(isShotCam);
+
 export const addSceneObject = spacetimedb.reducer(OBJ, (ctx, a) => {
   requireMember(ctx, a.sessionId);
+  // Every open tab races to create Cam A when it is missing; transactions run one at a time, so the first one wins.
+  if (isShotCam(a) && shotCams(ctx, a.sessionId).length) return;
   if ([...ctx.db.sceneObject.sessionId.filter(a.sessionId)].length >= MAX_OBJECTS) throw new SenderError('scene is full');
   const o = ctx.db.sceneObject.insert({ ...checkObj(a), id: 0n, lockedBy: undefined, updatedBy: ctx.sender, updatedAt: ctx.timestamp });
   recordChange(ctx, a.sessionId, o.id, 'add', '', snap(o));
@@ -923,8 +934,16 @@ const restoreTo = (ctx: Ctx, sessionId: bigint, changeId: bigint) => {
     const t0 = target.get(c.objectId);
     if (!t0 || c.id < t0.id) target.set(c.objectId, { id: c.id, before: c.before });
   }
-  for (const [objectId, s] of target) applyState(ctx, sessionId, objectId, s.before, 'restore');
-  return target.size;
+  let n = 0;
+  for (const [objectId, s] of target) {
+    // Restoring brings back people and props; it never deletes the shot camera or adds a second one.
+    const cur = ctx.db.sceneObject.id.find(objectId);
+    if (cur && isShotCam(cur) && !s.before) continue;
+    if (!cur && s.before && isShotCam(JSON.parse(s.before)) && shotCams(ctx, sessionId).length) continue;
+    applyState(ctx, sessionId, objectId, s.before, 'restore');
+    n++;
+  }
+  return n;
 };
 const latestChange = (ctx: Ctx, sessionId: bigint) =>
   [...ctx.db.sceneChange.sessionId.filter(sessionId)].reduce((m, c) => (c.id > m ? c.id : m), 0n);

@@ -162,7 +162,8 @@ export function HistoryScrubber({ sessionId, onPreview }: { sessionId: bigint; o
 
 const ROUTE = 'https://maincloud.spacetimedb.com/v1/database/shotmatch/route';
 
-export function SharedLibrary({ sessionId }: { sessionId: bigint }) {
+/** `onAdd` lets the host place a library prop its own way (the studio puts it in front of the camera). */
+export function SharedLibrary({ sessionId, onAdd }: { sessionId: bigint; onAdd?: (url: string, name: string) => void }) {
   const [props] = useTable(tables.propLibrary);
   const [shots] = useTable(tables.shotLibrary);
   const [live] = useTable(tables.liveSessions);
@@ -172,7 +173,7 @@ export function SharedLibrary({ sessionId }: { sessionId: bigint }) {
   const [msg, setMsg] = useState('');
   const done = previews.filter(p => p.state === 'done' && p.imageUrl);
   const mineShared = new Set(shots.filter(s => s.sessionId === sessionId).map(s => s.imageUrl));
-  const place = (url: string, name: string) => add({
+  const place = (url: string, name: string) => onAdd ? (onAdd(url, name), setMsg(`${name} added to the set`)) : add({
     sessionId, kind: 'prop_generated', assetId: url, name, x: 0, y: 0, z: 0, qx: 0, qy: 0, qz: 0, qw: 1, scale: 1,
     color: '', intensity: 0, lightType: '', params: '', visible: true,
   }).then(() => setMsg(`${name} added at the spot's centre`)).catch(e => setMsg(String(e?.message ?? e)));

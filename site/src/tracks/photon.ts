@@ -2,7 +2,6 @@
 // (crew/scripts/photon-e2e.ts, log in data/photon-e2e.log, report in the photon thread) and the crew's channel formats
 // (crew/src/channels/format.ts). Where the run did not record a reply's exact words, the thread shows a note instead.
 import type { Track } from './types.ts';
-import panel from '../assets/cards/photon-panel.png';
 import render from '../assets/cards/photon-render.png';
 import photo from '../assets/shots/user-photo-d0481.jpg';
 import liveHello from '../assets/shots/photon-live-telegram-hello.png';

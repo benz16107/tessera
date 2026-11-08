@@ -45,7 +45,7 @@ import { NvidiaSlot, SpacetimeSlot, PhotonSlot } from './slots.tsx';
 import { ViewSwitch } from '../simple/ViewSwitch.tsx';
 import { xrStore, VrButton, VrOrigin } from './xr/VR.tsx';
 import WalkControls, { WalkHud, newWalkInput, obstaclesFor } from './world/Walk.tsx';
-import { SetEventsBridge, SetEventMarks, ViewBroadcaster, CheckinBridge, CheckinMarksSlot, type SetEv } from './world/SetEvents.tsx';
+import { SetEventsBridge, SetEventMarks, ViewBroadcaster, FollowCamera, CheckinBridge, CheckinMarksSlot, type SetEv } from './world/SetEvents.tsx';
 import type { Layers } from './render/layers.ts';
 import '@fontsource/martian-mono/400.css';
 import '@fontsource/martian-mono/500.css';
@@ -274,6 +274,14 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   const walkInput = useRef(newWalkInput());
   const [laser, setLaser] = useState(false);
   const [ev, setEv] = useState<SetEv | null>(null);
+  // Following someone shows their view in World (the free camera), whatever view this person was in.
+  useEffect(() => { if (ev?.following) setView('persp'); }, [ev?.following]); // eslint-disable-line react-hooks/exhaustive-deps
+  // History preview (spacetime HistoryScrubber): the whole set as it was at that point, shown read-only instead of the live rows.
+  const [ghost, setGhost] = useState<Map<bigint, Record<string, unknown>> | null>(null);
+  const shownRows: SceneObject[] = useMemo(() => !ghost ? scene.rows
+    : [...ghost.entries()].map(([id, f]) => ({ ...(scene.rows.find(r => r.id === id) ?? {}), ...f, id, sessionId: sid } as unknown as SceneObject)),
+  [ghost, scene.rows, sid]);
+  useEffect(() => { if (ghost) setSelected(null); }, [ghost]);
   const [checkins, setCheckins] = useState<unknown[]>([]);
   const [measure, setMeasure] = useState<Vector3[]>([]);
   const [dropAsk, setDropAsk] = useState<{ file: File; x: number; y: number; at: Pick | null } | null>(null);
@@ -439,6 +447,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
   }, [followDist]); // eslint-disable-line react-hooks/exhaustive-deps
   const pick = (id: bigint | null, point: Vector3, alt: boolean) => {
     if (document.pointerLockElement) return; // walking with the mouse captured: Walk picks at the crosshair
+    if (ghost) return; // a history preview is read-only
     if (view === 'walk' && id === null && tool !== 'measure' && !laser) { walkInput.current.lock?.(); return; }
     const p = threeToEnu(point);
     if ((laser || alt) && ev) { ev.ping({ x: p.x, y: p.y, z: p.z }, id ?? 0n).catch(() => {}); return; }
@@ -821,7 +830,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
       </header>
 
       <aside className="st-left" aria-label="Scene">
-        <Outliner rows={scene.rows} selected={selected} shotId={shotRow?.id ?? null} camLabel={camSub} lockOwner={lockOwner}
+        <Outliner rows={shownRows} selected={selected} shotId={shotRow?.id ?? null} camLabel={camSub} lockOwner={lockOwner}
           onSelect={id => setSelected(id)} onToggle={r => editRow(r, { ...stateOf(r), visible: !r.visible }, '')}
           spotLabel={spot?.name.split(',')[0].replace(/^.* from /, '') ?? 'Spot'} world={world}
           worlds={worlds} onWorld={setWorld} sunTime={fmtTime(planTime, zone)} photo={photo}
@@ -839,7 +848,19 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
           const at = pickRef.current?.(e.clientX, e.clientY) ?? null;
           setDropAsk({ file: f, x: e.clientX - r.left, y: e.clientY - r.top, at });
         }}>
-        {photoBack && photo && !plateReady && <img className="st-backplate" src={photo.url || photo.thumb} alt="" style={{ left: fit.rect.x, top: fit.rect.y, width: fit.rect.w, height: fit.rect.h }} />}
+        {photoBack && photo && !plateReady && (() => {
+          // No projected plate (no solved camera yet, or still loading): the photo is a plain image under the canvas, so
+          // the same exposure, daylight level and preview grade go on as a CSS filter and a multiply tint.
+          const lin = gain * lvl, m = Math.max(...grade.rgb), r = { left: fit.rect.x, top: fit.rect.y, width: fit.rect.w, height: fit.rect.h };
+          return (
+            <>
+              <img className="st-backplate" src={photo.url || photo.thumb} alt=""
+                style={{ ...r, filter: `brightness(${Math.pow(lin * m, 1 / 2.2).toFixed(3)}) saturate(${(1 - grade.desat).toFixed(2)})` }} />
+              <div className="st-backplate" aria-hidden="true"
+                style={{ ...r, mixBlendMode: 'multiply', background: `rgb(${grade.rgb.map(v => Math.round(255 * Math.pow(v / m, 1 / 2.2))).join(',')})` }} />
+            </>
+          );
+        })()}
         {view !== 'shot' && photo && shotRow && <img className="st-backplate" src={photo.thumb} alt="" style={{ left: pip.x, top: pip.y, width: pip.w, height: pip.h, borderRadius: 4 }} />}
         <div className="st-canvas">
           <Canvas shadows="percentage" gl={{ antialias: true, alpha: true }} frameloop={view === 'map' ? 'never' : 'always'} camera={{ fov: 50, near: 0.1, far: 20000, position: enuToThree(startCam.pos).toArray() }}
@@ -872,7 +893,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                 <Catchers geo={geo} occlude={view === 'shot'} shadowOpacity={showClay || (showTiles && lightMode === 'live') ? 0 : 0.5} onTeleport={p => setVrOrigin(p)}
                   onPointerMove={e => { if (ev) { const p = threeToEnu(e.point); ev.cursor({ x: p.x, y: p.y, z: p.z }); } }}
                   onClick={e => { e.stopPropagation(); pick(null, e.point, e.nativeEvent.altKey); }} />
-                {scene.rows.map(r => {
+                {shownRows.map(r => {
                   const lk = lockOwner(r);
                   return (
                     <ObjectNode key={String(r.id)} row={r} selected={r.id === selected} lockedBy={lk?.name ?? null} lockColor={lk?.color} dragging={scene.draggingId() === r.id}
@@ -909,6 +930,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               )}
               <VrOrigin position={vrOrigin ?? enuToThree({ x: shotPose?.pos.x ?? 0, y: shotPose?.pos.y ?? 0, z: shotPose ? gz(shotPose.pos.x, shotPose.pos.y) : 0 })} />
               <ViewBroadcaster ev={ev} />
+              {view === 'persp' && <FollowCamera ev={ev} />}
               <Picker pickRef={pickRef} />
               <Capture capture={capture} camera={shotCam} vfovDeg={o.vfovDeg} frame={frame} objects={objectsForLayers} renderSun={renderSun} />
             </XR>
@@ -958,7 +980,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
             {photoBack && <p className="st-photocredit" style={{ left: fit.rect.x + 10, top: fit.rect.y + fit.rect.h - 28 }}>Your photo · {frame.w} × {frame.h}</p>}
             <div className="st-caption" style={{ left: fit.rect.x, top: fit.rect.y + fit.rect.h + 12, width: fit.rect.w }}>
               <b>{compare ? `B · ${settingsLabel}` : `Through ${shotName}: ${photoBack ? 'your photo with your objects and lights' : 'the 3D world with your objects'}`}</b>
-              <span>{[cropNote ?? 'Lens, aperture, shutter and ISO behave like the real camera', photoBack && graded ? 'Preview grade. Render relights the photo' : ''].filter(Boolean).join(' · ')}</span>
+              <span>{photoBack && graded ? `Preview grade. Render relights the photo${cropNote ? ` · ${cropNote}` : ''}` : cropNote ?? 'Lens, aperture, shutter and ISO behave like the real camera'}</span>
             </div>
             {split && latestRender && (() => {
               const r = { x: vp.w / 2 + 8, y: fit.rect.y, w: Math.min(vp.w / 2 - 32, fit.rect.w), h: fit.rect.h };
@@ -1041,14 +1063,14 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
             {!focus && view !== 'map' && (
               <div className="st-rail st-float" role="toolbar" aria-label="Tools">
                 {([['select', 'cursor', 'Select (W)'], ['translate', 'move', 'Move (G)'], ['rotate', 'rotate', 'Rotate (R)'], ['scale', 'scale', 'Scale (S)']] as const).map(([t, i, l]) => (
-                  <button key={t} aria-pressed={tool === t} onClick={() => setTool(t)} title={l} aria-label={l}><Ico n={i} s={18} /></button>
+                  <button key={t} aria-pressed={tool === t} onClick={() => setTool(t)} title={l} aria-label={l}><Ico n={i} s={16} /></button>
                 ))}
                 <hr />
-                <button aria-expanded={addOpen} onClick={() => setAddOpen(v => !v)} title="Add (Shift+A)" aria-label="Add people, props and lights"><span aria-hidden="true" style={{ font: '400 22px/1 var(--sans)' }}>+</span></button>
+                <button aria-expanded={addOpen} onClick={() => setAddOpen(v => !v)} title="Add (Shift+A)" aria-label="Add people, props and lights"><Ico n="plus" s={16} /></button>
                 <hr />
-                <button aria-pressed={tool === 'measure'} onClick={() => { setTool(t => (t === 'measure' ? 'select' : 'measure')); setMeasure([]); }} title="Measure (M)" aria-label="Measure"><Ico n="ruler" s={18} /></button>
-                <button aria-pressed={laser} onClick={() => setLaser(v => !v)} title="Laser pointer for everyone (L, or Alt+click)" aria-label="Laser pointer"><Ico n="crosshair" s={18} /></button>
-                <button aria-expanded={viewMenu} onClick={() => setViewMenu(v => !v)} title="View options" aria-label="View options"><span aria-hidden="true" style={{ font: '600 16px/1 var(--sans)', letterSpacing: 1 }}>···</span></button>
+                <button aria-pressed={tool === 'measure'} onClick={() => { setTool(t => (t === 'measure' ? 'select' : 'measure')); setMeasure([]); }} title="Measure (M)" aria-label="Measure"><Ico n="ruler" s={16} /></button>
+                <button aria-pressed={laser} onClick={() => setLaser(v => !v)} title="Laser pointer for everyone (L, or Alt+click)" aria-label="Laser pointer"><Ico n="crosshair" s={16} /></button>
+                <button aria-expanded={viewMenu} onClick={() => setViewMenu(v => !v)} title="View options" aria-label="View options"><Ico n="dots" s={16} /></button>
               </div>
             )}
             {viewMenu && !focus && (
@@ -1082,7 +1104,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
                 {([['select', 'cursor', 'Select (W)'], ['translate', 'move', 'Move (G)'], ['rotate', 'rotate', 'Rotate (R)'], ['scale', 'scale', 'Scale (S)']] as const).map(([t, i, l]) => (
                   <button key={t} aria-pressed={tool === t} onClick={() => setTool(t)} title={l} aria-label={l}><Ico n={i} s={16} /></button>
                 ))}
-                <button onClick={() => setAddOpen(v => !v)} title="Add (Shift+A)" aria-label="Add"><span aria-hidden="true" style={{ font: '400 20px/1 var(--sans)' }}>+</span></button>
+                <button onClick={() => setAddOpen(v => !v)} title="Add (Shift+A)" aria-label="Add"><Ico n="plus" s={16} /></button>
                 <hr />
                 <button className="st-btn small" onClick={() => setFocus(false)}>Exit focus <span className="st-meta">Tab</span></button>
               </div>
@@ -1116,6 +1138,7 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
               <button aria-pressed={lightMode === 'captured'} onClick={() => setLightMode('captured')}>As captured</button>
             </div>
           )}
+          {ghost && <span className="st-chip">Previewing the set at that point. Read-only: Restore makes it real.</span>}
           {focusHint && !focus && !buildShown && <span className="st-chip">Press Tab for focus mode: just the view and a small toolbar</span>}
           {!shotRow && <span className="st-chip">{solved ? `Placing ${shotName} where the photo was taken` : 'No solved photo yet: place objects freely'}</span>}
           {world === 'splat' && splatUrl && !splatState.loaded && <span className="st-chip">Loading the photoreal set {Math.round(splatState.progress * 100)}%</span>}
@@ -1219,8 +1242,8 @@ function StudioView({ session, myName }: { session: Session; myName: string }) {
           <PhotonSlot name="PhotonPanel" props={{ sessionId: sid, code: session.code, myName }} />
           <SpacetimeSlot name="Presence" props={{ sessionId: sid, focusObjectId: selected }} />
           <SpacetimeSlot name="LiveInspector" props={{ sessionId: sid, myName, defaultOpen: true }} fallbackText="The SpacetimeDB live inspector mounts here once web/src/spacetime exports it." />
-          <SpacetimeSlot name="HistoryScrubber" props={{ sessionId: sid }} />
-          <SpacetimeSlot name="SharedLibrary" props={{ sessionId: sid }} />
+          <SpacetimeSlot name="HistoryScrubber" props={{ sessionId: sid, onPreview: setGhost }} />
+          <SpacetimeSlot name="SharedLibrary" props={{ sessionId: sid, onAdd: (url: string, name: string) => addItem({ kind: 'prop_generated', url, name }) }} />
         </div>
       )}
     </div>

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import type { Identity } from 'spacetimedb';
-import { threeToEnu } from '../frame.ts';
+import { enuToThree, threeToEnu } from '../frame.ts';
 import { useSpacetimeMod, usePhotonMod } from '../slots.tsx';
 
 export interface Pt { x: number; y: number; z: number }
@@ -13,6 +13,8 @@ export interface SetEv {
   cursors: Map<string, Pt & { name: string; color: string }>;
   pings: (Pt & { name: string; color: string; key: number; at: number })[];
   followers: Set<string>;
+  views: Map<string, { eye: Pt; target: Pt; name: string; at: number }>; // the views people send while followed
+  following: string | null; // whom this client follows (identity hex), shared with the presence bar
   cursor(p: Pt): void;
   ping(p: Pt, objectId?: bigint): Promise<void>;
   view(eye: Pt, target: Pt): Promise<void>;
@@ -23,7 +25,7 @@ type UseSetEvents = (sessionId: bigint, me?: Identity) => SetEv;
 function Bridge({ hook, sessionId, me, onChange }: { hook: UseSetEvents; sessionId: bigint; me?: Identity; onChange: (e: SetEv) => void }) {
   const ev = hook(sessionId, me);
   // The hook returns a fresh object each render; lift it only when its state or senders change (no render loop).
-  useEffect(() => { onChange(ev); }, [ev.cursors, ev.pings, ev.followers, ev.cursor, onChange]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { onChange(ev); }, [ev.cursors, ev.pings, ev.followers, ev.views, ev.following, ev.cursor, onChange]); // eslint-disable-line react-hooks/exhaustive-deps
   return null;
 }
 
@@ -72,6 +74,20 @@ export function ViewBroadcaster({ ev }: { ev: SetEv | null }) {
     const target = (controls as unknown as { target?: import('three').Vector3 } | null)?.target;
     const eye = threeToEnu(camera.position), tgt = target ? threeToEnu(target) : eye;
     ev.view({ x: eye.x, y: eye.y, z: eye.z }, { x: tgt.x, y: tgt.y, z: tgt.z }).catch(() => {});
+  });
+  return null;
+}
+
+/** While following someone: ease this camera and its orbit target toward the view they send (about 10 Hz). */
+export function FollowCamera({ ev }: { ev: SetEv | null }) {
+  const { camera, controls } = useThree();
+  useFrame((_, dt) => {
+    const v = ev?.following ? ev.views.get(ev.following) : undefined;
+    if (!v) return;
+    const k = 1 - Math.exp(-dt * 10);
+    camera.position.lerp(enuToThree(v.eye), k);
+    const c = controls as unknown as { target?: import('three').Vector3; update?: () => void } | null;
+    if (c?.target) { c.target.lerp(enuToThree(v.target), k); c.update?.(); } else camera.lookAt(enuToThree(v.target));
   });
   return null;
 }

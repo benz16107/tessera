@@ -50,7 +50,7 @@ export default {
       where: 'session_card(code) view (line 1555); useSessionCard in web/src/spacetime/hooks.ts',
       status: 'live',
       img: joinCard,
-      alt: 'The join card for a shoot named SpacetimeDB UI check, with a Your name field and Join the shoot',
+      alt: 'The join card for the shoot Manhattan Bridge at golden hour: You\'re invited, a Your name field and Join the shoot',
     },
     {
       name: 'Live data inspector',

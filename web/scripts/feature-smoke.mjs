@@ -1,6 +1,7 @@
 // Feature smoke test on a live ShotMatch: re-runs the core paths in a fresh scratch shoot and prints PASS or FAIL per path.
 //   node scripts/feature-smoke.mjs [--render] [--keep]
-// Env: BASE (default production), PW (playwright-core dir), CHROME (default /usr/bin/google-chrome), GL=sw for SwiftShader.
+// Env: BASE (default production), PW (playwright-core dir), CHROME (default /usr/bin/google-chrome), GL=gpu for ANGLE on Vulkan.
+// SwiftShader is the default: headless Chrome on linuxbox's integrated GPU lost its WebGL context in Simple under load.
 // It creates its own shoot from the example photo and deletes it at the end with "Delete shoot" (unless --keep). It never opens
 // the demo shoot A9TVAN. --render adds one AI render (NVIDIA inference, about a minute).
 const BASE = process.env.BASE || 'https://104-238-146-229.sslip.io';
@@ -9,7 +10,7 @@ const { chromium } = await import(`${PW}/index.mjs`);
 const args = new Set(process.argv.slice(2));
 const browser = await chromium.launch({
   executablePath: process.env.CHROME || '/usr/bin/google-chrome',
-  args: process.env.GL === 'sw' ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
+  args: process.env.GL !== 'gpu' ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']
     : ['--use-angle=vulkan', '--enable-features=Vulkan', '--ignore-gpu-blocklist', '--enable-gpu-rasterization'],
 });
 const results = [];
@@ -26,7 +27,8 @@ async function person(name, view) {
 const lens = p => p.locator('.s-lensline').innerText().catch(() => '');
 const head = p => p.locator('aside[aria-label=Inspector] .st-insp-head').first().innerText().then(t => t.replace(/\s+/g, ' ')).catch(() => '');
 const view = p => p.locator('.studio').getAttribute('data-view');
-const pathTry = async (name, fn) => { try { await fn(); } catch (e) { report(name, false, String(e).split('\n')[0].slice(0, 200)); } };
+const SHOTS = new URL('../screenshots/feature/', import.meta.url).pathname;
+const pathTry = async (name, fn) => { try { await fn(); } catch (e) { const f = `${SHOTS}smoke-fail-${name.replace(/\W+/g, '-').toLowerCase()}.png`; await A.screenshot({ path: f }).catch(() => {}); report(name, false, `${String(e).split('\n')[0].slice(0, 200)} (screenshot ${f.split('/web/')[1]})`); } };
 
 const A = await person('Smoke A', 'simple');
 let code = '';

@@ -2,7 +2,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 
 export type IconName = 'search' | 'down' | 'globe' | 'camera' | 'sun' | 'bulb' | 'lamp' | 'walk' | 'eye' | 'eye-slash' | 'cube' | 'bike'
-  | 'umbrella' | 'image' | 'cursor' | 'move' | 'rotate' | 'scale' | 'ruler' | 'play' | 'crosshair' | 'lock' | 'car';
+  | 'umbrella' | 'image' | 'cursor' | 'move' | 'rotate' | 'scale' | 'ruler' | 'play' | 'crosshair' | 'lock' | 'car' | 'plus' | 'dots';
 
 export const Ico = ({ n, s, style }: { n: IconName; s?: 10 | 12 | 16 | 18; style?: CSSProperties }) =>
   <i className={`ico${s ? ` s${s}` : ''}`} aria-hidden="true" style={{ ['--i' as string]: `url(/studio/ui/${n}.svg)`, ...style }} />;
