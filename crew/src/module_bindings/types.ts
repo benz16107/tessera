@@ -64,6 +64,15 @@ export const Message = __t.object("Message", {
 });
 export type Message = __Infer<typeof Message>;
 
+export const Outbox = __t.object("Outbox", {
+  id: __t.u64(),
+  sessionId: __t.u64(),
+  text: __t.string(),
+  state: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type Outbox = __Infer<typeof Outbox>;
+
 export const Participant = __t.object("Participant", {
   id: __t.u64(),
   sessionId: __t.u64(),
@@ -130,6 +139,14 @@ export const PreviewJob = __t.object("PreviewJob", {
   createdAt: __t.timestamp(),
 });
 export type PreviewJob = __Infer<typeof PreviewJob>;
+
+export const Reminder = __t.object("Reminder", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+  sessionId: __t.u64(),
+  text: __t.string(),
+});
+export type Reminder = __Infer<typeof Reminder>;
 
 export const Session = __t.object("Session", {
   id: __t.u64(),

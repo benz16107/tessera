@@ -35,15 +35,18 @@ import {
 
 // Import all reducer arg schemas
 import AddPhotoReducer from "./add_photo_reducer";
+import CancelReminderReducer from "./cancel_reminder_reducer";
 import ClaimJobReducer from "./claim_job_reducer";
 import ClaimPreviewReducer from "./claim_preview_reducer";
 import CreateSessionReducer from "./create_session_reducer";
 import DeletePhotoReducer from "./delete_photo_reducer";
+import DeleteSessionReducer from "./delete_session_reducer";
 import EnqueueSolveReducer from "./enqueue_solve_reducer";
 import FinishJobReducer from "./finish_job_reducer";
 import FinishPreviewReducer from "./finish_preview_reducer";
 import JoinSessionReducer from "./join_session_reducer";
 import LogAgentStepReducer from "./log_agent_step_reducer";
+import MarkOutboxReducer from "./mark_outbox_reducer";
 import MoveCameraReducer from "./move_camera_reducer";
 import PlacePersonReducer from "./place_person_reducer";
 import PostMessageReducer from "./post_message_reducer";
@@ -53,6 +56,7 @@ import RemovePersonReducer from "./remove_person_reducer";
 import RenewPreviewReducer from "./renew_preview_reducer";
 import ReportProgressReducer from "./report_progress_reducer";
 import RequestPreviewReducer from "./request_preview_reducer";
+import ScheduleReminderReducer from "./schedule_reminder_reducer";
 import SetCrewCodeReducer from "./set_crew_code_reducer";
 import SetPlanTimeReducer from "./set_plan_time_reducer";
 import SetSessionSpotReducer from "./set_session_spot_reducer";
@@ -65,10 +69,12 @@ import AgentStepRow from "./agent_step_table";
 import CameraRow from "./camera_table";
 import DevicePoseRow from "./device_pose_table";
 import MessageRow from "./message_table";
+import OutboxRow from "./outbox_table";
 import ParticipantRow from "./participant_table";
 import PersonRow from "./person_table";
 import PhotoRow from "./photo_table";
 import PreviewJobRow from "./preview_job_table";
+import ReminderRow from "./reminder_table";
 import SessionRow from "./session_table";
 import SolveJobRow from "./solve_job_table";
 import SolveResultRow from "./solve_result_table";
@@ -132,6 +138,23 @@ const tablesSchema = __schema({
       { name: 'message_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, MessageRow),
+  outbox: __table({
+    name: 'outbox',
+    indexes: [
+      { accessor: 'id', name: 'outbox_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'sessionId', name: 'outbox_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
+      ] },
+      { accessor: 'state', name: 'outbox_state_idx_btree', algorithm: 'btree', columns: [
+        'state',
+      ] },
+    ],
+    constraints: [
+      { name: 'outbox_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, OutboxRow),
   participant: __table({
     name: 'participant',
     indexes: [
@@ -195,6 +218,20 @@ const tablesSchema = __schema({
       { name: 'preview_job_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, PreviewJobRow),
+  reminder: __table({
+    name: 'reminder',
+    indexes: [
+      { accessor: 'scheduledId', name: 'reminder_scheduled_id_idx_btree', algorithm: 'btree', columns: [
+        'scheduledId',
+      ] },
+      { accessor: 'sessionId', name: 'reminder_session_id_idx_btree', algorithm: 'btree', columns: [
+        'sessionId',
+      ] },
+    ],
+    constraints: [
+      { name: 'reminder_scheduled_id_key', constraint: 'unique', columns: ['scheduledId'] },
+    ],
+  }, ReminderRow),
   session: __table({
     name: 'session',
     indexes: [
@@ -271,15 +308,18 @@ const tablesSchema = __schema({
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
   __reducerSchema("add_photo", AddPhotoReducer),
+  __reducerSchema("cancel_reminder", CancelReminderReducer),
   __reducerSchema("claim_job", ClaimJobReducer),
   __reducerSchema("claim_preview", ClaimPreviewReducer),
   __reducerSchema("create_session", CreateSessionReducer),
   __reducerSchema("delete_photo", DeletePhotoReducer),
+  __reducerSchema("delete_session", DeleteSessionReducer),
   __reducerSchema("enqueue_solve", EnqueueSolveReducer),
   __reducerSchema("finish_job", FinishJobReducer),
   __reducerSchema("finish_preview", FinishPreviewReducer),
   __reducerSchema("join_session", JoinSessionReducer),
   __reducerSchema("log_agent_step", LogAgentStepReducer),
+  __reducerSchema("mark_outbox", MarkOutboxReducer),
   __reducerSchema("move_camera", MoveCameraReducer),
   __reducerSchema("place_person", PlacePersonReducer),
   __reducerSchema("post_message", PostMessageReducer),
@@ -289,6 +329,7 @@ const reducersSchema = __reducers(
   __reducerSchema("renew_preview", RenewPreviewReducer),
   __reducerSchema("report_progress", ReportProgressReducer),
   __reducerSchema("request_preview", RequestPreviewReducer),
+  __reducerSchema("schedule_reminder", ScheduleReminderReducer),
   __reducerSchema("set_crew_code", SetCrewCodeReducer),
   __reducerSchema("set_plan_time", SetPlanTimeReducer),
   __reducerSchema("set_session_spot", SetSessionSpotReducer),

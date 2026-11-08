@@ -154,6 +154,22 @@ const toast = table({ name: 'toast', public: true, event: true }, {
   text: t.string(),
 });
 
+// Golden-hour reminders: the schedule fires inside the database; the crew delivers the outbox row to the session's text thread.
+const reminder = table({ name: 'reminder', public: true }, {
+  scheduledId: t.u64().primaryKey().autoInc(),
+  scheduledAt: t.scheduleAt(),
+  sessionId: t.u64().index('btree'),
+  text: t.string(),
+});
+
+const outbox = table({ name: 'outbox', public: true }, {
+  id: t.u64().primaryKey().autoInc(),
+  sessionId: t.u64().index('btree'),
+  text: t.string(),
+  state: t.string().index('btree'), // pending | sent | failed
+  createdAt: t.timestamp(),
+});
+
 const sweepTimer = table({ name: 'sweep_timer' }, {
   scheduledId: t.u64().primaryKey().autoInc(),
   scheduledAt: t.scheduleAt(),
@@ -161,7 +177,7 @@ const sweepTimer = table({ name: 'sweep_timer' }, {
 
 const spacetimedb = schema({
   config, spot, session, participant, photo, solveJob, solveResult, camera, person,
-  devicePose, previewJob, message, agentStep, toast, sweepTimer,
+  devicePose, previewJob, message, agentStep, toast, sweepTimer, reminder, outbox,
 });
 export default spacetimedb;
 
@@ -483,6 +499,54 @@ export const logAgentStep = spacetimedb.reducer(
     ctx.db.agentStep.insert({ id: 0n, sessionId: a.sessionId, tool: text(a.tool, 60), args: text(a.args, 2000), result: text(a.result, 4000), ms: a.ms, at: ctx.timestamp });
   }
 );
+
+export const scheduleReminder = spacetimedb.reducer(
+  { sessionId: t.u64(), atMicros: t.i64(), text: t.string() },
+  (ctx, a) => {
+    requireMember(ctx, a.sessionId);
+    if (a.atMicros <= ctx.timestamp.microsSinceUnixEpoch) throw new SenderError('reminder time is in the past');
+    for (const r of [...ctx.db.reminder.sessionId.filter(a.sessionId)]) ctx.db.reminder.scheduledId.delete(r.scheduledId);
+    ctx.db.reminder.insert({ scheduledId: 0n, scheduledAt: ScheduleAt.time(a.atMicros), sessionId: a.sessionId, text: text(a.text, 300) });
+  }
+);
+
+export const cancelReminder = spacetimedb.reducer({ sessionId: t.u64() }, (ctx, { sessionId }) => {
+  requireMember(ctx, sessionId);
+  for (const r of [...ctx.db.reminder.sessionId.filter(sessionId)]) ctx.db.reminder.scheduledId.delete(r.scheduledId);
+});
+
+export const fireReminder = spacetimedb.reducer({ onSchedule: reminder }, { r: reminder.rowType }, (ctx, { r }) => {
+  ctx.db.toast.insert({ sessionId: r.sessionId, kind: 'reminder', text: r.text });
+  ctx.db.outbox.insert({ id: 0n, sessionId: r.sessionId, text: r.text, state: 'pending', createdAt: ctx.timestamp });
+});
+
+export const markOutbox = spacetimedb.reducer({ id: t.u64(), state: t.string() }, (ctx, { id, state }) => {
+  requireCrew(ctx);
+  const o = ctx.db.outbox.id.find(id);
+  if (!o) return;
+  if (state !== 'sent' && state !== 'failed') throw new SenderError('bad state');
+  ctx.db.outbox.id.update({ ...o, state });
+});
+
+// Session owner or crew removes a session and everything in it.
+export const deleteSession = spacetimedb.reducer({ sessionId: t.u64() }, (ctx, { sessionId }) => {
+  const s = ctx.db.session.id.find(sessionId);
+  if (!s) return;
+  if (!s.owner.equals(ctx.sender) && !isCrew(ctx) && !isOwner(ctx)) throw new SenderError('not your session');
+  for (const x of [...ctx.db.photo.sessionId.filter(sessionId)]) ctx.db.photo.id.delete(x.id);
+  for (const x of [...ctx.db.solveJob.sessionId.filter(sessionId)]) ctx.db.solveJob.id.delete(x.id);
+  for (const x of [...ctx.db.solveResult.sessionId.filter(sessionId)]) ctx.db.solveResult.photoId.delete(x.photoId);
+  for (const x of [...ctx.db.previewJob.sessionId.filter(sessionId)]) ctx.db.previewJob.id.delete(x.id);
+  for (const x of [...ctx.db.person.sessionId.filter(sessionId)]) ctx.db.person.id.delete(x.id);
+  for (const x of [...ctx.db.devicePose.sessionId.filter(sessionId)]) ctx.db.devicePose.participantId.delete(x.participantId);
+  for (const x of [...ctx.db.message.sessionId.filter(sessionId)]) ctx.db.message.id.delete(x.id);
+  for (const x of [...ctx.db.agentStep.sessionId.filter(sessionId)]) ctx.db.agentStep.id.delete(x.id);
+  for (const x of [...ctx.db.reminder.sessionId.filter(sessionId)]) ctx.db.reminder.scheduledId.delete(x.scheduledId);
+  for (const x of [...ctx.db.outbox.sessionId.filter(sessionId)]) ctx.db.outbox.id.delete(x.id);
+  for (const x of [...ctx.db.participant.iter()]) if (x.sessionId === sessionId) ctx.db.participant.id.delete(x.id);
+  ctx.db.camera.sessionId.delete(sessionId);
+  ctx.db.session.id.delete(sessionId);
+});
 
 // Every 10 s: requeue jobs whose worker stopped renewing its lease (the kill-the-worker demo).
 export const sweep = spacetimedb.reducer({ onSchedule: sweepTimer }, { timer: sweepTimer.rowType }, ctx => {
