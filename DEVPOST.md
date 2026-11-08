@@ -123,7 +123,7 @@ Google Lens names the place in a photo. It doesn't say where the photographer st
 
 ### Challenges
 
-- FLUX.1-dev returned HTTP 500 all night, so the render moved to Qwen-Image on Vultr, and every result names the model that made it.
+- FLUX.1-dev returned HTTP 500 for much of the night, so the render moved to Qwen-Image on Vultr, and every result names the model that made it.
 - TRELLIS failed often, so a failed prop becomes a flat cut-out at its real size instead of nothing.
 - Vultr's monthly cap blocked a GPU instance, so the fine-tune ran on Brev.
 - A SpacetimeDB database that other databases have called can't be deleted and recreated, which cost us our dev database once.
