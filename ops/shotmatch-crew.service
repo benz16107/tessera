@@ -11,8 +11,6 @@ ExecStart=%h/.nvm/default-node/bin/node --import tsx src/main.ts
 Environment=NODE_ENV=production
 # Fine-tuned lens reader: vLLM on the Brev GPU box, reached through ops/shotmatch-lens-tunnel.service (VM port 18000).
 # Delete these two lines when the GPU box is gone, or every lens read fails instead of falling back to Nemotron VL.
-Environment=LENS_URL=http://127.0.0.1:18000/v1
-Environment=LENS_MODEL=shotmatch-lens
 Restart=always
 RestartSec=3
 # A restart drains first: in-flight renders and generations finish (up to 150 s, crew/src/main.ts) before the process exits.

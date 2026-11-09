@@ -26,3 +26,5 @@ Account: Ben's Brev org `benz16107-4e84e4-rvkd`, $60.00 credit from the HackUTD 
 | Sun 12:55 AM | Only vLLM (`shotmatch-lens` systemd service) left on the box, serving the crew's lens reads until judging; then `brev delete shotmatch-gpu`. Spent so far $5.62 (3.47 h). Projected total at noon CT $23.57 (14.55 h), under the $55 cap | same | | 1.62 | $5.62 |
 
 Stop everything: `brev delete shotmatch-gpu` from linuxbox (`brev ls` to confirm it is gone). Billing stops on delete; this instance type cannot be stopped and kept.
+
+| Mon Nov 9, 8:00 AM | Teardown (Ben moved it from Sunday noon to Monday). The crew no longer uses the lens reader: LENS_URL and LENS_MODEL removed from shotmatch-crew.service on the VM and in ops/, crew restarted, /api/config answers, and a test solve came back solid (1618 matches, 53.7 mm, 32 s) with Super VL's advisory lens read instead. shotmatch-lens-tunnel stopped and disabled. `brev delete` is waiting on a fresh Brev CLI sign-in (the saved login expired); billing runs until the delete. | shotmatch-gpu | | 1.62 | about $55.97 (34.55 h since Sat 9:27 PM) |
