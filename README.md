@@ -1,6 +1,6 @@
 # Tessera
 
-Stand where the photo was taken, then make the shot yours. Drop a photo of a place and Tessera finds where the photographer stood, which way they faced and what lens they used, rebuilds the place as a 3D set, and your group plans its own version there together: in a browser, in a Telegram chat or by phone. Built at HackUTD 2026.
+Stand where the photo was taken, then make the shot yours. Drop a photo of a place and Tessera finds where the photographer stood, which way they faced and what lens they used, rebuilds the place as a 3D set, and your group plans its own version there together: in a browser, in a Telegram chat or by phone. Built at HackUTD 2026, where it won 2nd place in the Spacetime track.
 
 ![Studio in World view over the Google Photorealistic 3D Tiles of DUMBO: the solved camera, Cam A, and its frustum on Washington St under the Manhattan Bridge, the photo in the corner, and the camera inspector](site/public/devpost/1-studio-camera.jpg)
 
