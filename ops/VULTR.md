@@ -1,5 +1,7 @@
 # Tessera on Vultr
 
+**Torn down on November 11, 2026.** The VM, the Object Storage bucket, the Serverless Inference subscription and the firewall groups below were deleted; nothing runs on Vultr now. The rest of this page records how it ran.
+
 Facts read from the Vultr API on Sunday, November 8, 2026 at 10:58 AM CT.
 
 ## The VM

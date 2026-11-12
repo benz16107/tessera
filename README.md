@@ -4,18 +4,14 @@ Stand where the photo was taken, then make the shot yours. Drop a photo of a pla
 
 ![Studio in World view over the Google Photorealistic 3D Tiles of DUMBO: the solved camera, Cam A, and its frustum on Washington St under the Manhattan Bridge, the photo in the corner, and the camera inspector](site/public/devpost/1-studio-camera.jpg)
 
-- **Try it:** the demo shoot at the Manhattan Bridge view in DUMBO, in [Simple](https://app.tesseraphoto.com/p/A9TVAN) or in [Studio](https://app.tesseraphoto.com/studio/A9TVAN)
-- **Site and docs:** https://tesseraphoto.com
-- **Track pages:** [NVIDIA](https://tesseraphoto.com/tracks/nvidia/), [SpacetimeDB](https://tesseraphoto.com/tracks/spacetime/), [Photon](https://tesseraphoto.com/tracks/photon/), [Vultr](https://tesseraphoto.com/tracks/vultr/), [Virality](https://tesseraphoto.com/tracks/virality/) (our HackUTD track)
+- **Hosted demo:** the app (app.tesseraphoto.com) and the site (tesseraphoto.com) ran on a Vultr VM from November 7 to November 11, 2026 and are offline now. The videos below show it working, [Run it locally](#run-it-locally) starts it on your machine, and the site's docs and track pages are in [site/](site/).
 
 ## Videos
 
 - Main video (2:10): https://youtu.be/KxeUG-_GlKs (the earlier 2:57 cut: https://youtu.be/SvSqGH4IKKk) (the 1:35 cut: https://youtu.be/TBKutDiVhSI)
-- NVIDIA (2:38, every Nemotron use): https://tesseraphoto.com/videos/tessera-nvidia.mp4, and a 1:14 cut: https://youtu.be/-thSL8iYLlU
+- NVIDIA (1:14): https://youtu.be/-thSL8iYLlU
 - SpacetimeDB (1:10): https://youtu.be/CyivsP2lXpc
-- Photon (1:09): https://tesseraphoto.com/videos/tessera-photon.mp4
 - Vultr (0:59): https://youtu.be/fsq3ry87EZ8
-- Ten vertical reels for the Virality track: https://tesseraphoto.com/reels/
 
 ## The problem
 
@@ -30,7 +26,7 @@ A photo shows you a place, not where to stand. Google Lens names the landmark in
 
 In Through Cam A, the backplate behind your objects is your photo, Google's 3D Earth (the default) or Street View when Google has a panorama within about 15 m of the camera. Street View carries Google's credit and the capture date and is display only: it never enters a render or a model.
 
-Two examples on the start page: **Try Manhattan Bridge from Washington St** (solved against our DUMBO model) and **Try Empire State Building from Top of the Rock** (photo by Daniel Schwen, CC BY-SA 4.0; a fresh shoot placed on the deck at 259 m, facing 205° at 65 mm). Shared demo shoots: [A9TVAN](https://app.tesseraphoto.com/p/A9TVAN) (DUMBO) and [7PL6L6](https://app.tesseraphoto.com/p/7PL6L6) (Top of the Rock); details in [docs/DEMO-SHOOTS.md](docs/DEMO-SHOOTS.md).
+Two examples on the start page: **Try Manhattan Bridge from Washington St** (solved against our DUMBO model) and **Try Empire State Building from Top of the Rock** (photo by Daniel Schwen, CC BY-SA 4.0; a fresh shoot placed on the deck at 259 m, facing 205° at 65 mm). Shared demo shoots: `A9TVAN` (DUMBO) and `7PL6L6` (Top of the Rock); details in [docs/DEMO-SHOOTS.md](docs/DEMO-SHOOTS.md).
 
 Two views edit the same live set: **Simple** (`/p/<code>`), phone first, and **Studio** (`/studio/<code>`), the set editor for photographers. The 3D world is Google Photorealistic 3D Tiles (display only) plus our clay model of the block with the user's photo projected onto it.
 
@@ -82,7 +78,7 @@ Nemotron does the work between your words and the set as tool-calling workflows,
 - Studio panels: [web/src/nvidia/](web/src/nvidia/)
 - Lens fine-tune: [lens/train.py](lens/train.py), [lens/eval.py](lens/eval.py), [lens/serve.sh](lens/serve.sh)
 - Nemotron called from inside the database: `titleSession` in [module/src/index.ts](module/src/index.ts)
-- Write-up: [docs/NVIDIA.md](docs/NVIDIA.md); page: [/tracks/nvidia/](https://tesseraphoto.com/tracks/nvidia/)
+- Write-up: [docs/NVIDIA.md](docs/NVIDIA.md)
 
 ### SpacetimeDB: it powers the primary function
 
@@ -93,7 +89,7 @@ The product is a shared set, and SpacetimeDB is its only backend. There is no se
 - **Private by default.** Row-level security delivers a session's rows only to its members (`session_member`).
 - **Also in the module:** scene history with undo and restore by anyone, text threads as a version tree (`restoreToVersion`), event tables for cursors and laser pings (`sendSetEvent`), schedules for presence, the live sun and golden-hour reminders, a procedure that calls Nemotron, HTTP routes (health, share links, the phone agent's signed webhook), and inter-database calls to the library.
 - **Proof:** [module/scripts/proof.ts](module/scripts/proof.ts) (feature checks with two users and a crew) and [module/scripts/loadtest.ts](module/scripts/loadtest.ts) (3 clients at 10 Hz for 30 s: 900 of 900 edits committed, median round trip 42 to 50 ms).
-- Write-up with line references: [docs/SPACETIME.md](docs/SPACETIME.md); page: [/tracks/spacetime/](https://tesseraphoto.com/tracks/spacetime/)
+- Write-up with line references: [docs/SPACETIME.md](docs/SPACETIME.md)
 
 ### Photon: the set in your texts
 
@@ -104,7 +100,7 @@ Most people on a shoot will never open a 3D editor, so the set comes to the app 
 - The phone call's tools: [crew/src/voice.ts](crew/src/voice.ts)
 - Studio panel: [web/src/photon/](web/src/photon/)
 - End-to-end run and the stand-in: [crew/scripts/photon-e2e.ts](crew/scripts/photon-e2e.ts), [crew/test/fake-photon.ts](crew/test/fake-photon.ts)
-- Write-up: [docs/PHOTON.md](docs/PHOTON.md); page: [/tracks/photon/](https://tesseraphoto.com/tracks/photon/)
+- Write-up: [docs/PHOTON.md](docs/PHOTON.md)
 
 ### Vultr
 
@@ -113,7 +109,6 @@ Production runs on one Vultr VM in Dallas (12 vCPU, 24 GB): Caddy with automatic
 - VM services and deploys: [ops/](ops/) (`Caddyfile`, `deploy-vultr.sh`, `deploy-site.sh`, `shotmatch-*.service`, `ollama.sh`)
 - Object Storage client: [crew/src/s3.ts](crew/src/s3.ts)
 - Serverless Inference calls: `VULTR_INFERENCE_BASE` in [crew/src/config.ts](crew/src/config.ts), used in [crew/src/models.ts](crew/src/models.ts) and [crew/src/speech.ts](crew/src/speech.ts)
-- Page: [/tracks/vultr/](https://tesseraphoto.com/tracks/vultr/)
 
 ## Run it locally
 
@@ -179,7 +174,7 @@ cd module && npm run check                   # HMAC used by the webhook, against
 
 ## Credits and licences
 
-Tessera is built from other people's work; the full list is on the [credits page](https://tesseraphoto.com/credits/).
+Tessera is built from other people's work; the full list is in [site/src/pages/credits/](site/src/pages/credits/).
 
 - Wikimedia Commons photographers, for the spot model and the lens dataset: each photo with its author and licence in [spots/nyc_dumbo/CREDITS.tsv](spots/nyc_dumbo/CREDITS.tsv) and [lens/CREDITS.tsv](lens/CREDITS.tsv)
 - People and most props: Quaternius, CC0; also Kenney (CC0) and Zsky (CC BY 3.0) via Poly Pizza ([web/src/studio/catalog/CREDITS.md](web/src/studio/catalog/CREDITS.md))
